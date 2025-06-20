@@ -1,6 +1,7 @@
 use starknet::{ContractAddress};
 use dojo::model::{ModelStorage};
 use dojo::world::WorldStorage;
+use core::dict::Felt252Dict;
 
 #[derive(Copy, Drop, Serde, Debug)]
 #[dojo::model]
@@ -9,6 +10,19 @@ pub struct Global {
     pub key: u64,
     pub games_counter: u64,
     pub cap_counter: u64,
+}
+
+
+#[derive(Drop, Serde, Debug)]
+#[dojo::model]
+pub struct Square {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub x: u64,
+    #[key]
+    pub y: u64,
+    pub ids: Array<u64>,
 }
 
 #[derive(Drop, Serde, Debug)]
@@ -30,6 +44,19 @@ pub impl GameImpl of GameTrait {
 
     fn add_cap(ref self: Game, cap_id: u64) {
         self.caps_ids.append(cap_id);
+    }
+
+    fn remove_cap(ref self: Game, cap_id: u64) {
+        let mut i = 0;
+        let mut new_ids: Array<u64> = ArrayTrait::new();
+        while i < self.caps_ids.len() {
+            if *self.caps_ids[i] == cap_id {
+                continue;
+            }
+            new_ids.append(*self.caps_ids[i]);
+            i += 1;
+        };
+        self.caps_ids = new_ids;
     }
 
     fn check_over(self: @Game, world: @WorldStorage) -> (bool, ContractAddress) {
@@ -69,12 +96,13 @@ pub impl CapImpl of CapTrait {
         Cap { id, owner, position }
     }
 
-    fn move(ref self: Cap, turn: Vec2) {
+    fn move(ref self: Cap, turn: Vec2) -> Option<Vec2> {
         if self.position.x + turn.x < 0 || self.position.x + turn.x > 6 || self.position.y + turn.y < 0 || self.position.y + turn.y > 6 {
-            panic!("Invalid move");
+            return Option::None;
         }
-        self.position.x += turn.x;
-        self.position.y += turn.y;
+
+        return Option::Some(Vec2 { x: self.position.x + turn.x, y: self.position.y + turn.y });
+        
     }
 }
 

@@ -13,7 +13,7 @@ pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
     use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait};
-    use caps::helpers::get_player_pieces;
+    use caps::helpers::{get_player_pieces, get_piece_locations};
 
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
@@ -88,6 +88,7 @@ pub mod actions {
             let mut pieces = get_player_pieces(game_id, get_caller_address(), @world);
 
             let mut cap: Cap = world.read_model(*pieces[0]);
+            let locations = get_piece_locations(game_id, @world);
             cap.move(turn);
             world.write_model(@cap);
             game.turn_count = game.turn_count + 1;
