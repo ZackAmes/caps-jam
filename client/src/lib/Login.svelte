@@ -10,8 +10,11 @@
   <button onclick={account.connect}>Connect</button>
 {:else}
   <button onclick={account.disconnect}>Disconnect</button>
-  <p>Connected as {account.username}</p>
+  <p>Connected as {account.username} elo: {planetelo.elo}</p>
 {/if}
 {#if account.account}
   <button onclick={() => planetelo.update_status()}>Update Status</button>
+{/if}
+{#if account.account && planetelo.queue_status == 2}
+  <button onclick={() => caps.get_game()}>Refresh Game</button>
 {/if}

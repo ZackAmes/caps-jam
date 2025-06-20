@@ -18,6 +18,7 @@ let game_id = shortString.encodeShortString("caps");
 
 let queue_status = $state<number | null>(null)
 let current_game_id = $state<number | null>(null)
+let elo = $state<number | null>(null)
 
 export const planetelo = {
     address: planetelo_manifest.contracts[0].address,
@@ -27,7 +28,8 @@ export const planetelo = {
         console.log(account.account!.address)
         let status = parseInt(await plantelo_contract.get_status(account.account!.address, game_id, "0x0"));
         console.log(status)
-        let elo = parseInt(await plantelo_contract.get_elo(account.account!.address, game_id, "0x0"));
+        let elo_res = parseInt(await plantelo_contract.get_elo(account.account!.address, game_id, "0x0"));
+        elo = elo_res;
         let queue_length = parseInt(await plantelo_contract.get_queue_length(game_id, "0"));
 
         queue_status = status;
@@ -97,12 +99,24 @@ export const planetelo = {
         }
     },
 
+    reset: async () => {
+
+        current_game_id = null;
+        queue_status = null;
+        elo = null;
+
+    },
+
     get queue_status() {
         return queue_status;
     },
 
     get current_game_id() {
         return current_game_id;
+    },
+
+    get elo() {
+        return elo;
     }
 
 }

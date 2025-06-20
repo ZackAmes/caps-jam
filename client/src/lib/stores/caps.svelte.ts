@@ -52,6 +52,12 @@ export const caps = {
             selected_cap = null
         }
     },
+    
+    reset: () => {
+        game_state = undefined;
+        current_move = [];
+        selected_cap = null;
+    },
 
     reset_move: () => {
         current_move = []

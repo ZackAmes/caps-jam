@@ -7,6 +7,7 @@
   import { Canvas } from '@threlte/core'
   import { caps } from './lib/stores/caps.svelte'
   import { account } from './lib/stores/account.svelte'
+    import Matchmaking from './lib/Matchmaking.svelte';
 
   $effect(() => {
     console.log(planetelo.queue_status)
@@ -24,6 +25,7 @@
 
 
   <Login />
+  <Matchmaking />
 
   {#if planetelo.queue_status == 2 && caps.game_state && !caps.game_state.game.over}
 

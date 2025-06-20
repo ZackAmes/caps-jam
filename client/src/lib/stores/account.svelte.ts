@@ -1,5 +1,7 @@
 import { Account } from "starknet";
 import Controller from "@cartridge/controller";
+import { planetelo } from "./planetelo.svelte";
+import { caps } from "./caps.svelte";
 
 let accountStore = $state<Account>()
 let username = $state<string>()
@@ -32,6 +34,8 @@ export const account = {
         },
         async disconnect() {
             await controller.disconnect();
+            planetelo.reset();
+            caps.reset();
             accountStore = undefined;
             username = undefined;
         },
