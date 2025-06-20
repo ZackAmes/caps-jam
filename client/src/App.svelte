@@ -2,22 +2,24 @@
   import svelteLogo from './assets/svelte.svg'
   import viteLogo from '/vite.svg'
   import Login from './lib/Login.svelte'
+  import Game from './lib/Game.svelte'
+  import { planetelo } from './lib/planetelo.svelte'
+  import { Canvas } from '@threlte/core'
 </script>
 
 <main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+  <h1>Caps</h1>
 
   <div class="card">
     <Login />
   </div>
+  {#if planetelo.queue_status == 2}
+    <div class="game-container">
+      <Canvas>
+        <Game />
+      </Canvas>
+    </div>
+  {/if}
 
   <p>
     Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
@@ -40,6 +42,15 @@
   }
   .logo.svelte:hover {
     filter: drop-shadow(0 0 2em #ff3e00aa);
+  }
+  .game-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 70vh;
+    padding: 1rem;
+    margin: 2rem 0;
   }
   .read-the-docs {
     color: #888;

@@ -19,6 +19,10 @@
   },
   "dependencies": {
     "@cartridge/controller": "^0.7.13",
-    "fs": "^0.0.1-security"
+    "@threlte/core": "^8.0.5",
+    "@threlte/extras": "^9.4.0",
+    "@types/three": "^0.177.0",
+    "fs": "^0.0.1-security",
+    "three": "^0.177.0"
   }
 }

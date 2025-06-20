@@ -22,6 +22,4 @@
   <button onclick={planetelo.handleQueue}>Queue</button>
 {:else if planetelo.queue_status == 1}
   <button onclick={planetelo.handleMatchmake}>Matchmake</button>
-{:else if planetelo.queue_status == 2}
-  <Game />
 {/if}
