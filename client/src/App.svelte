@@ -5,6 +5,13 @@
   import Game from './lib/Game.svelte'
   import { planetelo } from './lib/planetelo.svelte'
   import { Canvas } from '@threlte/core'
+  import { caps } from './lib/caps.svelte'
+
+  $effect(() => {
+    console.log(planetelo.queue_status)
+    planetelo.update_status();
+    caps.get_game();
+  });
 </script>
 
 <main>
@@ -12,6 +19,9 @@
 
   <div class="card">
     <Login />
+    <button onclick={() => {
+      caps.get_game();
+    }}>Get Game</button>
   </div>
   {#if planetelo.queue_status == 2}
     <div class="game-container">
@@ -21,28 +31,9 @@
     </div>
   {/if}
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
 </main>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
   .game-container {
     display: flex;
     justify-content: center;
@@ -52,8 +43,5 @@
     padding: 1rem;
     margin: 2rem auto;
     border: 1px solid #ccc;
-  }
-  .read-the-docs {
-    color: #888;
   }
 </style>

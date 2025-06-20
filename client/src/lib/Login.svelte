@@ -2,10 +2,11 @@
   import {account} from "./account.svelte";
   import { planetelo } from "./planetelo.svelte";
   import Game from "./Game.svelte";
-
+  import { caps } from "./caps.svelte";
   $effect(() => {
     console.log(planetelo.queue_status)
     planetelo.update_status();
+    caps.get_game();
   });
 </script>
 

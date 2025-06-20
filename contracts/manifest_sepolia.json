@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x1160a2bdc2233aa69cb17a289c9affe688dd5d1b4ef027a1d206db7e6e93a8b",
-      "class_hash": "0x15acfca5d9543f027b3568798e50f3f36ee15d911314b88705a48f047b240e5",
+      "class_hash": "0x4f61794732bdabaf69fac83db395bb8dab636e4edfc61bfb5684fae737a8689",
       "abi": [
         {
           "type": "impl",
@@ -1401,6 +1401,74 @@
           ]
         },
         {
+          "type": "struct",
+          "name": "caps::models::Game",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "player1",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "player2",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "caps_ids",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "turn_count",
+              "type": "core::integer::u64"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::Cap",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "owner",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "position",
+              "type": "caps::models::Vec2"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<caps::models::Cap>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<caps::models::Cap>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>)>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "(caps::models::Game, core::array::Span::<caps::models::Cap>)"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "interface",
           "name": "caps::systems::actions::IActions",
           "items": [
@@ -1439,6 +1507,22 @@
               ],
               "outputs": [],
               "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_game",
+              "inputs": [
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u64"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>)>"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },

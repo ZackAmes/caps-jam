@@ -18,6 +18,7 @@ let plantelo_contract = new Contract(
 let game_id = shortString.encodeShortString("caps");
 
 let queue_status = $state<number | null>(null)
+let current_game_id = $state<number | null>(null)
 
 export const planetelo = {
     address: planetelo_manifest.contracts[0].address,
@@ -47,6 +48,9 @@ export const planetelo = {
             let status = await planetelo.get_status();
             console.log(status)
             queue_status = status.status;
+            if (status.status == 2) {
+                current_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
+            }
         }
     },
 
@@ -97,6 +101,10 @@ export const planetelo = {
 
     get queue_status() {
         return queue_status;
+    },
+
+    get current_game_id() {
+        return current_game_id;
     }
 
 }
