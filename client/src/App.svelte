@@ -22,27 +22,34 @@
 
   <Login />
 
-  <button onclick={() => {
-    caps.reset_move();
-  }}>Reset Move</button>
-  <button onclick={() => {
-    caps.take_turn();
-  }}>Take Turn</button>
-  <button onclick={() => {
-    caps.get_game();
-  }}>Get Game</button>
-  {#if planetelo.queue_status == 2 && caps.game_state}
+  {#if planetelo.queue_status == 2 && caps.game_state && !caps.game_state.game.over}
+
+    <button onclick={() => {
+      caps.reset_move();
+    }}>Reset Move</button>
+    <button onclick={() => {
+      caps.take_turn();
+    }}>Take Turn</button>
     <div class="game-container">
       <Canvas>
         <Game />
       </Canvas>
     </div>
-  {:else if planetelo.queue_status == 2}
+  {:else if planetelo.queue_status == 2 && !caps.game_state}
   <div class="card">
     <button onclick={() => {
       caps.get_game();
     }}>Get Game</button>
   </div>
+  {:else if planetelo.queue_status == 2 && caps.game_state && caps.game_state.game.over}
+    <div class="card">
+      <button onclick={() => {
+        planetelo.handleSettle()
+      }}>Settle Match</button>
+      <button onclick={() => {
+        caps.get_game();
+      }}>Get Game</button>
+    </div>
   {/if}
 
 </main>

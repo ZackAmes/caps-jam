@@ -22,6 +22,7 @@ export interface Game {
 	player2: string;
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
+	over: boolean;
 }
 
 // Type definition for `caps::models::GameValue` struct
@@ -30,6 +31,7 @@ export interface GameValue {
 	player2: string;
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
+	over: boolean;
 }
 
 // Type definition for `caps::models::Global` struct
@@ -125,12 +127,14 @@ export const schema: SchemaType = {
 			player2: "",
 			caps_ids: [0],
 			turn_count: 0,
+			over: false,
 		},
 		GameValue: {
 			player1: "",
 			player2: "",
 			caps_ids: [0],
 			turn_count: 0,
+			over: false,
 		},
 		Global: {
 			key: 0,

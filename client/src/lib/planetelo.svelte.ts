@@ -3,6 +3,7 @@ import { Contract, type Abi } from "starknet";
 import planetelo_manifest from "./planetelo_sepolia_manifest.json";
 import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
+import { caps } from "./caps.svelte";
 
 
 
@@ -90,8 +91,7 @@ export const planetelo = {
                 [{
                     contractAddress: planetelo.address,
                     entrypoint: 'settle',
-                    //TODO 
-                    calldata: [game_id, 0]
+                    calldata: [game_id, current_game_id!]
                 }]
             );
             console.log(res);

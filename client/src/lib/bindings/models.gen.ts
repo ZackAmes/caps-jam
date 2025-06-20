@@ -22,6 +22,7 @@ export interface Game {
 	player2: string;
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
+	over: boolean;
 }
 
 // Type definition for `caps::models::GameValue` struct
@@ -30,6 +31,7 @@ export interface GameValue {
 	player2: string;
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
+	over: boolean;
 }
 
 // Type definition for `caps::models::Global` struct
@@ -87,7 +89,7 @@ export const actionType = [
 	'Attack',
 ] as const;
 export type ActionType = { 
-	Move: [BigNumberish, BigNumberish],
+	Move: Vec2,
 	Attack: Vec2,
 };
 export type ActionTypeEnum = CairoCustomEnum;
@@ -125,12 +127,14 @@ export const schema: SchemaType = {
 			player2: "",
 			caps_ids: [0],
 			turn_count: 0,
+			over: false,
 		},
 		GameValue: {
 			player1: "",
 			player2: "",
 			caps_ids: [0],
 			turn_count: 0,
+			over: false,
 		},
 		Global: {
 			key: 0,
@@ -157,18 +161,18 @@ export const schema: SchemaType = {
 		Action: {
 			cap_id: 0,
 		action_type: new CairoCustomEnum({ 
-					Move: [0, 0],
+				Move: { x: 0, y: 0, },
 				Attack: undefined, }),
 		},
 		Moved: {
 			player: "",
 			turn: [{ cap_id: 0, action_type: new CairoCustomEnum({ 
-					Move: [0, 0],
+				Move: { x: 0, y: 0, },
 				Attack: undefined, }), }],
 		},
 		MovedValue: {
 			turn: [{ cap_id: 0, action_type: new CairoCustomEnum({ 
-					Move: [0, 0],
+				Move: { x: 0, y: 0, },
 				Attack: undefined, }), }],
 		},
 	},

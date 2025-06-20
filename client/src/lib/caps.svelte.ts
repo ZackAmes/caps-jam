@@ -39,6 +39,7 @@ export const caps = {
         if (game_state && account.account && current_move.length > 0) {
             console.log('sending current_move', current_move)
             let calldata = CallData.compile([game_state.game.id, current_move])
+            console.log(calldata)
             let res = await account.account.execute([
                 {
                     contractAddress: manifest.contracts[0].address,
@@ -73,24 +74,24 @@ export const caps = {
           else if (selected_cap && !cap) {
             if (selected_cap.position.x == position.x) {
               if (BigInt(position.y) > BigInt(selected_cap.position.y)) {
-                let action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}})
+                let action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}, Attack: undefined})
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
-                let action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}})
+                let action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
             else if (selected_cap.position.y == position.y) {
               if (BigInt(position.x) > BigInt(selected_cap.position.x)) {
-                let action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}})
+                let action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}, Attack: undefined})
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
-                let action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}})
+                let action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
           } else if (selected_cap && cap && cap.owner != account.account?.address) {
-            let action_type = new CairoCustomEnum({ Attack: {x: BigInt(position.x), y: BigInt(position.y)}})
+            let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}})
             caps.add_action({cap_id: selected_cap.id, action_type})
           }
     },

@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
-      "class_hash": "0x2d8b4eff582fbe4a53b82e9db7369507e5101a394582ed167400ac5acbff",
+      "class_hash": "0x7f2f52d169295e116c86abc57de634a03ae3080c396c59f8ae156e63d716689",
       "abi": [
         {
           "type": "impl",
@@ -1429,6 +1429,20 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "caps::models::Game",
           "members": [
@@ -1451,6 +1465,10 @@
             {
               "name": "turn_count",
               "type": "core::integer::u64"
+            },
+            {
+              "name": "over",
+              "type": "core::bool"
             }
           ]
         },
@@ -1680,7 +1698,7 @@
     },
     {
       "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
-      "class_hash": "0x7518898b3d8f45345fa6e3a05a12758788317039845c73d0665b102a24202fc",
+      "class_hash": "0x7bc131cd681b52c3771f02a80beb251f83abfc3be936f29a01cc1f6943d9be1",
       "abi": [
         {
           "type": "impl",
@@ -1967,7 +1985,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x22c619da2d13a242db7e6806cbd26ab40129a9efabe7505b0bad95c056cce42",
+      "class_hash": "0x1560cfe1782858d55b70316097458e22553690a3f7f7e370caa92d72f7db1dd",
       "tag": "caps-Game",
       "selector": "0xe9697c6c427792aaa8a422a17897c4b838d7d6c76261f43cce21228c294477"
     },

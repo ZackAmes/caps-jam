@@ -50,28 +50,44 @@ pub mod actions {
                 player2: p2,
                 caps_ids: ArrayTrait::new(),
                 turn_count: 0,
+                over: false,
             };
 
-            let p1_cap = Cap {
+            let p1_cap1 = Cap {
                 id: global.cap_counter + 1,
                 owner: p1,
-                position: Vec2 { x: 3, y: 0 },
+                position: Vec2 { x: 2, y: 0 },
             };
-
-            let p2_cap = Cap {
+            let p1_cap2 = Cap {
                 id: global.cap_counter + 2,
-                owner: p2,
-                position: Vec2 { x: 3, y: 6 },
+                owner: p1,
+                position: Vec2 { x: 4, y: 0 },
             };
 
-            game.add_cap(p1_cap.id);
-            game.add_cap(p2_cap.id);
+            let p2_cap1 = Cap {
+                id: global.cap_counter + 3,
+                owner: p2,
+                position: Vec2 { x: 2, y: 6 },
+            };
 
-            global.cap_counter = global.cap_counter + 2;
+            let p2_cap2 = Cap {
+                id: global.cap_counter + 4,
+                owner: p2,
+                position: Vec2 { x: 4, y: 6 },
+            };
+
+            game.add_cap(p1_cap1.id);
+            game.add_cap(p1_cap2.id);
+            game.add_cap(p2_cap1.id);
+            game.add_cap(p2_cap2.id);
+
+            global.cap_counter = global.cap_counter + 4;
 
             world.write_model(@game);
-            world.write_model(@p1_cap);
-            world.write_model(@p2_cap);
+            world.write_model(@p1_cap1);
+            world.write_model(@p1_cap2);
+            world.write_model(@p2_cap1);
+            world.write_model(@p2_cap2);
 
             game_id
         }
@@ -84,32 +100,45 @@ pub mod actions {
 
             let (over, _) = @game.check_over(@world);
             if *over {
-                panic!("Game over");
+                if !game.over {
+                    game.over = true;
+                    world.write_model(@game);
+                }
             }
+            let mut i = 0;
 
-            let mut pieces = get_player_pieces(game_id, get_caller_address(), @world);
 
-            for action in turn {
-                let mut cap: Cap = world.read_model(action.cap_id);
+            while i < turn.len() {
+                let action = turn.at(i);
+                let mut locations = get_piece_locations(game_id, @world);
+                let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
+
                 match action.action_type {
                     ActionType::Move(dir) => {
-                        cap.move(dir.x, dir.y);
+                        let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
+                        let piece_at_location_id = locations.get(new_location_index.into());
+                        assert!(piece_at_location_id == 0, "There is a piece at the new location");
+                        cap.move(*dir.x, *dir.y);
                         world.write_model(@cap);
                     },
                     ActionType::Attack(target) => {
-                        let mut target_cap: Cap = world.read_model(target.x * 7 + target.y);
-                        assert!(target_cap.owner != get_caller_address(), "You cannot attack your own piece");
-                        game.remove_cap(target_cap.id);
-                        target_cap.position = Vec2 { x: 10, y: 10 };
-                        world.write_model(@target_cap);
+                        let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
+                        let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
+                        assert!(piece_at_location_id != 0, "There is no piece at the target location");
+                        assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
+                        game.remove_cap(piece_at_location.id);
+                        world.erase_model(@piece_at_location);
                         world.write_model(@cap);
                         world.write_model(@game);
                     }
                 }
+                i = i + 1;
             };
 
             game.turn_count = game.turn_count + 1;
+            let (over, _) = @game.check_over(@world);
+            game.over = *over;
             world.write_model(@game);
 
             world.emit_event(@Moved { player: get_caller_address(), turn: clone.span() });

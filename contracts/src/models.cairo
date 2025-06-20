@@ -34,12 +34,13 @@ pub struct Game {
     pub player2: ContractAddress,
     pub caps_ids: Array<u64>,
     pub turn_count: u64,
+    pub over: bool,
 }
 
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     fn new(id: u64, player1: ContractAddress, player2: ContractAddress) -> Game {
-        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0 }
+        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false }
     }
 
     fn add_cap(ref self: Game, cap_id: u64) {
@@ -51,6 +52,7 @@ pub impl GameImpl of GameTrait {
         let mut new_ids: Array<u64> = ArrayTrait::new();
         while i < self.caps_ids.len() {
             if *self.caps_ids[i] == cap_id {
+                i += 1;
                 continue;
             }
             new_ids.append(*self.caps_ids[i]);
@@ -106,6 +108,34 @@ pub enum ActionType {
 pub impl CapImpl of CapTrait {
     fn new(id: u64, owner: ContractAddress, position: Vec2) -> Cap {
         Cap { id, owner, position }
+    }
+
+    fn get_new_index_from_dir(self: @Cap, direction: u8, amt: u8) -> felt252 {
+        let mut new_position = *self.position;
+        match direction {
+            0 => if new_position.x + amt > 6 {
+                panic!("Move out of bounds");
+            } else {
+                new_position.x += amt
+            },
+            1 => if amt > new_position.x {
+                panic!("Move out of bounds");
+            } else {
+                new_position.x -= amt
+            },
+            2 => if new_position.y + amt > 6 {
+                panic!("Move out of bounds");
+            } else {
+                new_position.y += amt
+            },
+            3 => if amt > new_position.y {
+                panic!("Move out of bounds");
+            } else {
+                new_position.y -= amt
+            },
+            _ => panic!("Invalid direction"),
+        };
+        (new_position.x * 7 + new_position.y).into()
     }
 
     fn move(ref self: Cap, direction: u8, amount: u8){
