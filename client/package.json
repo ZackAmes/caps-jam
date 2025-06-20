@@ -16,5 +16,9 @@
     "svelte-check": "^4.1.6",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@cartridge/controller": "^0.7.13",
+    "fs": "^0.0.1-security"
   }
 }

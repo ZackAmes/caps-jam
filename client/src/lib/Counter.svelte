@@ -1,10 +1,14 @@
 <script lang="ts">
-  let count: number = $state(0)
-  const increment = () => {
-    count += 1
-  }
+  import {account} from "./account.svelte";
+
+  $effect(() => {
+    console.log(account.account);
+  });
 </script>
 
-<button onclick={increment}>
-  count is {count}
-</button>
+{#if !account.account}
+  <button onclick={account.connect}>Connect</button>
+{:else}
+  <button onclick={account.disconnect}>Disconnect</button>
+  <p>Connected as {account.username}</p>
+{/if}
