@@ -1,8 +1,8 @@
 {
     "world": {
       "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-      "address": "0x2a0eb787a3d92f60ee5d7e223c17b7b7ccde00e8e5e79f05cb6fd191d217862",
-      "seed": "planetelfdsafoasdf",
+      "address": "0x770fefd1ab6dbbf3e02116f83a5ff9e41a7fc87b9f332ef2d04559ace1a2eff",
+      "seed": "pladfasdfsdffs",
       "name": "Planetelo",
       "entrypoints": [
         "uuid",
@@ -1328,8 +1328,8 @@
     },
     "contracts": [
       {
-        "address": "0x766e9103b445a6a8ce22e8e2b5898c0523fa664979a2f4f9cf9892c0659af43",
-        "class_hash": "0x4a38ccf752aade32bcb36fc542124d794398752f81407aaab485738cfa8e342",
+        "address": "0x51a9e188411307dd3de360f585c40a46073df7766b5a6384f7a4e6c2f67447",
+        "class_hash": "0x2b5c7c6e319bcf5b2ce72b00065978f50a458a7862bb4a2e66591132b3b5a8e",
         "abi": [
           {
             "type": "impl",
@@ -1385,6 +1385,36 @@
             "type": "impl",
             "name": "QueueImpl",
             "interface_name": "planetelo::systems::queue::IQueue"
+          },
+          {
+            "type": "struct",
+            "name": "planetelo::models::QueueMember",
+            "members": [
+              {
+                "name": "game",
+                "type": "core::felt252"
+              },
+              {
+                "name": "playlist",
+                "type": "core::integer::u128"
+              },
+              {
+                "name": "index",
+                "type": "core::integer::u128"
+              },
+              {
+                "name": "player",
+                "type": "core::starknet::contract_address::ContractAddress"
+              },
+              {
+                "name": "timestamp",
+                "type": "core::integer::u64"
+              },
+              {
+                "name": "elo",
+                "type": "core::integer::u64"
+              }
+            ]
           },
           {
             "type": "interface",
@@ -1456,28 +1486,12 @@
               },
               {
                 "type": "function",
-                "name": "get_status",
-                "inputs": [
-                  {
-                    "name": "game",
-                    "type": "core::felt252"
-                  },
-                  {
-                    "name": "playlist",
-                    "type": "core::integer::u128"
-                  }
-                ],
-                "outputs": [
-                  {
-                    "type": "core::integer::u128"
-                  }
-                ],
-                "state_mutability": "view"
-              },
-              {
-                "type": "function",
                 "name": "get_elo",
                 "inputs": [
+                  {
+                    "name": "address",
+                    "type": "core::starknet::contract_address::ContractAddress"
+                  },
                   {
                     "name": "game",
                     "type": "core::felt252"
@@ -1509,7 +1523,51 @@
                 ],
                 "outputs": [
                   {
-                    "type": "core::integer::u32"
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "state_mutability": "view"
+              },
+              {
+                "type": "function",
+                "name": "get_status",
+                "inputs": [
+                  {
+                    "name": "address",
+                    "type": "core::starknet::contract_address::ContractAddress"
+                  },
+                  {
+                    "name": "game",
+                    "type": "core::felt252"
+                  },
+                  {
+                    "name": "playlist",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "type": "core::integer::u8"
+                  }
+                ],
+                "state_mutability": "view"
+              },
+              {
+                "type": "function",
+                "name": "get_queue_members",
+                "inputs": [
+                  {
+                    "name": "game",
+                    "type": "core::felt252"
+                  },
+                  {
+                    "name": "playlist",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "type": "core::array::Array::<planetelo::models::QueueMember>"
                   }
                 ],
                 "state_mutability": "view"
@@ -1519,50 +1577,6 @@
                 "name": "get_player_game_id",
                 "inputs": [
                   {
-                    "name": "game",
-                    "type": "core::felt252"
-                  },
-                  {
-                    "name": "playlist",
-                    "type": "core::integer::u128"
-                  }
-                ],
-                "outputs": [
-                  {
-                    "type": "core::integer::u128"
-                  }
-                ],
-                "state_mutability": "view"
-              },
-              {
-                "type": "function",
-                "name": "get_player_elo",
-                "inputs": [
-                  {
-                    "name": "address",
-                    "type": "core::starknet::contract_address::ContractAddress"
-                  },
-                  {
-                    "name": "game",
-                    "type": "core::felt252"
-                  },
-                  {
-                    "name": "playlist",
-                    "type": "core::integer::u128"
-                  }
-                ],
-                "outputs": [
-                  {
-                    "type": "core::integer::u64"
-                  }
-                ],
-                "state_mutability": "view"
-              },
-              {
-                "type": "function",
-                "name": "get_player_status",
-                "inputs": [
-                  {
                     "name": "address",
                     "type": "core::starknet::contract_address::ContractAddress"
                   },
@@ -1581,6 +1595,22 @@
                   }
                 ],
                 "state_mutability": "view"
+              },
+              {
+                "type": "function",
+                "name": "end_game",
+                "inputs": [
+                  {
+                    "name": "game",
+                    "type": "core::felt252"
+                  },
+                  {
+                    "name": "game_id",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
               }
             ]
           },
@@ -1707,6 +1737,276 @@
           "dequeue",
           "matchmake",
           "settle",
+          "end_game",
+          "upgrade"
+        ]
+      },
+      {
+        "address": "0x688e02a1bdf829cd5f776205a8b0d40c34bf8e336377b9d103dbe7707005806",
+        "class_hash": "0x953845fba8399779474cdf00325ad39f2a2ebe117b5091c69617bbce90f7e2",
+        "abi": [
+          {
+            "type": "impl",
+            "name": "tournament__ContractImpl",
+            "interface_name": "dojo::contract::interface::IContract"
+          },
+          {
+            "type": "interface",
+            "name": "dojo::contract::interface::IContract",
+            "items": []
+          },
+          {
+            "type": "impl",
+            "name": "tournament__DeployedContractImpl",
+            "interface_name": "dojo::meta::interface::IDeployedResource"
+          },
+          {
+            "type": "struct",
+            "name": "core::byte_array::ByteArray",
+            "members": [
+              {
+                "name": "data",
+                "type": "core::array::Array::<core::bytes_31::bytes31>"
+              },
+              {
+                "name": "pending_word",
+                "type": "core::felt252"
+              },
+              {
+                "name": "pending_word_len",
+                "type": "core::integer::u32"
+              }
+            ]
+          },
+          {
+            "type": "interface",
+            "name": "dojo::meta::interface::IDeployedResource",
+            "items": [
+              {
+                "type": "function",
+                "name": "dojo_name",
+                "inputs": [],
+                "outputs": [
+                  {
+                    "type": "core::byte_array::ByteArray"
+                  }
+                ],
+                "state_mutability": "view"
+              }
+            ]
+          },
+          {
+            "type": "impl",
+            "name": "TournamentImpl",
+            "interface_name": "planetelo::systems::tournament::ITournamentActionsDispatcher"
+          },
+          {
+            "type": "struct",
+            "name": "planetelo::systems::tournament::TournamentConfig",
+            "members": [
+              {
+                "name": "swiss_rounds",
+                "type": "core::integer::u8"
+              },
+              {
+                "name": "top_cut",
+                "type": "core::integer::u8"
+              },
+              {
+                "name": "entry_time",
+                "type": "core::integer::u64"
+              }
+            ]
+          },
+          {
+            "type": "interface",
+            "name": "planetelo::systems::tournament::ITournamentActionsDispatcher",
+            "items": [
+              {
+                "type": "function",
+                "name": "create_tournament",
+                "inputs": [
+                  {
+                    "name": "game",
+                    "type": "core::felt252"
+                  },
+                  {
+                    "name": "playlist",
+                    "type": "core::integer::u128"
+                  },
+                  {
+                    "name": "config",
+                    "type": "planetelo::systems::tournament::TournamentConfig"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "state_mutability": "external"
+              },
+              {
+                "type": "function",
+                "name": "join_tournament",
+                "inputs": [
+                  {
+                    "name": "tournament_id",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+              },
+              {
+                "type": "function",
+                "name": "start_tournament",
+                "inputs": [
+                  {
+                    "name": "tournament_id",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+              },
+              {
+                "type": "function",
+                "name": "advance_tournament",
+                "inputs": [
+                  {
+                    "name": "tournament_id",
+                    "type": "core::integer::u128"
+                  }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+              }
+            ]
+          },
+          {
+            "type": "function",
+            "name": "dojo_init",
+            "inputs": [],
+            "outputs": [],
+            "state_mutability": "view"
+          },
+          {
+            "type": "impl",
+            "name": "WorldProviderImpl",
+            "interface_name": "dojo::contract::components::world_provider::IWorldProvider"
+          },
+          {
+            "type": "struct",
+            "name": "dojo::world::iworld::IWorldDispatcher",
+            "members": [
+              {
+                "name": "contract_address",
+                "type": "core::starknet::contract_address::ContractAddress"
+              }
+            ]
+          },
+          {
+            "type": "interface",
+            "name": "dojo::contract::components::world_provider::IWorldProvider",
+            "items": [
+              {
+                "type": "function",
+                "name": "world_dispatcher",
+                "inputs": [],
+                "outputs": [
+                  {
+                    "type": "dojo::world::iworld::IWorldDispatcher"
+                  }
+                ],
+                "state_mutability": "view"
+              }
+            ]
+          },
+          {
+            "type": "impl",
+            "name": "UpgradeableImpl",
+            "interface_name": "dojo::contract::components::upgradeable::IUpgradeable"
+          },
+          {
+            "type": "interface",
+            "name": "dojo::contract::components::upgradeable::IUpgradeable",
+            "items": [
+              {
+                "type": "function",
+                "name": "upgrade",
+                "inputs": [
+                  {
+                    "name": "new_class_hash",
+                    "type": "core::starknet::class_hash::ClassHash"
+                  }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+              }
+            ]
+          },
+          {
+            "type": "constructor",
+            "name": "constructor",
+            "inputs": []
+          },
+          {
+            "type": "event",
+            "name": "dojo::contract::components::upgradeable::upgradeable_cpt::Upgraded",
+            "kind": "struct",
+            "members": [
+              {
+                "name": "class_hash",
+                "type": "core::starknet::class_hash::ClassHash",
+                "kind": "data"
+              }
+            ]
+          },
+          {
+            "type": "event",
+            "name": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+            "kind": "enum",
+            "variants": [
+              {
+                "name": "Upgraded",
+                "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Upgraded",
+                "kind": "nested"
+              }
+            ]
+          },
+          {
+            "type": "event",
+            "name": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+            "kind": "enum",
+            "variants": []
+          },
+          {
+            "type": "event",
+            "name": "planetelo::systems::tournament::tournament::Event",
+            "kind": "enum",
+            "variants": [
+              {
+                "name": "UpgradeableEvent",
+                "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+                "kind": "nested"
+              },
+              {
+                "name": "WorldProviderEvent",
+                "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+                "kind": "nested"
+              }
+            ]
+          }
+        ],
+        "init_calldata": [],
+        "tag": "planetelo-tournament",
+        "selector": "0x691c7a894dae3d306946166a4a1937897f20655ed5b78416486eab95d1539af",
+        "systems": [
+          "create_tournament",
+          "join_tournament",
+          "start_tournament",
+          "advance_tournament",
           "upgrade"
         ]
       }
@@ -1727,27 +2027,51 @@
       },
       {
         "members": [],
+        "class_hash": "0x6285ad18211392ddc8a4f2246197fef1924cc9b5e99516640d4bde00bd2ce7e",
+        "tag": "planetelo-Global",
+        "selector": "0x5f3c5ee214596e867534d9b8b1985149e365a0956367341f217ccd80a6467cf"
+      },
+      {
+        "members": [],
+        "class_hash": "0x17aabfc01dfdffb61404c250ab9a92a78c4fd34198b50af92b91681656d0cee",
+        "tag": "planetelo-GlobalTournament",
+        "selector": "0x7b0cda41ba2959c2e644df25f8e18a2965b5620479e065f237cdd81d0ee36d8"
+      },
+      {
+        "members": [],
         "class_hash": "0x2b4db5b484594582eb33ba3f8f468ceb6fc41ac7a9e06f8f39717287189894",
         "tag": "planetelo-Player",
         "selector": "0x54015881ce1a0053b8c9e3c5fe475c73734ecf4897aa47c9751ee98134b1dc8"
       },
       {
         "members": [],
-        "class_hash": "0x1be53d7755b8faf256ae4b321dea53c4c54dbf5f2ffdd951e026a9efd44e905",
+        "class_hash": "0x6c28baad920bac17a4ae2d1f277839e6735cc052b55ac15fb4fbb0c6869ff29",
         "tag": "planetelo-PlayerStatus",
         "selector": "0xf5d64ac13d17b831cef652ada87db64be476f4b105bf931d0c837950e2551a"
       },
       {
         "members": [],
-        "class_hash": "0x362b16e16b1c957a9d73bfc708c4010885b0b8bc6e5ccdef04fad5fa6d5984f",
+        "class_hash": "0x229e0dcbfead1a1670b2e9ba7b80f460eb649a2ee046c9b4512e60d90b2705c",
+        "tag": "planetelo-Pool",
+        "selector": "0x8ead5adf0dc5f2a35b264140b2e734950f1977cb2274046bc807b0ede6b439"
+      },
+      {
+        "members": [],
+        "class_hash": "0x4ed807d0f507e64c652e602aeb69b2386644a02a2ccbdc04b922393bba715f0",
         "tag": "planetelo-Queue",
         "selector": "0x5116088f983cbb50308db039f03dad62e850e53b3ef10fc758c16c29c557e8e"
       },
       {
         "members": [],
-        "class_hash": "0x85c0eb82881668562897fdb4aaa769ac8d47b8a073edff5406dee9ee7a9251",
-        "tag": "planetelo-QueueIndex",
-        "selector": "0x198c85144a8324cae1fc6e0d095e6445edd26deaf0490d1739a6d5d5a0e92ab"
+        "class_hash": "0x4cc6973f5680a48573262d73f66b70aadf0ead67567a132041eeb41d1a0359e",
+        "tag": "planetelo-QueueMember",
+        "selector": "0x5781c1ac5306321a7958c76fbf7129d2fec5091971a5f1dc9d8036ed499497a"
+      },
+      {
+        "members": [],
+        "class_hash": "0x4e264a9dd3de1473f407ff52861e4fb83f1661d006a50257e8e7967ce2144b5",
+        "tag": "planetelo-Tournament",
+        "selector": "0xbdd9d270848212c1846b47b21a4f3e771b9a393f7a95f93efb5db05d68ce16"
       }
     ],
     "events": [],

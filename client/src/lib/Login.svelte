@@ -1,24 +1,27 @@
 <script lang="ts">
   import {account} from "./account.svelte";
+  import { planetelo } from "./planetelo.svelte";
+  import Game from "./Game.svelte";
 
   $effect(() => {
-    
+    console.log(planetelo.queue_status)
+    planetelo.update_status();
   });
 </script>
 
-{#if !account.p1Account}
-  <button onclick={account.connectP1}>Connect</button>
+{#if !account.account}
+  <button onclick={account.connect}>Connect</button>
 {:else}
-  <button onclick={account.disconnectP1}>Disconnect</button>
-  <p>P1 Connected as {account.p1Username}</p>
+  <button onclick={account.disconnect}>Disconnect</button>
+  <p>Connected as {account.username}</p>
 {/if}
-{#if !account.p2Account}
-  <button onclick={account.connectP2}>Connect</button>
-{:else}
-  <button onclick={account.disconnectP2}>Disconnect</button>
-  <p>P2 Connected as {account.p2Username}</p>
+{#if account.account && !planetelo.queue_status}
+  <button onclick={() => planetelo.update_status()}>Update Status</button>
 {/if}
-{#if account.selectedAccount}
-  <p>Selected Account: {account.selectedUsername}</p>
+{#if planetelo.queue_status == 0}
+  <button onclick={planetelo.handleQueue}>Queue</button>
+{:else if planetelo.queue_status == 1}
+  <button onclick={planetelo.handleMatchmake}>Matchmake</button>
+{:else if planetelo.queue_status == 2}
+  <Game />
 {/if}
-<button onclick={account.switchAccount}>Switch Account</button>

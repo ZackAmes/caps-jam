@@ -1,8 +1,9 @@
 import { account } from "./account.svelte";
 import { Contract, type Abi } from "starknet";
-import planetelo_manifest from "../planetelo_sepolia_manifest.json";
+import planetelo_manifest from "./planetelo_sepolia_manifest.json";
 import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
+
 
 
 let rpc = new RpcProvider({
@@ -14,7 +15,7 @@ let plantelo_contract = new Contract(
     rpc
 ).typedv2(planetelo_manifest.contracts[0].abi as Abi)
 
-let game_id = shortString.encodeShortString("octoguns");
+let game_id = shortString.encodeShortString("caps");
 
 let queue_status = $state<number | null>(null)
 
@@ -23,9 +24,10 @@ export const planetelo = {
     get_status: async () => {
         console.log(plantelo_contract)
         console.log(game_id)
-        let status = parseInt(await plantelo_contract.get_player_status(account.selectedAccount!.address, game_id, "0x0"));
+        console.log(account.account!.address)
+        let status = parseInt(await plantelo_contract.get_status(account.account!.address, game_id, "0x0"));
         console.log(status)
-        let elo = parseInt(await plantelo_contract.get_player_elo(account.selectedAccount!.address, game_id, "0x0"));
+        let elo = parseInt(await plantelo_contract.get_elo(account.account!.address, game_id, "0x0"));
         let queue_length = parseInt(await plantelo_contract.get_queue_length(game_id, "0"));
 
         queue_status = status;
@@ -33,14 +35,15 @@ export const planetelo = {
         let res = {status, elo, queue_length, game_id, winner: null};
 
         if (status == 2) {
-            let current_game_id = await plantelo_contract.get_player_game_id(account.selectedAccount!.address, game_id);
+            let current_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
             res.game_id = current_game_id;
         }
+        console.log(res)
         return res;
     },
 
     update_status: async () => {
-        if (account.selectedAccount) {
+        if (account.account) {
             let status = await planetelo.get_status();
             console.log(status)
             queue_status = status.status;
@@ -51,7 +54,8 @@ export const planetelo = {
 
     handleQueue: async () => {
         console.log(planetelo.address);
-        let res = await account.selectedAccount?.execute(
+        console.log(account.account?.address)
+        let res = await account.account?.execute(
             [{
                 contractAddress: planetelo.address,
                 entrypoint: 'queue',
@@ -65,7 +69,7 @@ export const planetelo = {
 
     handleMatchmake: async () => {
         console.log(planetelo.address);
-        let res = await account.selectedAccount?.execute(
+        let res = await account.account?.execute(
             [{
                 contractAddress: planetelo.address,
                 entrypoint: 'matchmake',
@@ -77,8 +81,8 @@ export const planetelo = {
     },
 
     handleSettle: async () => {
-        if (account.selectedAccount ) {
-            let res = await account.selectedAccount?.execute(
+        if (account.account ) {
+            let res = await account.account?.execute(
                 [{
                     contractAddress: planetelo.address,
                     entrypoint: 'settle',
