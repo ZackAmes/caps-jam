@@ -2,7 +2,7 @@
   import {account} from "./account.svelte";
 
   $effect(() => {
-    console.log(account.account);
+    
   });
 </script>
 
@@ -18,3 +18,7 @@
   <button onclick={account.disconnectP2}>Disconnect</button>
   <p>P2 Connected as {account.p2Username}</p>
 {/if}
+{#if account.selectedAccount}
+  <p>Selected Account: {account.selectedUsername}</p>
+{/if}
+<button onclick={account.switchAccount}>Switch Account</button>

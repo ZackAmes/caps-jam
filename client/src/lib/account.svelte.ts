@@ -5,6 +5,7 @@ let p1AccountStore = $state<Account>()
 let p2AccountStore = $state<Account>()
 let p1Username = $state<string>()
 let p2Username = $state<string>()
+let selectedAccount = $state<"p1" | "p2" | null>(null)
 
 //let contract_address = "0x049d36570d4e46f48e99674bd3fcc8463d4990949b4c6bb434ee877b1830a794"
 const controller = new Controller({
@@ -29,6 +30,19 @@ export const account = {
         },
         get p2Username() {
             return p2Username;
+        },
+        get selectedAccount() {
+            return selectedAccount === "p1" ? p1AccountStore : selectedAccount === "p2" ? p2AccountStore : null;
+        },
+        get selectedUsername() {
+            return selectedAccount === "p1" ? p1Username : selectedAccount === "p2" ? p2Username : null;
+        },
+        switchAccount() {
+            if (selectedAccount === "p1") {
+                selectedAccount = "p2";
+            } else {
+                selectedAccount = "p1";
+            }
         },
         async connectP1() {
             const res = await controller.connect();
