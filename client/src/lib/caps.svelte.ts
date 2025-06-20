@@ -31,6 +31,19 @@ export const caps = {
         return game_state?.caps.find(cap => cap.position.x == x && cap.position.y == y)
     },
 
+    take_turn: async (x: string, y: string) => {
+        if (game_state && account.account) {
+            let res = await account.account.execute([
+                {
+                    contractAddress: manifest.contracts[0].address,
+                    entrypoint: "take_turn",
+                    calldata: [game_state.game.id, {x, y}]
+                }
+            ])
+            console.log(res)
+        }
+    },
+
     get game_state() {
         return game_state;
     }
