@@ -1,8 +1,10 @@
 import { Account } from "starknet";
 import Controller from "@cartridge/controller";
 
-let accountStore = $state<Account>()
-let username = $state<string>()
+let p1AccountStore = $state<Account>()
+let p2AccountStore = $state<Account>()
+let p1Username = $state<string>()
+let p2Username = $state<string>()
 
 //let contract_address = "0x049d36570d4e46f48e99674bd3fcc8463d4990949b4c6bb434ee877b1830a794"
 const controller = new Controller({
@@ -16,25 +18,43 @@ const controller = new Controller({
 
 
 export const account = {
-        get account() {
-            return accountStore;
+        get p1Account() {
+            return p1AccountStore;
         },
-        get username() {
-            return username;
+        get p1Username() {
+            return p1Username;
         },
-        async connect() {
+        get p2Account() {
+            return p2AccountStore;
+        },
+        get p2Username() {
+            return p2Username;
+        },
+        async connectP1() {
             const res = await controller.connect();
             if (res) {
-                accountStore = res;
-                username = await controller.username()!;
-                console.log(account, username);
+                p1AccountStore = res;
+                p1Username = await controller.username()!;
+                console.log(p1AccountStore, p1Username);
             }
         },
-        async disconnect() {
+        async disconnectP1() {
             await controller.disconnect();
-            accountStore = undefined;
-            username = undefined;
+            p1AccountStore = undefined;
+            p1Username = undefined;
+        },
+        async connectP2() {
+            const res = await controller.connect();
+            if (res) {
+                p2AccountStore = res;
+                p2Username = await controller.username()!;
+                console.log(p2AccountStore, p2Username);
+            }
+        },
+        async disconnectP2() {
+            await controller.disconnect();
+            p2AccountStore = undefined;
+            p2Username = undefined;
         }
-    
 }
 
