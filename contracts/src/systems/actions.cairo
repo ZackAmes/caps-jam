@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
 pub trait IActions<T> {
-    fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress);
+    fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress) -> u64;
     fn take_turn(ref self: T, game_id: u64, turn: Vec2);
 }
 
@@ -33,7 +33,7 @@ pub mod actions {
 
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
-        fn create_game(ref self: ContractState, p1: ContractAddress, p2: ContractAddress) {
+        fn create_game(ref self: ContractState, p1: ContractAddress, p2: ContractAddress) -> u64 {
             // Get the default world.
             let mut world = self.world_default();
 
@@ -71,6 +71,8 @@ pub mod actions {
             world.write_model(@game);
             world.write_model(@p1_cap);
             world.write_model(@p2_cap);
+
+            game_id
         }
 
         fn take_turn(ref self: ContractState, game_id: u64, turn: Vec2) {
