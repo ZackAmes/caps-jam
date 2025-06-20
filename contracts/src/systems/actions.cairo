@@ -4,7 +4,7 @@ use starknet::ContractAddress;
 #[starknet::interface]
 pub trait IActions<T> {
     fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress);
-    fn take_turn(ref self: T, turn: Vec2);
+    fn take_turn(ref self: T, game_id: u64, turn: Vec2);
 }
 
 // dojo decorator
@@ -12,7 +12,8 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait};
+    use caps::helpers::get_player_pieces;
 
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
@@ -47,6 +48,7 @@ pub mod actions {
                 player1: p1,
                 player2: p2,
                 caps_ids: ArrayTrait::new(),
+                turn_count: 0,
             };
 
             let p1_cap = Cap {
@@ -71,8 +73,23 @@ pub mod actions {
             world.write_model(@p2_cap);
         }
 
-        fn take_turn(ref self: ContractState, turn: Vec2) {
+        fn take_turn(ref self: ContractState, game_id: u64, turn: Vec2) {
             let mut world = self.world_default();
+
+            let mut game: Game = world.read_model(game_id);
+
+            let (over, _) = @game.check_over(@world);
+            if *over {
+                panic!("Game over");
+            }
+
+            let mut pieces = get_player_pieces(game_id, get_caller_address(), @world);
+
+            let mut cap: Cap = world.read_model(*pieces[0]);
+            cap.move(turn);
+            world.write_model(@cap);
+            game.turn_count = game.turn_count + 1;
+            world.write_model(@game);
 
             world.emit_event(@Moved { player: get_caller_address(), turn });
         }
