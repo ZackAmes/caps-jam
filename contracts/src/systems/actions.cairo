@@ -1,4 +1,4 @@
-use dojo_starter::models::{Vec2};
+use caps::models::{Vec2};
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
@@ -12,7 +12,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use dojo_starter::models::{Vec2, Game, Cap, Global};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait};
 
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
@@ -42,15 +42,33 @@ pub mod actions {
             global.games_counter = game_id;
             world.write_model(@global);
 
-            let game = Game {
+            let mut game = Game {
                 id: game_id,
                 player1: p1,
                 player2: p2,
                 caps_ids: ArrayTrait::new(),
             };
 
-            world.write_model(@game);
+            let p1_cap = Cap {
+                id: global.cap_counter + 1,
+                owner: p1,
+                position: Vec2 { x: 3, y: 0 },
+            };
 
+            let p2_cap = Cap {
+                id: global.cap_counter + 2,
+                owner: p2,
+                position: Vec2 { x: 3, y: 6 },
+            };
+
+            game.add_cap(p1_cap.id);
+            game.add_cap(p2_cap.id);
+
+            global.cap_counter = global.cap_counter + 2;
+
+            world.write_model(@game);
+            world.write_model(@p1_cap);
+            world.write_model(@p2_cap);
         }
 
         fn take_turn(ref self: ContractState, turn: Vec2) {

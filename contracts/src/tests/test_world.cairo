@@ -7,8 +7,8 @@ mod tests {
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
     };
 
-    use dojo_starter::systems::actions::{actions, IActionsDispatcher, IActionsDispatcherTrait};
-    use dojo_starter::models::{Position, m_Position, Moves, m_Moves, Direction};
+    use caps::systems::actions::{actions, IActionsDispatcher, IActionsDispatcherTrait};
+    use caps::models::{Position, m_Position, Moves, m_Moves, Direction};
 
     fn namespace_def() -> NamespaceDef {
         let ndef = NamespaceDef {
