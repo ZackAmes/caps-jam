@@ -90,26 +90,61 @@ pub struct Cap {
     pub position: Vec2,
 }
 
+#[derive(Drop, Serde, Clone, Introspect)]
+pub struct Action {
+    pub cap_id: u64,
+    pub action_type: ActionType,
+}
+
+#[derive(Drop, Serde, Clone, Introspect)]
+pub enum ActionType {
+    Move: Vec2,
+    Attack: Vec2,
+}
+
 #[generate_trait]
 pub impl CapImpl of CapTrait {
     fn new(id: u64, owner: ContractAddress, position: Vec2) -> Cap {
         Cap { id, owner, position }
     }
 
-    fn move(ref self: Cap, turn: Vec2) -> Option<Vec2> {
-        if self.position.x + turn.x < 0 || self.position.x + turn.x > 6 || self.position.y + turn.y < 0 || self.position.y + turn.y > 6 {
-            return Option::None;
-        }
-
-        return Option::Some(Vec2 { x: self.position.x + turn.x, y: self.position.y + turn.y });
-        
+    fn move(ref self: Cap, direction: u8, amount: u8){
+        let mut new_position = self.position;
+        match direction {
+            0 => {
+                if new_position.x + amount > 6 {
+                    panic!("Move out of bounds");
+                }
+                new_position.x += amount;
+            },
+            1 => {
+                if amount > new_position.x {
+                    panic!("Move out of bounds");
+                }
+                new_position.x -= amount;
+            },
+            2 => {
+                if new_position.y + amount > 6 {
+                    panic!("Move out of bounds");
+                }
+                new_position.y += amount;
+            },
+            3 => {
+                if amount > new_position.y {
+                    panic!("Move out of bounds");
+                }
+                new_position.y -= amount;
+            },
+            _ => (),
+        };
+        self.position = new_position;
     }
 }
 
 #[derive(Copy, Drop, Serde, IntrospectPacked, Debug)]
 pub struct Vec2 {
-    pub x: i32,
-    pub y: i32,
+    pub x: u8,
+    pub y: u8,
 }
 
 #[generate_trait]

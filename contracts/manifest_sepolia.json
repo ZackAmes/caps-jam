@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x70fe04c09ad537c8212377fac2e363db78b456b49807c233a356ca78320f9a0",
-    "seed": "capsooools",
+    "address": "0x2b4eb09ed6fc96884f66f5b0680ca42ff0e2cfdfd17be5fb46b75ab88d710e5",
+    "seed": "capsooooools",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x1160a2bdc2233aa69cb17a289c9affe688dd5d1b4ef027a1d206db7e6e93a8b",
-      "class_hash": "0x4f61794732bdabaf69fac83db395bb8dab636e4edfc61bfb5684fae737a8689",
+      "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
+      "class_hash": "0x2d8b4eff582fbe4a53b82e9db7369507e5101a394582ed167400ac5acbff",
       "abi": [
         {
           "type": "impl",
@@ -1392,11 +1392,39 @@
           "members": [
             {
               "name": "x",
-              "type": "core::integer::i32"
+              "type": "core::integer::u8"
             },
             {
               "name": "y",
-              "type": "core::integer::i32"
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "caps::models::ActionType",
+          "variants": [
+            {
+              "name": "Move",
+              "type": "caps::models::Vec2"
+            },
+            {
+              "name": "Attack",
+              "type": "caps::models::Vec2"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::Action",
+          "members": [
+            {
+              "name": "cap_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "action_type",
+              "type": "caps::models::ActionType"
             }
           ]
         },
@@ -1502,7 +1530,7 @@
                 },
                 {
                   "name": "turn",
-                  "type": "caps::models::Vec2"
+                  "type": "core::array::Array::<caps::models::Action>"
                 }
               ],
               "outputs": [],
@@ -1651,8 +1679,8 @@
       ]
     },
     {
-      "address": "0x49421396f26bfdfa4801c28fe0fc7e1a17c73d17db939213f47e9bd45bd32c5",
-      "class_hash": "0x7109ce717025c3363d019c41e17cd299d643f11754d8bc0c0bbd9f33518622a",
+      "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
+      "class_hash": "0x7518898b3d8f45345fa6e3a05a12758788317039845c73d0665b102a24202fc",
       "abi": [
         {
           "type": "impl",
@@ -1933,7 +1961,7 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x2f774a48501f9712eca2e9f3aa67831517a1299dccfb4eb302f1ca350928819",
+      "class_hash": "0x7232d1ad39df008de4e88d3466728d4b80e86e116e2b209b03ae1c104ea6423",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
     },
@@ -1959,7 +1987,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x9e5cedf6e412798cb34364972b94c7a3fc42fe92d13efd7bd1da40df7342b1",
+      "class_hash": "0xf5fc94e0849a2ea828a1cd8abc30d555db821773bf4da392a3f47b7c761180",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }

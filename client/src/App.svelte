@@ -21,6 +21,16 @@
 
 
   <Login />
+
+  <button onclick={() => {
+    caps.reset_move();
+  }}>Reset Move</button>
+  <button onclick={() => {
+    caps.take_turn();
+  }}>Take Turn</button>
+  <button onclick={() => {
+    caps.get_game();
+  }}>Get Game</button>
   {#if planetelo.queue_status == 2 && caps.game_state}
     <div class="game-container">
       <Canvas>

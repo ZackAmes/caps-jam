@@ -1,10 +1,10 @@
-use caps::models::{Vec2, Game, Cap};
+use caps::models::{Vec2, Game, Cap, Action};
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
 pub trait IActions<T> {
     fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress) -> u64;
-    fn take_turn(ref self: T, game_id: u64, turn: Vec2);
+    fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>)>;
 }
 
@@ -13,7 +13,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType};
     use caps::helpers::{get_player_pieces, get_piece_locations};
 
     use dojo::model::{ModelStorage};
@@ -29,7 +29,7 @@ pub mod actions {
     pub struct Moved {
         #[key]
         pub player: ContractAddress,
-        pub turn: Vec2,
+        pub turn: Span<Action>,
     }
 
     #[abi(embed_v0)]
@@ -76,9 +76,10 @@ pub mod actions {
             game_id
         }
 
-        fn take_turn(ref self: ContractState, game_id: u64, turn: Vec2) {
+        fn take_turn(ref self: ContractState, game_id: u64, turn: Array<Action>) {
             let mut world = self.world_default();
 
+            let clone = turn.clone();
             let mut game: Game = world.read_model(game_id);
 
             let (over, _) = @game.check_over(@world);
@@ -88,27 +89,30 @@ pub mod actions {
 
             let mut pieces = get_player_pieces(game_id, get_caller_address(), @world);
 
-            let mut cap: Cap = world.read_model(*pieces[0]);
-            let locations = get_piece_locations(game_id, @world);
-            let new_position = cap.move(turn);
-            let new_index = new_position.unwrap().x * 7 + new_position.unwrap().y;
-            let (_, check_new_cap) = locations.entry(new_index.into());
-            if check_new_cap != 0 {
-                let mut new_cap: Cap = world.read_model(check_new_cap);
-                if new_cap.owner == get_caller_address() {
-                    panic!("You already have a piece there");
+            for action in turn {
+                let mut cap: Cap = world.read_model(action.cap_id);
+                assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
+                match action.action_type {
+                    ActionType::Move(dir) => {
+                        cap.move(dir.x, dir.y);
+                        world.write_model(@cap);
+                    },
+                    ActionType::Attack(target) => {
+                        let mut target_cap: Cap = world.read_model(target.x * 7 + target.y);
+                        assert!(target_cap.owner != get_caller_address(), "You cannot attack your own piece");
+                        game.remove_cap(target_cap.id);
+                        target_cap.position = Vec2 { x: 10, y: 10 };
+                        world.write_model(@target_cap);
+                        world.write_model(@cap);
+                        world.write_model(@game);
+                    }
                 }
-                else {
-                    game.remove_cap(new_cap.id);
-                }
-            }
+            };
 
-            cap.position = new_position.unwrap();
-            world.write_model(@cap);
             game.turn_count = game.turn_count + 1;
             world.write_model(@game);
 
-            world.emit_event(@Moved { player: get_caller_address(), turn });
+            world.emit_event(@Moved { player: get_caller_address(), turn: clone.span() });
         }
 
         fn get_game(self: @ContractState, game_id: u64) -> Option<(Game, Span<Cap>)> {

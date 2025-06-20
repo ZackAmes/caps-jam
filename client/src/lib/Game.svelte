@@ -5,8 +5,8 @@
   import { interactivity } from "@threlte/extras";
   import { useThrelte } from "@threlte/core";
   import { caps } from "./caps.svelte";
-  import type { Cap } from "./bindings/models.gen";
-
+  import type { Cap, ActionType } from "./bindings/models.gen";
+  import { CairoCustomEnum } from "starknet";
   interactivity();
 
   let { camera } = useThrelte()
@@ -28,19 +28,12 @@
 </script>
 
 {#each positions as position}
+  {@const color = (position.x == caps.selected_cap?.position.x && position.y == caps.selected_cap?.position.y) ? "yellow" : (position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "red" : "blue"}
     <T.Mesh position={[position.x, position.y, 0]} onclick={() => {
-      let cap = caps.get_cap_at(position.x, position.y)
-      if (selected_cap && cap?.id != selected_cap.id && cap?.owner != account.account?.address) {
-        caps.take_turn(selected_cap.position.x.toString(), selected_cap.position.y.toString())
-        selected_cap = null
-      }
-      if (cap && cap.owner == account.account?.address) {
-        console.log(cap)
-        selected_cap = cap
-      }
+      caps.handle_click(position)
   }}>
     <T.BoxGeometry args={[1, 1, .1]} />
-    <T.MeshBasicMaterial color={(position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "red" : "blue"} />
+    <T.MeshBasicMaterial color={color} />
   </T.Mesh>
   {#if caps.game_state && caps.get_cap_at(position.x, position.y)}
     <T.Mesh position={[position.x, position.y, 0]}>
