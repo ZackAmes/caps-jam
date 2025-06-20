@@ -47,10 +47,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 100vw;
-    height: 70vh;
+    width: min(90vw, 90vh, 600px);
+    aspect-ratio: 1;
     padding: 1rem;
-    margin: 2rem 0;
+    margin: 2rem auto;
+    border: 1px solid #ccc;
   }
   .read-the-docs {
     color: #888;
