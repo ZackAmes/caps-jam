@@ -10,25 +10,29 @@
   $effect(() => {
     console.log(planetelo.queue_status)
     planetelo.update_status();
-    caps.get_game();
+    if (planetelo.queue_status == 2) {
+      caps.get_game();
+    }
   });
 </script>
 
 <main>
   <h1>Caps</h1>
 
-  <div class="card">
-    <Login />
-    <button onclick={() => {
-      caps.get_game();
-    }}>Get Game</button>
-  </div>
-  {#if planetelo.queue_status == 2}
+
+  <Login />
+  {#if planetelo.queue_status == 2 && caps.game_state}
     <div class="game-container">
       <Canvas>
         <Game />
       </Canvas>
     </div>
+  {:else if planetelo.queue_status == 2}
+  <div class="card">
+    <button onclick={() => {
+      caps.get_game();
+    }}>Get Game</button>
+  </div>
   {/if}
 
 </main>
