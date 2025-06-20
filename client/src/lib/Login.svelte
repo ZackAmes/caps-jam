@@ -1,13 +1,9 @@
 <script lang="ts">
-  import {account} from "./account.svelte";
-  import { planetelo } from "./planetelo.svelte";
+  import {account} from "./stores/account.svelte";
+  import { planetelo } from "./stores/planetelo.svelte";
   import Game from "./Game.svelte";
-  import { caps } from "./caps.svelte";
-  $effect(() => {
-    console.log(planetelo.queue_status)
-    planetelo.update_status();
-    caps.get_game();
-  });
+  import { caps } from "./stores/caps.svelte";
+  
 </script>
 
 {#if !account.account}
@@ -16,11 +12,6 @@
   <button onclick={account.disconnect}>Disconnect</button>
   <p>Connected as {account.username}</p>
 {/if}
-{#if account.account && !planetelo.queue_status}
+{#if account.account}
   <button onclick={() => planetelo.update_status()}>Update Status</button>
-{/if}
-{#if planetelo.queue_status == 0}
-  <button onclick={planetelo.handleQueue}>Queue</button>
-{:else if planetelo.queue_status == 1}
-  <button onclick={planetelo.handleMatchmake}>Matchmake</button>
 {/if}

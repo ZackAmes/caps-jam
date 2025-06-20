@@ -3,17 +3,20 @@
   import viteLogo from '/vite.svg'
   import Login from './lib/Login.svelte'
   import Game from './lib/Game.svelte'
-  import { planetelo } from './lib/planetelo.svelte'
+  import { planetelo } from './lib/stores/planetelo.svelte'
   import { Canvas } from '@threlte/core'
-  import { caps } from './lib/caps.svelte'
+  import { caps } from './lib/stores/caps.svelte'
+  import { account } from './lib/stores/account.svelte'
 
   $effect(() => {
     console.log(planetelo.queue_status)
-    planetelo.update_status();
+ //   planetelo.update_status();
     if (planetelo.queue_status == 2) {
-      caps.get_game();
+  //    caps.get_game();
     }
   });
+
+
 </script>
 
 <main>
@@ -46,9 +49,6 @@
       <button onclick={() => {
         planetelo.handleSettle()
       }}>Settle Match</button>
-      <button onclick={() => {
-        caps.get_game();
-      }}>Get Game</button>
     </div>
   {/if}
 

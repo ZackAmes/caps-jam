@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { account } from "./account.svelte";
-  import { planetelo } from "./planetelo.svelte";
+  import { account } from "./stores/account.svelte";
+  import { planetelo } from "./stores/planetelo.svelte";
   import { T, Canvas } from "@threlte/core";
   import { interactivity } from "@threlte/extras";
   import { useThrelte } from "@threlte/core";
-  import { caps } from "./caps.svelte";
-  import type { Cap, ActionType } from "./bindings/models.gen";
+  import { caps } from "./stores/caps.svelte";
+  import type { Cap, ActionType } from "./dojo/models.gen";
   import { CairoCustomEnum } from "starknet";
   interactivity();
 

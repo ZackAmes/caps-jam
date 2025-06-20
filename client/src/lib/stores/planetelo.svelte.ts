@@ -1,11 +1,9 @@
 import { account } from "./account.svelte";
 import { Contract, type Abi } from "starknet";
-import planetelo_manifest from "./planetelo_sepolia_manifest.json";
+import planetelo_manifest from "../dojo/planetelo_sepolia_manifest.json";
 import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
 import { caps } from "./caps.svelte";
-
-
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"

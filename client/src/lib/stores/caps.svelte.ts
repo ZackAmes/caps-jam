@@ -1,9 +1,9 @@
 import { account } from "./account.svelte";
 import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
-import manifest from "../../../contracts/manifest_sepolia.json";
+import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
-import type { Game, Cap, Action, ActionType } from "./bindings/models.gen"
+import type { Game, Cap, Action, ActionType } from "./../dojo/models.gen"
 
 
 let rpc = new RpcProvider({
