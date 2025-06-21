@@ -119,6 +119,10 @@ export const caps = {
 
     get game_state() {
         return game_state;
+    },
+
+    get cap_types() {
+        return cap_types;
     }
     
 
