@@ -198,12 +198,12 @@ pub impl CapImpl of CapTrait {
         self.position = new_position;
     }
 
-    fn check_attack(self: @Cap, cap_type: CapType, target: Vec2, world: @WorldStorage) -> bool {
+    fn check_attack(self: @Cap, attack_range: @Array<Vec2>, target: Vec2, world: @WorldStorage) -> bool {
         let mut i = 0;
         let mut valid = false;
         
-        while i < cap_type.attack_range.len() {
-            let to_check: Vec2 = *cap_type.attack_range[i];
+        while i < attack_range.len() {
+            let to_check: Vec2 = *attack_range[i];
             if target.x >= *self.position.x && target.y >= *self.position.y {
                 if to_check.x + *self.position.x > 6 {
                     i+=1;

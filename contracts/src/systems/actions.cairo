@@ -135,11 +135,20 @@ pub mod actions {
                     ActionType::Attack(target) => {
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
+                        let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
-                        cap.check_attack(cap_type, *target, @world);
-                        game.remove_cap(piece_at_location.id);
-                        world.erase_model(@piece_at_location);
+                        if(!cap.check_attack(@cap_type.attack_range, *target, @world)) {
+                            panic!("Attack is not valid");
+                        }
+                        piece_at_location.dmg_taken += cap_type.attack_dmg;
+                        if piece_at_location.dmg_taken >= piece_at_location_type.base_health {
+                            game.remove_cap(piece_at_location.id);
+                            world.erase_model(@piece_at_location);
+                        }
+                        else {
+                            world.write_model(@piece_at_location);
+                        }
                         world.write_model(@cap);
                         world.write_model(@game);
                     }
