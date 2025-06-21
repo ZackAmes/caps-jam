@@ -95,25 +95,52 @@ const capsContext = context({
 
             console.log('active_games', active_games)
 
-      
-            let to_play = active_games[0];
+              let i = 0;
+              let to_play = 0;
+              while (i < active_games.length) {
+                to_play = active_games[i];
+                let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
+                console.log('game_state', game_state[0].over)
+                if (!game_state[0].over) {
+                  console.log('found game to play')
+                  break;
+                }
+                i+=1;
+              }
 
-            let piece_info = await get_piece_info_str(to_play)
-            let game_state = await get_game_state_str(to_play)
-            console.log('piece_info', piece_info)
-            console.log('game_state', game_state)
+              console.log('to_play', to_play)
+
+              let piece_info = await get_piece_info_str(to_play)
+              let game_state = await get_game_state_str(to_play)
+        
+              console.log('piece_info', piece_info)
+              console.log('game_state', game_state)
 
             timeout = setTimeout(async () => {
 
-                let active_games = await caps_planetelo_contract.get_agent_games()
+              let active_games = await caps_planetelo_contract.get_agent_games()
 
-                console.log('active_games', active_games)
+              console.log('active_games', active_games)
 
-            let to_play = active_games[0];
+              let i = 0;
+              let to_play = 0;
+              while (i < active_games.length) {
+                to_play = active_games[i];
+                let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
+                console.log('game_state', game_state[0].over)
+                if (!game_state[0].over) {
+                  console.log('found game to play')
+                  break;
+                }
+                i+=1;
+              }
 
-            let piece_info = await get_piece_info_str(to_play)
-            let game_state = await get_game_state_str(to_play)
-      
+              console.log('to_play', to_play)
+
+
+              let piece_info = await get_piece_info_str(to_play)
+              let game_state = await get_game_state_str(to_play)
+        
       
               let context = {
                 id: "caps",
@@ -166,6 +193,7 @@ const capsContext = context({
         let res = (await caps_actions_contract.get_game(game_id)).unwrap()
         let game_state = { game: res[0], caps: res[1] } 
         
+        console.log('game_state', game_state)
         // Create ASCII grid representation
         const gridSize = 7; // Assuming 8x8 board, adjust as needed
         const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
@@ -200,10 +228,10 @@ const capsContext = context({
         
         // Add caps details
         let owned_caps = game_state.caps.filter(cap => {
-          return cap.owner == 2597078226917024488083389374508788873626221284030589812100304688300591636319n
+          return cap.owner == env.STARKNET_ADDRESS
         })
         let opponent_caps = game_state.caps.filter(cap => {
-          return cap.owner != 2597078226917024488083389374508788873626221284030589812100304688300591636319n
+          return cap.owner != env.STARKNET_ADDRESS
         })
         console.log('owned_caps', owned_caps)
         let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
@@ -221,7 +249,7 @@ const capsContext = context({
             return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
         }).join('\n');
         
-        return asciiGrid + capsDetails;
+        return "Available energy: " + (Number(game_state.game.turn_count) + 2) + "\n\n" + asciiGrid + capsDetails;
       }
 
       
@@ -326,6 +354,11 @@ export const take_turn = (chain: StarknetChain) => action({
       This means that you should only every try to move and attack with pieces that are yours, and make sure that your attack 
       targets are occupied by your opponent's pieces.
 
+      Be extremely careful to keep track of your energy and piece positions when moving and attacking. For example, remember that if you move and
+      then attack after then the attack is relative to the new position. For example, if you have a Red Basic unit at {x: 1, y: 1}, and your opponent
+      has a unit on {x: 2, y:0}, you can move it -1 x or +1 y, then the opponent's piece will be in its attack range and you can attack it. 
+      
+      Since the Red Basic unit has a move cost of 1 and an attack cost of three, this will cost you 3 energy total.
   `
   
   const container = createContainer();
