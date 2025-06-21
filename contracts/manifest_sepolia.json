@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
-      "class_hash": "0x58fa1826697f6f8475ccf41473ace30b00fb19d5fb60ddd7635fe63293614b1",
+      "class_hash": "0x10bc7707b99ef829663aa8cadd5013fdee2d766a6a2cc8a48e1dcfe7a413be7",
       "abi": [
         {
           "type": "impl",
@@ -1778,7 +1778,7 @@
     },
     {
       "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
-      "class_hash": "0x70344c02200b73380345a2fad29aea7affe33590e42011db925a39f4c6c95e0",
+      "class_hash": "0x519f61b0b9bfa9e4f660a6aafdde4f987cb161cb659408a07d08164413e1078",
       "abi": [
         {
           "type": "impl",
@@ -1854,6 +1854,24 @@
                 }
               ],
               "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "play_agent",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u128"
+                }
+              ],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "settle_agent_game",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
             }
           ]
         },
@@ -2049,6 +2067,8 @@
       "tag": "planetelo-planetelo",
       "selector": "0x25ac4129b8141e0edb259913ad6700dac2b338bda1ff616e6ae5eaa207c11f1",
       "systems": [
+        "play_agent",
+        "settle_agent_game",
         "create_match",
         "settle_match",
         "upgrade"
@@ -2057,6 +2077,12 @@
   ],
   "libraries": [],
   "models": [
+    {
+      "members": [],
+      "class_hash": "0x480aea1ec28157814c7e7c7aa307d8ae7dd54d130f4dff7606ada6b6927abaa",
+      "tag": "caps-AgentGames",
+      "selector": "0x5519b18180510e80a0789bce899ab455121736ec064caa49dbfc1d45170abc7"
+    },
     {
       "members": [],
       "class_hash": "0x59ed3b5ab3600fb737b82a24d074043bb5b47e22beae679264d7ed43557d5f",
@@ -2080,6 +2106,12 @@
       "class_hash": "0x166e0bb8179de2c803c230a8dbe5de34202de229b37f7fd837df4512ad8cbf0",
       "tag": "caps-Global",
       "selector": "0x70e88df3f805a04831adfefc6e7231dc9a65cce7920bf65bcb51e6f0bf729c4"
+    },
+    {
+      "members": [],
+      "class_hash": "0xeadb3e75396991ff49bd30506b68ca87151935782b44ce7e97dccb16b3b742",
+      "tag": "caps-Player",
+      "selector": "0x3cf35ff013a0ec37a07fe230610cbf964763a7b107283dae09988e8c76a1bb2"
     },
     {
       "members": [],
