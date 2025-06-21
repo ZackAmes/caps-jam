@@ -65,7 +65,7 @@ pub mod actions {
                 id: global.cap_counter + 2,
                 owner: p1,
                 position: Vec2 { x: 4, y: 0 },
-                cap_type: 1,
+                cap_type: 2,
                 dmg_taken: 0,
             };
 
@@ -73,7 +73,7 @@ pub mod actions {
                 id: global.cap_counter + 3,
                 owner: p2,
                 position: Vec2 { x: 2, y: 6 },
-                cap_type: 2,
+                cap_type: 1,
                 dmg_taken: 0,
             };
 
@@ -110,7 +110,6 @@ pub mod actions {
             let (over, _) = @game.check_over(@world);
             if *over {
                 if !game.over {
-                    game.over = true;
                     world.write_model(@game);
                 }
             }

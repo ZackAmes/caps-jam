@@ -1,6 +1,7 @@
 <script lang="ts">
   import { planetelo } from "./stores/planetelo.svelte";
   import { account } from "./stores/account.svelte";
+  import { caps } from "./stores/caps.svelte";
 </script>
 
 {#if planetelo.queue_status == 0}
@@ -10,9 +11,9 @@
 {/if}
 {#if account.account && !planetelo.agent_game_id}
   <button onclick={planetelo.play_agent}>Play Agent</button>
-{:else if account.account && planetelo.agent_game_id}
+{:else if account.account && planetelo.agent_game_id == planetelo.current_game_id && caps.game_state?.game.over}
   <button onclick={planetelo.settle_agent_game}>Settle Agent Game</button>
 {/if}
-{#if planetelo.agent_game_id && planetelo.current_game_id}
+{#if planetelo.agent_game_id != null && planetelo.planetelo_game_id != null}
   <button onclick={planetelo.switch_current_game}>Switch Between Games</button>
 {/if}

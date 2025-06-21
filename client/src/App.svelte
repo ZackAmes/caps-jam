@@ -10,14 +10,6 @@
     import Matchmaking from './lib/Matchmaking.svelte';
     import CapData from './lib/ui/cap_data.svelte';
     import MoveData from './lib/ui/move_data.svelte';
-  $effect(() => {
-    console.log(planetelo.queue_status)
- //   planetelo.update_status();
-    if (planetelo.queue_status == 2) {
-  //    caps.get_game();
-    }
-  });
-
 
 </script>
 
@@ -30,7 +22,7 @@
   {#if caps.selected_cap}
     <CapData />
   {/if}
-  {#if planetelo.queue_status == 2 && caps.game_state && !caps.game_state.game.over}
+  {#if (planetelo.queue_status == 2 || planetelo.current_game_id == planetelo.agent_game_id) && caps.game_state && !caps.game_state.game.over}
 
     <button onclick={() => {
       caps.reset_move();
@@ -56,12 +48,26 @@
       caps.get_game(planetelo.planetelo_game_id!);
     }}>Get Game</button>
   </div>
-  {:else if planetelo.queue_status == 2 && caps.game_state && caps.game_state.game.over}
-    <div class="card">
+  {:else if planetelo.current_game_id == planetelo.agent_game_id && !caps.game_state}
+  <div class="card">
+    <button onclick={() => {
+      caps.get_game(planetelo.agent_game_id!);
+    }}>Get Game</button>
+  </div>
+  {:else if planetelo.queue_status == 2 && caps.game_state && caps.game_state.game.over && planetelo.current_game_id}
+  {#if planetelo.current_game_id == planetelo.planetelo_game_id}
+  <div class="card">
       <button onclick={() => {
         planetelo.handleSettle()
       }}>Settle Match</button>
     </div>
+  {/if}
+  {:else if planetelo.current_game_id == planetelo.agent_game_id && caps.game_state?.game.over}
+  <div class="card">
+    <button onclick={() => {
+      planetelo.settle_agent_game()
+    }}>Settle Game</button>
+  </div>
   {/if}
 
 </main>

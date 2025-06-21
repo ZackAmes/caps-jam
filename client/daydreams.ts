@@ -206,7 +206,7 @@ const capsContext = context({
           return cap.owner != 2597078226917024488083389374508788873626221284030589812100304688300591636319n
         })
         console.log('owned_caps', owned_caps)
-        let capsDetails = '\nYour Caps Details:\n';
+        let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
         capsDetails += owned_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = cap_type?.base_health - cap.dmg_taken;
@@ -240,13 +240,16 @@ export const take_turn = (chain: StarknetChain) => action({
     async handler(args: { game_id: number, actions: { type: string, id: number, arg1: number, arg2: number }[] }, ctx: any, agent: Agent) {
 
       let actions: Array<Action> = []
-      if (args.actions[0].type == "Move") {
-        let action_type = new CairoCustomEnum({ Move: {x: args.actions[0].arg1, y: BigInt(args.actions[0].arg2)}, Attack: undefined})
-        actions.push({cap_id: args.actions[0].id, action_type: action_type})
-      }
-      else if (args.actions[0].type == "Attack") {
-        let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: args.actions[0].arg1, y: args.actions[0].arg2}})
-        actions.push({cap_id: args.actions[0].id, action_type: action_type})
+
+      for (let action of args.actions) {
+        if (action.type == "Move") {
+          let action_type = new CairoCustomEnum({ Move: {x: action.arg1, y: BigInt(action.arg2)}, Attack: undefined})
+          actions.push({cap_id: action.id, action_type: action_type})
+        }
+        else if (action.type == "Attack") {
+          let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: action.arg1, y: BigInt(action.arg2)}})
+          actions.push({cap_id: action.id, action_type: action_type})
+        }
       }
 
       let calldata = CallData.compile([args.game_id, actions])
@@ -320,7 +323,8 @@ export const take_turn = (chain: StarknetChain) => action({
       {{game_state}}
 
       Remember that the most important thing is to submit valid moves.
-      This means that you should only every try to move pieces that are yours. and attack pieces that are your opponent's.
+      This means that you should only every try to move and attack with pieces that are yours, and make sure that your attack 
+      targets are occupied by your opponent's pieces.
 
   `
   

@@ -43,13 +43,19 @@ export const planetelo = {
 
         let res = {status, elo, queue_length, game_id, winner: null};
         let agent_game_id = await caps_planetelo_contract.get_player_game_id(account.account!.address);
-        console.log(agent_game_id)
+        console.log('agent_game_id', agent_game_id)
         agent_game_id = agent_game_id;
 
         if (status == 2) {
             let current_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
             planetelo_game_id = current_game_id;
             res.game_id = current_game_id;
+        }
+        else if (agent_game_id) {
+            current_game_id = agent_game_id;
+        }
+        if (current_game_id) {
+            caps.get_game(current_game_id);
         }
         console.log(res)
         return res;
@@ -65,7 +71,6 @@ export const planetelo = {
                 current_game_id = planetelo_game_id;
             }
             agent_game_id = await caps_planetelo_contract.get_player_game_id(account.account!.address);
-            
         }
     },
 
@@ -128,6 +133,7 @@ export const planetelo = {
     },
 
     handleSettle: async () => {
+        console.log(current_game_id)
         if (account.account ) {
             let res = await account.account?.execute(
                 [{
@@ -156,6 +162,10 @@ export const planetelo = {
     },
 
     switch_current_game: () => {
+        console.log('switching current game')
+        console.log(planetelo_game_id)
+        console.log(agent_game_id)
+        console.log(current_game_id)
         if (!planetelo_game_id || !agent_game_id) {
             planetelo.get_status();
             return;
@@ -166,6 +176,8 @@ export const planetelo = {
         else {
             current_game_id = agent_game_id;
         }
+        caps.get_game(current_game_id);
+        console.log(caps.game_state)
     },
 
     get queue_status() {

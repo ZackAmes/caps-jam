@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0xbb760a1575f8f3ae13374f476eb91624beb691e4adde73dac130dff6b09bf2",
-    "seed": "capsooooooooools",
+    "address": "0x4b75a9323b98e3f596d386deb059955e466c4c5fd5a24d8080dd7d6615a21d4",
+    "seed": "capsfsdools",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x4c8a75f055e78b8517e9adcf7be60143be312a773b405da7be9ae5827f0171e",
-      "class_hash": "0x71cf5d6d8f3848446b9854de15bb9a92ef4bcf22ba8fa6b71f9b3d89f8e90d6",
+      "address": "0x5ebbf368169aec8c451efff134c3f946058cb1cf6ef73e297e6ee96007a6fe",
+      "class_hash": "0x289bec50ebd333937b080a3bbd4a59817faddf3b4ef560c786a38d015a10a1e",
       "abi": [
         {
           "type": "impl",
@@ -1777,8 +1777,8 @@
       ]
     },
     {
-      "address": "0x48c3a5281e76334b95c0dbc48b9c5d80d44db6070159b2470dbcb5622ee4628",
-      "class_hash": "0x2ff4ab2245b9a55ac88bff944b32e1b1fbdca31592d647912975cc16461a35d",
+      "address": "0x77ba1d5d42109832796bd1a9b9a3689b70a1ed451a7c2517804eb2ef1e074a0",
+      "class_hash": "0x2663206d51e236d7bced1844fec8248f39697c5a945183557951c229d80ca2f",
       "abi": [
         {
           "type": "impl",
@@ -1831,9 +1831,35 @@
           ]
         },
         {
+          "type": "function",
+          "name": "dojo_init",
+          "inputs": [
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
           "type": "impl",
           "name": "PlaneteloInterfaceImpl",
           "interface_name": "caps::planetelo::IPlanetelo"
+        },
+        {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
         },
         {
           "type": "interface",
@@ -1850,7 +1876,7 @@
               ],
               "outputs": [
                 {
-                  "type": "core::starknet::contract_address::ContractAddress"
+                  "type": "(core::bool, core::starknet::contract_address::ContractAddress, core::bool)"
                 }
               ],
               "state_mutability": "view"
@@ -1976,13 +2002,6 @@
           ]
         },
         {
-          "type": "function",
-          "name": "dojo_init",
-          "inputs": [],
-          "outputs": [],
-          "state_mutability": "view"
-        },
-        {
           "type": "impl",
           "name": "WorldProviderImpl",
           "interface_name": "dojo::contract::components::world_provider::IWorldProvider"
@@ -2090,10 +2109,13 @@
           ]
         }
       ],
-      "init_calldata": [],
+      "init_calldata": [
+        "0x0694182a014b39855a1b139961a3f39e7d4b43527b30d892a630d66a2abe3780"
+      ],
       "tag": "planetelo-planetelo",
       "selector": "0x25ac4129b8141e0edb259913ad6700dac2b338bda1ff616e6ae5eaa207c11f1",
       "systems": [
+        "dojo_init",
         "play_agent",
         "settle_agent_game",
         "create_match",
@@ -2136,7 +2158,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x480aea1ec28157814c7e7c7aa307d8ae7dd54d130f4dff7606ada6b6927abaa",
+      "class_hash": "0x3132923cf1e8dc7fdc732d9fd387d659c40b3169f2047962ac532875a1b1014",
       "tag": "planetelo-AgentGames",
       "selector": "0x3de9da2014687def6774ff51edeaf6ca81a5ea6259a5fd5a3f5ffb751fd99c0"
     },

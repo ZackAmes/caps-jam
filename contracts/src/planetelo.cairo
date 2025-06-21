@@ -21,6 +21,7 @@ pub struct AgentGames {
     #[key]
     id: u8,
     game_ids: Array<u128>,
+    address: ContractAddress,
 }
 
 #[derive(Drop, Serde, Introspect)]
@@ -34,18 +35,16 @@ pub struct Player {
 
 #[starknet::interface]
 trait IPlanetelo<T> {
-    fn get_result(self: @T, session_id: u32) -> ContractAddress;
+    fn get_result(self: @T, session_id: u32) -> (bool, ContractAddress, bool);
     fn play_agent(ref self: T) -> u128;
     fn settle_agent_game(ref self: T);
     fn get_agent_games(self: @T) -> Array<u128>;
     fn get_player_game_id(self: @T, address: ContractAddress) -> u128;
 }
 
-const agent_address: felt252 = 0x0694182a014b39855a1b139961a3f39e7d4b43527b30d892a630d66a2abe3780;
-
 #[dojo::contract]
 mod planetelo {
-    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player, agent_address};
+    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use dojo::world::{WorldStorage, WorldStorageTrait};    
     use dojo::model::{ModelStorage};
@@ -54,18 +53,26 @@ mod planetelo {
     use caps::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
 
 
+    fn dojo_init(ref self: ContractState, address: ContractAddress) {
+        let mut world = self.world(@"planetelo");
+        let mut agent_games: AgentGames = world.read_model(0);
+        agent_games.address = address;
+        world.write_model(@agent_games);
+    }
+
 
     #[abi(embed_v0)]
     impl PlaneteloInterfaceImpl of IPlanetelo<ContractState> {
 
-        fn get_result(self: @ContractState, session_id: u32) -> ContractAddress {
+        fn get_result(self: @ContractState, session_id: u32) -> (bool, ContractAddress, bool) {
             let mut world = self.world(@"caps");
             let game: Game = world.read_model(session_id);
             let (over, winner) = @game.check_over(@world);
+            let is_p2 = game.player2 == get_caller_address();
             if *over {
-                return *winner;
+                return (*over, *winner, is_p2);
             }
-            return starknet::contract_address_const::<0>();
+            return (false, starknet::contract_address_const::<0>(), is_p2);
         }
 
         fn play_agent(ref self: ContractState) -> u128 {
@@ -74,9 +81,9 @@ mod planetelo {
             let mut player: Player = world.read_model(get_caller_address());
             assert!(!player.in_game, "You are already in a game");
             let mut agent_games: AgentGames = world.read_model(0);
-            let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
+            let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: _caps_world.dns_address(@"actions").unwrap() };
 
-            let id: u128 = dispatcher.create_game(agent_address.try_into().unwrap(), get_caller_address()).into();
+            let id: u128 = dispatcher.create_game(agent_games.address, get_caller_address()).into();
 
             agent_games.game_ids.append(id);
             world.write_model(@agent_games);
@@ -91,7 +98,9 @@ mod planetelo {
         fn settle_agent_game(ref self: ContractState) {
             let caps_world = self.world(@"caps");
             let mut world = self.world(@"planetelo");
-            let mut player: Player = world.read_model(get_caller_address());
+
+            let player_address = get_caller_address();
+            let mut player: Player = world.read_model(player_address);
 
             let mut new_ids: Array<u128> = ArrayTrait::new();
             let mut found = false;
@@ -101,14 +110,14 @@ mod planetelo {
             while i < agent_games.game_ids.len() {
                 let game_id = agent_games.game_ids.at(i);
                 let game: Game = caps_world.read_model(*game_id);
-                if game.player2 == get_caller_address() {
-                    let (over, winner) = @game.check_over(@caps_world);
-                    if *over {
+                let (over, winner) = @game.check_over(@caps_world);
+                if *over {
+                    if game.player2 == player_address || *winner == player_address {
                         found = true;
                         continue;
                     }
-                    else{ 
-                        panic!("Game is not over");
+                    else{
+                        new_ids.append(*game_id);
                     }
                 }
                 else{
@@ -140,6 +149,7 @@ mod planetelo {
             let mut player: Player = world.read_model(address);
             player.game_id
         }
+
     }
 
     #[abi(embed_v0)]
