@@ -116,6 +116,7 @@ pub mod actions {
             }
             let mut i = 0;
 
+            let mut energy: u8 = game.turn_count.try_into().unwrap() + 2;
 
             while i < turn.len() {
                 let action = turn.at(i);
@@ -126,6 +127,8 @@ pub mod actions {
 
                 match action.action_type {
                     ActionType::Move(dir) => {
+                        assert!(energy >= cap_type.move_cost, "Not enough energy");
+                        energy -= cap_type.move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
@@ -133,6 +136,8 @@ pub mod actions {
                         world.write_model(@cap);
                     },
                     ActionType::Attack(target) => {
+                        assert!(energy >= cap_type.attack_cost, "Not enough energy");
+                        energy -= cap_type.attack_cost;
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
                         let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();

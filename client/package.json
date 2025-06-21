@@ -18,10 +18,15 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.2.19",
     "@cartridge/controller": "^0.7.13",
+    "@daydreamsai/chromadb": "^0.3.8",
+    "@daydreamsai/core": "^0.3.8",
+    "@daydreamsai/discord": "^0.3.8",
     "@threlte/core": "^8.0.5",
     "@threlte/extras": "^9.4.0",
     "@types/three": "^0.177.0",
+    "chromadb-default-embed": "^2.14.0",
     "fs": "^0.0.1-security",
     "three": "^0.177.0"
   }
