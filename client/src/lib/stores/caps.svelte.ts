@@ -3,7 +3,7 @@ import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
 import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
-import type { Game, Cap, Action, ActionType, CapType } from "./../dojo/models.gen"
+import type { Game, Cap, Action, ActionType, CapType, Vec2 } from "./../dojo/models.gen"
 
 
 let rpc = new RpcProvider({
@@ -21,6 +21,70 @@ let current_move = $state<Array<Action>>([])
 
 let initial_state = $state<{game: Game, caps: Array<Cap>}>()
 let selected_cap = $state<Cap | null>(null)
+
+let valid_ability_targets = $derived(() => {
+    let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+    let target_type = cap_type?.ability_target.activeVariant();
+    let ability_range = cap_type?.ability_range
+    if (target_type == 'None') {
+        return []
+    }
+    else if (target_type == 'SelfCap') {
+        return [{x: selected_cap?.position.x, y: selected_cap?.position.y}]
+    }
+    else if (target_type == 'TeamCap') {
+        let res = []
+        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        for (let val of in_range) {
+            let cap_at = caps.get_cap_at(val.x, val.y)
+            if (cap_at && cap_at.owner == account.account?.address) {
+                res.push(val)
+            }
+        }
+        return res
+    }
+    else if (target_type == 'OpponentCap') {
+        let res = []
+        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        for (let val of in_range) {
+            let cap_at = caps.get_cap_at(val.x, val.y)
+            if (cap_at && cap_at.owner != account.account?.address) {
+                res.push(val)
+            }
+        }
+        return res
+    }
+    else if (target_type == 'AnyCap') {
+        let res = []
+        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        for (let val of in_range) {
+            let cap_at = caps.get_cap_at(val.x, val.y)
+            if (cap_at) {
+                res.push(val)
+            }
+        }
+        return res
+    }
+    else if (target_type == 'AnySquare') {
+        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        return in_range
+    }
+    return []
+})
+
+let valid_moves = $derived(() => {
+    let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+    let move_range = cap_type?.move_range
+    let in_range = get_moves_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, move_range!)
+    return in_range
+})
+
+let valid_attacks = $derived(() => {
+    let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+    let attack_range = cap_type?.attack_range
+    let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, attack_range!)
+    return in_range
+})
 
 let cap_types = $state<Array<CapType>>([])
 
@@ -139,7 +203,7 @@ export const caps = {
               }
             }
           } else if (selected_cap && cap && cap.owner != account.account?.address) {
-            let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}})
+            let action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
             if (energy < attack_cost) {
                 alert(`Not enough energy! Need ${attack_cost} but only have ${energy}`)
                 return
@@ -171,7 +235,63 @@ export const caps = {
 
     get max_energy() {
         return max_energy
-    }
-    
+    },
 
+    get valid_ability_targets() {
+        return valid_ability_targets
+    },
+
+    get valid_moves() {
+        return valid_moves
+    },
+
+    get valid_attacks() {
+        return valid_attacks
+    },
+
+}
+
+
+const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2>) => {
+    let res = []
+    for (let val of range) {
+        if (position.x + Number(val.x) == selected_cap?.position.x && position.y + Number(val.y) == selected_cap?.position.y) {
+            res.push({x: position.x + Number(val.x), y: position.y + Number(val.y)})
+        }
+        if (position.x - Number(val.x) == selected_cap?.position.x && position.y - Number(val.y) == selected_cap?.position.y) {
+            res.push({x: position.x - Number(val.x), y: position.y - Number(val.y)})
+        }
+        if (position.x + Number(val.x) == selected_cap?.position.x && position.y - Number(val.y) == selected_cap?.position.y) {
+            res.push({x: position.x + Number(val.x), y: position.y - Number(val.y)})
+        }
+        if (position.x - Number(val.x) == selected_cap?.position.x && position.y + Number(val.y) == selected_cap?.position.y) {
+            res.push({x: position.x - Number(val.x), y: position.y + Number(val.y)})
+        }
+    }
+    return res
+}
+
+const get_moves_in_range = (position: {x: number, y: number}, range: Vec2) => {
+    let res = [];
+    let i = 0;
+    while (i < Number(range.x)) {
+        if (position.x + i < 6) {
+            res.push({x: position.x + i, y: position.y})
+        }
+        if (position.x - i > 0) {
+            res.push({x: position.x - i, y: position.y})
+        }
+        i++;
+    }
+    i = 0;
+    while (i < Number(range.y)) {
+        if (position.y + i < 6) {
+            res.push({x: position.x, y: position.y + i})
+        }
+        if (position.y - i > 0) {
+            res.push({x: position.x, y: position.y - i})
+        }
+        i++;
+    }
+    return res
 }

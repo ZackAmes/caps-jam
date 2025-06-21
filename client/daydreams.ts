@@ -323,6 +323,8 @@ export const take_turn = (chain: StarknetChain) => action({
       - {direction: 0,1, distance: 1}
       - {direction: 2,3, distance: 1 or 2}
 
+      Be careful to only move to squares that are both on the board and not occupied by a piece.
+
       You can only move a piece if it has enough energy to move.
 
       Attacks take a pair of coordinates as an argument, where the coords are the target of the attack.
@@ -350,7 +352,8 @@ export const take_turn = (chain: StarknetChain) => action({
       Here is the current game state, including the board and the pieces:
       {{game_state}}
 
-      Remember that the most important thing is to submit valid moves.
+      Remember that the most important thing is to submit valid moves. You should also be trying to win the game by destroying your opponent's pieces.
+      You should try and be aggressive in winning the game, but very careful with making sure your moves are valid.
       This means that you should only every try to move and attack with pieces that are yours, and make sure that your attack 
       targets are occupied by your opponent's pieces.
 
@@ -359,6 +362,13 @@ export const take_turn = (chain: StarknetChain) => action({
       has a unit on {x: 2, y:0}, you can move it -1 x or +1 y, then the opponent's piece will be in its attack range and you can attack it. 
       
       Since the Red Basic unit has a move cost of 1 and an attack cost of three, this will cost you 3 energy total.
+
+      Another example is if you have a Red Basic unit at (4,4), and your opponent has a unit at (2,6),
+      you can move the piece either -2x or +2y, then the opponent's piece will be in its attack range and you can attack it.
+
+      You must be extremely careful to only move to square that are valid. This means they must be within the move range of the piece,
+      not occupied by any piece, and not outside of the board. Similarly, you must be very carful to only target valid squares for attacks/
+      This means that the target must a valid attack target relative to the piece's position, including all pending moves, and occupied by an opponent's piece.
   `
   
   const container = createContainer();
@@ -370,19 +380,17 @@ export const take_turn = (chain: StarknetChain) => action({
   });
 
   const agent = createDreams({
-    model: google("gemini-2.0-flash-001"),
+    logLevel: LogLevel.DEBUG,
+    model: google("gemini-2.5-flash"),
     container,
     extensions: [discord],
-    memory: {
-      store: createMemoryStore(),
-      vector: createChromaVectorStore("agent", "http://localhost:8000"),
-      vectorModel: google("gemini-2.0-flash-001"),
-    },
     inputs: {
       caps_check: caps_check(chain),
     },
+    streaming: false,
     actions: [
         take_turn(chain),
+    
 ],
   });
   

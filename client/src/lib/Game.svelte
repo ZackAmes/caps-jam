@@ -11,8 +11,6 @@
 
   let { camera } = useThrelte()
 
-  let selected_cap = $state<Cap | null>(null)
-
   camera.update(camera => {
     camera.position.set(3, 3, 5)
     return camera
@@ -25,6 +23,12 @@
       positions.push({x: i, y: j})
     }
   }
+
+  $effect(() => {
+    console.log(caps.valid_ability_targets)
+    console.log(caps.valid_moves)
+    console.log(caps.valid_attacks)
+  })
 </script>
 
 {#each positions as position}

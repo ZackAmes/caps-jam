@@ -101,6 +101,40 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
+	const build_planetelo_getAgentGames_calldata = (): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "get_agent_games",
+			calldata: [],
+		};
+	};
+
+	const planetelo_getAgentGames = async () => {
+		try {
+			return await provider.call("dojo_starter", build_planetelo_getAgentGames_calldata());
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
+	const build_planetelo_getPlayerGameId_calldata = (address: string): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "get_player_game_id",
+			calldata: [address],
+		};
+	};
+
+	const planetelo_getPlayerGameId = async (address: string) => {
+		try {
+			return await provider.call("dojo_starter", build_planetelo_getPlayerGameId_calldata(address));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
 	const build_planetelo_getResult_calldata = (sessionId: BigNumberish): DojoCall => {
 		return {
 			contractName: "planetelo",
@@ -112,6 +146,48 @@ export function setupWorld(provider: DojoProvider) {
 	const planetelo_getResult = async (sessionId: BigNumberish) => {
 		try {
 			return await provider.call("dojo_starter", build_planetelo_getResult_calldata(sessionId));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
+	const build_planetelo_playAgent_calldata = (): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "play_agent",
+			calldata: [],
+		};
+	};
+
+	const planetelo_playAgent = async (snAccount: Account | AccountInterface) => {
+		try {
+			return await provider.execute(
+				snAccount,
+				build_planetelo_playAgent_calldata(),
+				"dojo_starter",
+			);
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
+	const build_planetelo_settleAgentGame_calldata = (): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "settle_agent_game",
+			calldata: [],
+		};
+	};
+
+	const planetelo_settleAgentGame = async (snAccount: Account | AccountInterface) => {
+		try {
+			return await provider.execute(
+				snAccount,
+				build_planetelo_settleAgentGame_calldata(),
+				"dojo_starter",
+			);
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -155,8 +231,16 @@ export function setupWorld(provider: DojoProvider) {
 		planetelo: {
 			createMatch: planetelo_createMatch,
 			buildCreateMatchCalldata: build_planetelo_createMatch_calldata,
+			getAgentGames: planetelo_getAgentGames,
+			buildGetAgentGamesCalldata: build_planetelo_getAgentGames_calldata,
+			getPlayerGameId: planetelo_getPlayerGameId,
+			buildGetPlayerGameIdCalldata: build_planetelo_getPlayerGameId_calldata,
 			getResult: planetelo_getResult,
 			buildGetResultCalldata: build_planetelo_getResult_calldata,
+			playAgent: planetelo_playAgent,
+			buildPlayAgentCalldata: build_planetelo_playAgent_calldata,
+			settleAgentGame: planetelo_settleAgentGame,
+			buildSettleAgentGameCalldata: build_planetelo_settleAgentGame_calldata,
 			settleMatch: planetelo_settleMatch,
 			buildSettleMatchCalldata: build_planetelo_settleMatch_calldata,
 		},

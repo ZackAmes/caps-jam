@@ -19,9 +19,11 @@ export interface CapType {
 	move_cost: BigNumberish;
 	attack_cost: BigNumberish;
 	attack_range: Array<Vec2>;
+	ability_range: Array<Vec2>;
 	move_range: Vec2;
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
+	ability_target: TargetTypeEnum;
 }
 
 // Type definition for `caps::models::CapTypeValue` struct
@@ -31,9 +33,11 @@ export interface CapTypeValue {
 	move_cost: BigNumberish;
 	attack_cost: BigNumberish;
 	attack_range: Array<Vec2>;
+	ability_range: Array<Vec2>;
 	move_range: Vec2;
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
+	ability_target: TargetTypeEnum;
 }
 
 // Type definition for `caps::models::CapValue` struct
@@ -95,6 +99,32 @@ export interface Vec2 {
 	y: BigNumberish;
 }
 
+// Type definition for `caps::planetelo::AgentGames` struct
+export interface AgentGames {
+	id: BigNumberish;
+	game_ids: Array<BigNumberish>;
+	address: string;
+}
+
+// Type definition for `caps::planetelo::AgentGamesValue` struct
+export interface AgentGamesValue {
+	game_ids: Array<BigNumberish>;
+	address: string;
+}
+
+// Type definition for `caps::planetelo::Player` struct
+export interface Player {
+	address: string;
+	in_game: boolean;
+	game_id: BigNumberish;
+}
+
+// Type definition for `caps::planetelo::PlayerValue` struct
+export interface PlayerValue {
+	in_game: boolean;
+	game_id: BigNumberish;
+}
+
 // Type definition for `caps::models::Action` struct
 export interface Action {
 	cap_id: BigNumberish;
@@ -112,14 +142,28 @@ export interface MovedValue {
 	turn: Array<Action>;
 }
 
+// Type definition for `caps::models::TargetType` enum
+export const targetType = [
+	'None',
+	'SelfCap',
+	'TeamCap',
+	'OpponentCap',
+	'AnyCap',
+	'AnySquare',
+] as const;
+export type TargetType = { [key in typeof targetType[number]]: string };
+export type TargetTypeEnum = CairoCustomEnum;
+
 // Type definition for `caps::models::ActionType` enum
 export const actionType = [
 	'Move',
 	'Attack',
+	'Ability',
 ] as const;
 export type ActionType = { 
 	Move: Vec2,
 	Attack: Vec2,
+	Ability: Vec2,
 };
 export type ActionTypeEnum = CairoCustomEnum;
 
@@ -136,6 +180,10 @@ export interface SchemaType extends ISchemaType {
 		Square: Square,
 		SquareValue: SquareValue,
 		Vec2: Vec2,
+		AgentGames: AgentGames,
+		AgentGamesValue: AgentGamesValue,
+		Player: Player,
+		PlayerValue: PlayerValue,
 		Action: Action,
 		Moved: Moved,
 		MovedValue: MovedValue,
@@ -157,9 +205,17 @@ export const schema: SchemaType = {
 			move_cost: 0,
 			attack_cost: 0,
 			attack_range: [{ x: 0, y: 0, }],
+			ability_range: [{ x: 0, y: 0, }],
 		move_range: { x: 0, y: 0, },
 			attack_dmg: 0,
 			base_health: 0,
+		ability_target: new CairoCustomEnum({ 
+					None: "",
+				SelfCap: undefined,
+				TeamCap: undefined,
+				OpponentCap: undefined,
+				AnyCap: undefined,
+				AnySquare: undefined, }),
 		},
 		CapTypeValue: {
 		name: "",
@@ -167,9 +223,17 @@ export const schema: SchemaType = {
 			move_cost: 0,
 			attack_cost: 0,
 			attack_range: [{ x: 0, y: 0, }],
+			ability_range: [{ x: 0, y: 0, }],
 		move_range: { x: 0, y: 0, },
 			attack_dmg: 0,
 			base_health: 0,
+		ability_target: new CairoCustomEnum({ 
+					None: "",
+				SelfCap: undefined,
+				TeamCap: undefined,
+				OpponentCap: undefined,
+				AnyCap: undefined,
+				AnySquare: undefined, }),
 		},
 		CapValue: {
 			owner: "",
@@ -214,22 +278,43 @@ export const schema: SchemaType = {
 			x: 0,
 			y: 0,
 		},
+		AgentGames: {
+			id: 0,
+			game_ids: [0],
+			address: "",
+		},
+		AgentGamesValue: {
+			game_ids: [0],
+			address: "",
+		},
+		Player: {
+			address: "",
+			in_game: false,
+			game_id: 0,
+		},
+		PlayerValue: {
+			in_game: false,
+			game_id: 0,
+		},
 		Action: {
 			cap_id: 0,
 		action_type: new CairoCustomEnum({ 
 				Move: { x: 0, y: 0, },
-				Attack: undefined, }),
+				Attack: undefined,
+				Ability: undefined, }),
 		},
 		Moved: {
 			player: "",
 			turn: [{ cap_id: 0, action_type: new CairoCustomEnum({ 
 				Move: { x: 0, y: 0, },
-				Attack: undefined, }), }],
+				Attack: undefined,
+				Ability: undefined, }), }],
 		},
 		MovedValue: {
 			turn: [{ cap_id: 0, action_type: new CairoCustomEnum({ 
 				Move: { x: 0, y: 0, },
-				Attack: undefined, }), }],
+				Attack: undefined,
+				Ability: undefined, }), }],
 		},
 	},
 };
@@ -244,7 +329,12 @@ export enum ModelsMapping {
 	GlobalValue = 'caps-GlobalValue',
 	Square = 'caps-Square',
 	SquareValue = 'caps-SquareValue',
+	TargetType = 'caps-TargetType',
 	Vec2 = 'caps-Vec2',
+	AgentGames = 'caps-AgentGames',
+	AgentGamesValue = 'caps-AgentGamesValue',
+	Player = 'caps-Player',
+	PlayerValue = 'caps-PlayerValue',
 	Action = 'caps-Action',
 	ActionType = 'caps-ActionType',
 	Moved = 'caps-Moved',
