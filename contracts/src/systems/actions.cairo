@@ -15,7 +15,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType};
     use caps::helpers::{get_player_pieces, get_piece_locations};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
@@ -204,6 +204,7 @@ pub mod actions {
                     move_range: Vec2 { x: 1, y: 1 },
                     attack_dmg: 1,
                     base_health: 10,
+                    ability_target: TargetType::None,
                 }),
                 1 => Option::Some(CapType {
                     id: 1,
@@ -216,6 +217,7 @@ pub mod actions {
                     move_range: Vec2 { x: 1, y: 1 },
                     attack_dmg: 1,
                     base_health: 10,
+                    ability_target: TargetType::None,
                 }),
                 2 => Option::Some(CapType {
                     id: 2,
@@ -228,6 +230,7 @@ pub mod actions {
                     move_range: Vec2 { x: 2, y: 2 },
                     attack_dmg: 5,
                     base_health: 5,
+                    ability_target: TargetType::OpponentCap,
                 }),
                 3 => Option::Some(CapType {
                     id: 3,
@@ -240,6 +243,7 @@ pub mod actions {
                     move_range: Vec2 { x: 3, y: 3 },
                     attack_dmg: 3,
                     base_health: 5,
+                    ability_target: TargetType::TeamCap,
                 }),
                 _ => Option::None,
             };

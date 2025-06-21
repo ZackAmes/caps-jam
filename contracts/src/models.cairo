@@ -110,6 +110,7 @@ pub struct CapType {
     pub move_range: Vec2,
     pub attack_dmg: u16,
     pub base_health: u16,
+    pub ability_target: TargetType,
 }
 
 
@@ -290,47 +291,66 @@ pub impl CapImpl of CapTrait {
     fn check_ability(self: @Cap, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
         let mut locations = get_piece_locations(game_id, world);
         let cap_type: CapType = world.read_model(*self.cap_type);
-        match *self.cap_type {
-            // Red Tower
-            // Towers have no abilities for now
-            0 => {
-                false
-            },
+        cap_type.ability_target.is_valid(self, target, game_id, world)
+    }
+}
 
-            //Blue Tower
-            1 => {
+#[derive(Copy, Drop, Serde, Clone, Debug,Introspect)]
+pub enum TargetType {
+    None,
+    SelfCap,
+    TeamCap,
+    OpponentCap,
+    AnyCap,
+    AnySquare,
+}
+
+#[generate_trait]
+pub impl TargetTypeImpl of TargetTypeTrait {
+    fn is_valid(self: @TargetType, cap: @Cap, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
+        match *self {
+            TargetType::None => false,
+            TargetType::SelfCap => {
+                true
+            },
+            TargetType::TeamCap => {
+                let cap_type: CapType = world.read_model(*cap.cap_type);
+                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                let mut locations = get_piece_locations(game_id, world);
+                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
+                let at_location: Cap = world.read_model(at_location_index);
+                //Must be player
+                if in_range && at_location.owner == *cap.owner {
+                    return true;
+                }
                 false
             },
-            // Red Basic
-            2 => {
-                let in_range = self.check_in_range(target, cap_type.ability_range);
-                let at_location_index = locations.get((*self.position.x * 7 + *self.position.y).into());
+            TargetType::OpponentCap => {
+                let cap_type: CapType = world.read_model(*cap.cap_type);
+                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                let mut locations = get_piece_locations(game_id, world);
+                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
                 let at_location: Cap = world.read_model(at_location_index);
                 //Must be opponent
-                if at_location.owner == *self.owner {
-                    return false;
-                }
-                if in_range {
+                if in_range && at_location.owner != *cap.owner {
                     return true;
                 }
                 false
             },
-            // Blue Basic
-            3 => {
-                let in_range = self.check_in_range(target, cap_type.ability_range);
-                let at_location_index = locations.get((*self.position.x * 7 + *self.position.y).into());
-                let at_location: Cap = world.read_model(at_location_index);
-                //Must be player's piece
-                if at_location.owner != *self.owner {
-                    return false;
-                }
-                if in_range {
+            TargetType::AnyCap => {
+                let cap_type: CapType = world.read_model(*cap.cap_type);
+                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                let mut locations = get_piece_locations(game_id, world);
+                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
+                if at_location_index != 0 && in_range {
                     return true;
                 }
                 false
             },
-            _ => {
-                false
+            TargetType::AnySquare => {
+                let cap_type: CapType = world.read_model(*cap.cap_type);
+                cap.check_in_range(target, cap_type.ability_range)
+                
             },
         }
     }

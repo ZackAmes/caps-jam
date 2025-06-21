@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x512209b770ef2fb6076729cde7a3b85aa927afb733283a1049d954666e02781",
-    "seed": "capsfsdsdools",
+    "address": "0x441723c5f14721f696b0ffa8ad6c6418af5bb6f08b7591eb1b7d50dcd0a9c32",
+    "seed": "capsfsdsls",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x11d937f3559065a1f1299c60109f0168a7b5b0e104208424ff739d4316a9b73",
-      "class_hash": "0x289bec50ebd333937b080a3bbd4a59817faddf3b4ef560c786a38d015a10a1e",
+      "address": "0x7f2132976fec477656df91309e268e81bc4ba80dc13dfa964a3e857cf3d6157",
+      "class_hash": "0xc27cee53dbfed247a710772279254190c815b5b512dead48581385b6750e21",
       "abi": [
         {
           "type": "impl",
@@ -1410,6 +1410,10 @@
             },
             {
               "name": "Attack",
+              "type": "caps::models::Vec2"
+            },
+            {
+              "name": "Ability",
               "type": "caps::models::Vec2"
             }
           ]
@@ -1523,6 +1527,36 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "caps::models::TargetType",
+          "variants": [
+            {
+              "name": "None",
+              "type": "()"
+            },
+            {
+              "name": "SelfCap",
+              "type": "()"
+            },
+            {
+              "name": "TeamCap",
+              "type": "()"
+            },
+            {
+              "name": "OpponentCap",
+              "type": "()"
+            },
+            {
+              "name": "AnyCap",
+              "type": "()"
+            },
+            {
+              "name": "AnySquare",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "caps::models::CapType",
           "members": [
@@ -1551,6 +1585,10 @@
               "type": "core::array::Array::<caps::models::Vec2>"
             },
             {
+              "name": "ability_range",
+              "type": "core::array::Array::<caps::models::Vec2>"
+            },
+            {
               "name": "move_range",
               "type": "caps::models::Vec2"
             },
@@ -1561,6 +1599,10 @@
             {
               "name": "base_health",
               "type": "core::integer::u16"
+            },
+            {
+              "name": "ability_target",
+              "type": "caps::models::TargetType"
             }
           ]
         },
@@ -1777,7 +1819,7 @@
       ]
     },
     {
-      "address": "0x1ebaf4d6e62cbcf35aeebf18007aae60e9e7d1338549cccbac23ce7e75e860",
+      "address": "0x28bb7a180952a3b35e8a3f834bcca66504ef58314512e65d88be5d30ea53420",
       "class_hash": "0xf93ef9bcd50cc474d9f325a24f317670818020f64e649ccc7aef945235bb2e",
       "abi": [
         {
@@ -2134,7 +2176,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x2b68941374e29466c3d94306912b4057f03159ba805a4f3ac4d98bb92c6e88e",
+      "class_hash": "0x71281cd005ce9639c8fbc14dc5ed3db3458c7cf4b2c6b9ba863bf580e3baa33",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
@@ -2172,7 +2214,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0xf5fc94e0849a2ea828a1cd8abc30d555db821773bf4da392a3f47b7c761180",
+      "class_hash": "0x4082969a9b656ae12ec95590a7d99852b91225ca675c432978dda54c40ae669",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }
