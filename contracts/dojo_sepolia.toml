@@ -14,7 +14,7 @@ telegram = "https://t.me/dojoengine"
 
 [namespace]
 default = "caps"
-mappings = {"planetelo" = [ "planetelo"]}
+mappings = {"planetelo" = [ "planetelo", "AgentGames", "Player"]}
 
 
 

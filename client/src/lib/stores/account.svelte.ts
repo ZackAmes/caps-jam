@@ -5,7 +5,6 @@ import { caps } from "./caps.svelte";
 
 let accountStore = $state<Account>()
 let username = $state<string>()
-let selectedAccount = $state<"p1" | "p2" | null>(null)
 
 //let contract_address = "0x049d36570d4e46f48e99674bd3fcc8463d4990949b4c6bb434ee877b1830a794"
 const controller = new Controller({

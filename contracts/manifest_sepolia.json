@@ -1778,7 +1778,7 @@
     },
     {
       "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
-      "class_hash": "0x519f61b0b9bfa9e4f660a6aafdde4f987cb161cb659408a07d08164413e1078",
+      "class_hash": "0x2efb53247d4b40839d18dfe7e81caf80c3ca506748c3ca0209b2db0f16019fc",
       "abi": [
         {
           "type": "impl",
@@ -1872,6 +1872,17 @@
               "inputs": [],
               "outputs": [],
               "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_agent_games",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::array::Array::<core::integer::u128>"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },
@@ -2079,12 +2090,6 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x480aea1ec28157814c7e7c7aa307d8ae7dd54d130f4dff7606ada6b6927abaa",
-      "tag": "caps-AgentGames",
-      "selector": "0x5519b18180510e80a0789bce899ab455121736ec064caa49dbfc1d45170abc7"
-    },
-    {
-      "members": [],
       "class_hash": "0x59ed3b5ab3600fb737b82a24d074043bb5b47e22beae679264d7ed43557d5f",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
@@ -2109,15 +2114,21 @@
     },
     {
       "members": [],
-      "class_hash": "0xeadb3e75396991ff49bd30506b68ca87151935782b44ce7e97dccb16b3b742",
-      "tag": "caps-Player",
-      "selector": "0x3cf35ff013a0ec37a07fe230610cbf964763a7b107283dae09988e8c76a1bb2"
-    },
-    {
-      "members": [],
       "class_hash": "0xdd1b87e685f79a67e791c2dca233ecbb69db299cfc35e4ffb733d35f3d95c6",
       "tag": "caps-Square",
       "selector": "0x25162d41aa11d953b327257d2132ea33b48a49e2146e30ebda33a9c8456114a"
+    },
+    {
+      "members": [],
+      "class_hash": "0x480aea1ec28157814c7e7c7aa307d8ae7dd54d130f4dff7606ada6b6927abaa",
+      "tag": "planetelo-AgentGames",
+      "selector": "0x3de9da2014687def6774ff51edeaf6ca81a5ea6259a5fd5a3f5ffb751fd99c0"
+    },
+    {
+      "members": [],
+      "class_hash": "0xeadb3e75396991ff49bd30506b68ca87151935782b44ce7e97dccb16b3b742",
+      "tag": "planetelo-Player",
+      "selector": "0x54015881ce1a0053b8c9e3c5fe475c73734ecf4897aa47c9751ee98134b1dc8"
     }
   ],
   "events": [

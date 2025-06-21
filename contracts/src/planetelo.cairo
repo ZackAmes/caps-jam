@@ -36,6 +36,7 @@ trait IPlanetelo<T> {
     fn get_result(self: @T, session_id: u32) -> ContractAddress;
     fn play_agent(ref self: T) -> u128;
     fn settle_agent_game(ref self: T);
+    fn get_agent_games(self: @T) -> Array<u128>;
 }
 
 const agent_address: felt252 = 0x0694182a014b39855a1b139961a3f39e7d4b43527b30d892a630d66a2abe3780;
@@ -123,6 +124,12 @@ mod planetelo {
             else{
                 panic!("Game not found");
             }
+        }
+
+        fn get_agent_games(self: @ContractState) -> Array<u128> {
+            let mut world = self.world(@"planetelo");
+            let mut agent_games: AgentGames = world.read_model(0);
+            agent_games.game_ids
         }
     }
 
