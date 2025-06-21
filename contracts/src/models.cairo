@@ -90,6 +90,22 @@ pub struct Cap {
     pub id: u64,
     pub owner: ContractAddress,
     pub position: Vec2,
+    pub cap_type: u16,
+    pub dmg_taken: u16,
+}
+
+#[derive(Drop, Serde, Debug)]
+pub struct CapType {
+    pub name: ByteArray,
+    pub description: ByteArray,
+    pub move_cost: u8,
+    pub attack_cost: u8,
+    // Attack range is the squares relative to the cap's position that can be attacked
+    pub attack_range: Array<Vec2>,
+    // Move range is the x range, y range
+    pub move_range: Vec2,
+    pub attack_dmg: u16,
+    pub base_health: u16,
 }
 
 #[derive(Drop, Serde, Clone, Introspect)]
@@ -106,8 +122,8 @@ pub enum ActionType {
 
 #[generate_trait]
 pub impl CapImpl of CapTrait {
-    fn new(id: u64, owner: ContractAddress, position: Vec2) -> Cap {
-        Cap { id, owner, position }
+    fn new(id: u64, owner: ContractAddress, position: Vec2, cap_type: u16) -> Cap {
+        Cap { id, owner, position, cap_type, dmg_taken: 0 }
     }
 
     fn get_new_index_from_dir(self: @Cap, direction: u8, amt: u8) -> felt252 {
@@ -138,12 +154,15 @@ pub impl CapImpl of CapTrait {
         (new_position.x * 7 + new_position.y).into()
     }
 
-    fn move(ref self: Cap, direction: u8, amount: u8){
+    fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8){
         let mut new_position = self.position;
         match direction {
             0 => {
                 if new_position.x + amount > 6 {
                     panic!("Move out of bounds");
+                }
+                if amount > cap_type.move_range.x {
+                    panic!("Move out of range");
                 }
                 new_position.x += amount;
             },
@@ -151,11 +170,17 @@ pub impl CapImpl of CapTrait {
                 if amount > new_position.x {
                     panic!("Move out of bounds");
                 }
+                if amount > cap_type.move_range.x {
+                    panic!("Move out of range");
+                }
                 new_position.x -= amount;
             },
             2 => {
                 if new_position.y + amount > 6 {
                     panic!("Move out of bounds");
+                }
+                if amount > cap_type.move_range.y {
+                    panic!("Move out of range");
                 }
                 new_position.y += amount;
             },
@@ -163,11 +188,97 @@ pub impl CapImpl of CapTrait {
                 if amount > new_position.y {
                     panic!("Move out of bounds");
                 }
+                if amount > cap_type.move_range.y {
+                    panic!("Move out of range");
+                }
                 new_position.y -= amount;
             },
             _ => (),
         };
         self.position = new_position;
+    }
+
+    fn check_attack(self: @Cap, cap_type: CapType, target: Vec2, world: @WorldStorage) -> bool {
+        let mut i = 0;
+        let mut valid = false;
+        
+        while i < cap_type.attack_range.len() {
+            let to_check: Vec2 = *cap_type.attack_range[i];
+            if target.x >= *self.position.x && target.y >= *self.position.y {
+                if to_check.x + *self.position.x > 6 {
+                    i+=1;
+                    continue;
+                }
+                if to_check.y + *self.position.y > 6 {
+                    i+=1;
+                    continue;
+                }
+                if *self.position.x + to_check.x == target.x && *self.position.y + to_check.y == target.y {
+                    valid = true;
+                    break;
+                }
+                else {
+                    i+=1;
+                    continue;
+                }
+            }
+            else if target.x <= *self.position.x && target.y <= *self.position.y {
+                if to_check.x > *self.position.x {
+                    i+=1;
+                    continue;
+                }
+                if to_check.y > *self.position.y {
+                    i+=1;
+                    continue;
+                }
+                if *self.position.x - to_check.x == target.x && *self.position.y - to_check.y == target.y {
+                    valid = true;
+                    break;
+                }
+                else {
+                    i+=1;
+                    continue;
+                }
+            }
+            else if target.x <= *self.position.x && target.y >= *self.position.y {
+                if to_check.x > *self.position.x {
+                    i+=1;
+                    continue;
+                }
+                if to_check.y + *self.position.y > 6 {
+                    i+=1;
+                    continue;
+                }
+                if *self.position.x - to_check.x == target.x && *self.position.y + to_check.y == target.y {
+                    valid = true;
+                    break;
+                }
+                else {
+                    i+=1;
+                    continue;
+                }
+            }
+            else if target.x >= *self.position.x && target.y <= *self.position.y {
+                if to_check.x + *self.position.x > 6 {
+                    i+=1;
+                    continue;
+                }
+                if to_check.y > *self.position.y {
+                    i+=1;
+                    continue;
+                }
+                if *self.position.x + to_check.x == target.x && *self.position.y - to_check.y == target.y {
+                    valid = true;
+                    break;
+                }
+                else {
+                    i+=1;
+                    continue;
+                }
+            }
+            i += 1;
+        };
+        valid
     }
 }
 

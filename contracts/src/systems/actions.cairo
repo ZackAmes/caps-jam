@@ -1,4 +1,4 @@
-use caps::models::{Vec2, Game, Cap, Action};
+use caps::models::{Vec2, Game, Cap, Action, CapType};
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
@@ -6,6 +6,7 @@ pub trait IActions<T> {
     fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress) -> u64;
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>)>;
+    fn get_cap_data(self: @T, cap_type: u16) -> Option<CapType>;
 }
 
 // dojo decorator
@@ -13,7 +14,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType};
     use caps::helpers::{get_player_pieces, get_piece_locations};
 
     use dojo::model::{ModelStorage};
@@ -57,23 +58,31 @@ pub mod actions {
                 id: global.cap_counter + 1,
                 owner: p1,
                 position: Vec2 { x: 2, y: 0 },
+                cap_type: 0,
+                dmg_taken: 0,
             };
             let p1_cap2 = Cap {
                 id: global.cap_counter + 2,
                 owner: p1,
                 position: Vec2 { x: 4, y: 0 },
+                cap_type: 1,
+                dmg_taken: 0,
             };
 
             let p2_cap1 = Cap {
                 id: global.cap_counter + 3,
                 owner: p2,
                 position: Vec2 { x: 2, y: 6 },
+                cap_type: 2,
+                dmg_taken: 0,
             };
 
             let p2_cap2 = Cap {
                 id: global.cap_counter + 4,
                 owner: p2,
                 position: Vec2 { x: 4, y: 6 },
+                cap_type: 3,
+                dmg_taken: 0,
             };
 
             game.add_cap(p1_cap1.id);
@@ -113,13 +122,14 @@ pub mod actions {
                 let mut locations = get_piece_locations(game_id, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
+                let cap_type = self.get_cap_data(cap.cap_type).unwrap();
 
                 match action.action_type {
                     ActionType::Move(dir) => {
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
-                        cap.move(*dir.x, *dir.y);
+                        cap.move(cap_type, *dir.x, *dir.y);
                         world.write_model(@cap);
                     },
                     ActionType::Attack(target) => {
@@ -127,6 +137,7 @@ pub mod actions {
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
+                        cap.check_attack(cap_type, *target, @world);
                         game.remove_cap(piece_at_location.id);
                         world.erase_model(@piece_at_location);
                         world.write_model(@cap);
@@ -160,6 +171,54 @@ pub mod actions {
                 caps.append(world.read_model(cap));
             };
             Option::Some((game, caps.span()))
+        }
+
+        fn get_cap_data(self: @ContractState, cap_type: u16) -> Option<CapType> {
+            let mut world = self.world_default();
+            let res = match cap_type {
+                0 => Option::Some(CapType {
+                    name: "Red Tower",
+                    description: "Cap 1",
+                    move_cost: 1,
+                    attack_cost: 1,
+                    attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+                    move_range: Vec2 { x: 1, y: 1 },
+                    attack_dmg: 1,
+                    base_health: 10,
+                }),
+                1 => Option::Some(CapType {
+                    name: "Blue Tower",
+                    description: "Cap 2",
+                    move_cost: 1,
+                    attack_cost: 1,
+                    attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+                    move_range: Vec2 { x: 1, y: 1 },
+                    attack_dmg: 1,
+                    base_health: 10,
+                }),
+                2 => Option::Some(CapType {
+                    name: "Red Basic",
+                    description: "Cap 3",
+                    move_cost: 1,
+                    attack_cost: 3,
+                    attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 0, y: 3 }],
+                    move_range: Vec2 { x: 2, y: 2 },
+                    attack_dmg: 5,
+                    base_health: 5,
+                }),
+                3 => Option::Some(CapType {
+                    name: "Blue Basic",
+                    description: "Cap 4",
+                    move_cost: 1,
+                    attack_cost: 2,
+                    attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
+                    move_range: Vec2 { x: 3, y: 3 },
+                    attack_dmg: 3,
+                    base_health: 5,
+                }),
+                _ => Option::None,
+            };
+            res
         }
     }
 

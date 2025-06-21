@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
-      "class_hash": "0x7f2f52d169295e116c86abc57de634a03ae3080c396c59f8ae156e63d716689",
+      "class_hash": "0x2be9ebcb70fa8cb7814d53930598b32fdcadc39d9084774f25a2a1ed9114b83",
       "abi": [
         {
           "type": "impl",
@@ -1487,6 +1487,14 @@
             {
               "name": "position",
               "type": "caps::models::Vec2"
+            },
+            {
+              "name": "cap_type",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "dmg_taken",
+              "type": "core::integer::u16"
             }
           ]
         },
@@ -1507,6 +1515,58 @@
             {
               "name": "Some",
               "type": "(caps::models::Game, core::array::Span::<caps::models::Cap>)"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::CapType",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "description",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "move_cost",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "attack_cost",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "attack_range",
+              "type": "core::array::Array::<caps::models::Vec2>"
+            },
+            {
+              "name": "move_range",
+              "type": "caps::models::Vec2"
+            },
+            {
+              "name": "attack_dmg",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "base_health",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<caps::models::CapType>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "caps::models::CapType"
             },
             {
               "name": "None",
@@ -1566,6 +1626,22 @@
               "outputs": [
                 {
                   "type": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>)>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_cap_data",
+              "inputs": [
+                {
+                  "name": "cap_type",
+                  "type": "core::integer::u16"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<caps::models::CapType>"
                 }
               ],
               "state_mutability": "view"
@@ -1698,7 +1774,7 @@
     },
     {
       "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
-      "class_hash": "0x7bc131cd681b52c3771f02a80beb251f83abfc3be936f29a01cc1f6943d9be1",
+      "class_hash": "0x70344c02200b73380345a2fad29aea7affe33590e42011db925a39f4c6c95e0",
       "abi": [
         {
           "type": "impl",
@@ -1979,7 +2055,7 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x7232d1ad39df008de4e88d3466728d4b80e86e116e2b209b03ae1c104ea6423",
+      "class_hash": "0x59ed3b5ab3600fb737b82a24d074043bb5b47e22beae679264d7ed43557d5f",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
     },
