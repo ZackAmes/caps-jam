@@ -19,6 +19,7 @@ let game_state = $state<{game: Game, caps: Array<Cap>}>()
 
 let current_move = $state<Array<Action>>([])
 
+let initial_state = $state<{game: Game, caps: Array<Cap>}>()
 let selected_cap = $state<Cap | null>(null)
 
 let cap_types = $state<Array<CapType>>([])
@@ -31,7 +32,8 @@ export const caps = {
     get_game: async () => {
         if (planetelo.current_game_id) {
             let res = (await caps_contract.get_game(planetelo.current_game_id)).unwrap()
-            game_state = { game: res[0], caps: res[1] }
+            game_state = { game: res[0], caps: res[1] } 
+            initial_state = { game: res[0], caps: res[1] }
             console.log(game_state)
             for (let cap of game_state.caps) {
                 if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
@@ -74,6 +76,7 @@ export const caps = {
         current_move = []
         selected_cap = null
         energy = max_energy
+        game_state = initial_state
     },
 
     add_action: (action: Action) => {
@@ -101,6 +104,7 @@ export const caps = {
                     return
                 }
                 energy -= move_cost
+                selected_cap.position = position;
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
                 let action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
@@ -109,6 +113,7 @@ export const caps = {
                     return
                 }
                 energy -= move_cost
+                selected_cap.position = position;
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
@@ -120,6 +125,7 @@ export const caps = {
                     return
                 }
                 energy -= move_cost
+                selected_cap.position = position;
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
                 let action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
@@ -128,6 +134,7 @@ export const caps = {
                     return
                 }
                 energy -= move_cost
+                selected_cap.position = position;
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
