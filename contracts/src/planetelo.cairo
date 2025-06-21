@@ -105,25 +105,20 @@ mod planetelo {
             let mut new_ids: Array<u128> = ArrayTrait::new();
             let mut found = false;
 
-            let mut agent_games: AgentGames = caps_world.read_model(0);
+            let mut agent_games: AgentGames = world.read_model(0);
             let mut i = 0;
             while i < agent_games.game_ids.len() {
                 let game_id = agent_games.game_ids.at(i);
                 let game: Game = caps_world.read_model(*game_id);
-                let (over, winner) = @game.check_over(@caps_world);
-                if *over {
-                    if game.player2 == player_address || *winner == player_address {
-                        found = true;
-                        continue;
-                    }
-                    else{
-                        new_ids.append(*game_id);
-                    }
+                if player.game_id == *game_id && game.over {
+                    found = true;
+                    i+=1;
+                    continue;
                 }
                 else{
                     new_ids.append(*game_id);
                 }
-                i += 1;
+                i+=1;
             };
 
             if found {
