@@ -15,6 +15,6 @@
 {#if account.account}
   <button onclick={() => planetelo.update_status()}>Update Status</button>
 {/if}
-{#if account.account && planetelo.queue_status == 2}
-  <button onclick={() => caps.get_game()}>Refresh Game</button>
+{#if account.account && planetelo.queue_status == 2 && planetelo.current_game_id}
+  <button onclick={() => caps.get_game(planetelo.current_game_id!)}>Refresh Game</button>
 {/if}

@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x2b4eb09ed6fc96884f66f5b0680ca42ff0e2cfdfd17be5fb46b75ab88d710e5",
-    "seed": "capsooooools",
+    "address": "0xbb760a1575f8f3ae13374f476eb91624beb691e4adde73dac130dff6b09bf2",
+    "seed": "capsooooooooools",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
-      "class_hash": "0x10bc7707b99ef829663aa8cadd5013fdee2d766a6a2cc8a48e1dcfe7a413be7",
+      "address": "0x4c8a75f055e78b8517e9adcf7be60143be312a773b405da7be9ae5827f0171e",
+      "class_hash": "0x71cf5d6d8f3848446b9854de15bb9a92ef4bcf22ba8fa6b71f9b3d89f8e90d6",
       "abi": [
         {
           "type": "impl",
@@ -1777,8 +1777,8 @@
       ]
     },
     {
-      "address": "0x6bb6db921f193ec6febef17911ae801c6a0add040873dc34d30d75f548b3a43",
-      "class_hash": "0x2efb53247d4b40839d18dfe7e81caf80c3ca506748c3ca0209b2db0f16019fc",
+      "address": "0x48c3a5281e76334b95c0dbc48b9c5d80d44db6070159b2470dbcb5622ee4628",
+      "class_hash": "0x2ff4ab2245b9a55ac88bff944b32e1b1fbdca31592d647912975cc16461a35d",
       "abi": [
         {
           "type": "impl",
@@ -1880,6 +1880,22 @@
               "outputs": [
                 {
                   "type": "core::array::Array::<core::integer::u128>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_player_game_id",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::integer::u128"
                 }
               ],
               "state_mutability": "view"
@@ -2126,7 +2142,7 @@
     },
     {
       "members": [],
-      "class_hash": "0xeadb3e75396991ff49bd30506b68ca87151935782b44ce7e97dccb16b3b742",
+      "class_hash": "0x5354a6678d815cbc80d9af4c153574c6dd33f4ede1b0c2f378e4bd4cd6e60b9",
       "tag": "planetelo-Player",
       "selector": "0x54015881ce1a0053b8c9e3c5fe475c73734ecf4897aa47c9751ee98134b1dc8"
     }

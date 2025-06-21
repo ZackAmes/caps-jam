@@ -175,14 +175,12 @@ pub mod actions {
             if game.player1 == starknet::contract_address_const::<0x0>(){
                 return Option::None;
             }
-            let caps1 = get_player_pieces(game_id, game.player1, @world);
-            let caps2 = get_player_pieces(game_id, game.player2, @world);
-            let mut caps = ArrayTrait::new();
-            for cap in caps1 {
-                caps.append(world.read_model(cap));
-            };
-            for cap in caps2 {
-                caps.append(world.read_model(cap));
+            let mut i = 0;
+            let mut caps: Array<Cap> = ArrayTrait::new();
+            while i < game.caps_ids.len(){
+                let cap: Cap = world.read_model(*game.caps_ids[i]);
+                caps.append(cap);
+                i += 1;
             };
             Option::Some((game, caps.span()))
         }

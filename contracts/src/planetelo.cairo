@@ -29,6 +29,7 @@ pub struct Player {
     #[key]
     address: ContractAddress,
     in_game: bool,
+    game_id: u128,
 }
 
 #[starknet::interface]
@@ -37,6 +38,7 @@ trait IPlanetelo<T> {
     fn play_agent(ref self: T) -> u128;
     fn settle_agent_game(ref self: T);
     fn get_agent_games(self: @T) -> Array<u128>;
+    fn get_player_game_id(self: @T, address: ContractAddress) -> u128;
 }
 
 const agent_address: felt252 = 0x0694182a014b39855a1b139961a3f39e7d4b43527b30d892a630d66a2abe3780;
@@ -74,12 +76,12 @@ mod planetelo {
             let mut agent_games: AgentGames = world.read_model(0);
             let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
 
-            let agent = starknet::contract_address_const::<agent_address>();
-            let id: u128 = dispatcher.create_game(agent, get_caller_address()).into();
+            let id: u128 = dispatcher.create_game(agent_address.try_into().unwrap(), get_caller_address()).into();
 
             agent_games.game_ids.append(id);
             world.write_model(@agent_games);
             player.in_game = true;
+            player.game_id = id;
             world.write_model(@player);
 
             id
@@ -119,6 +121,7 @@ mod planetelo {
                 agent_games.game_ids = new_ids;
                 world.write_model(@agent_games);
                 player.in_game = false;
+                player.game_id = 0;
                 world.write_model(@player);
             }
             else{
@@ -130,6 +133,12 @@ mod planetelo {
             let mut world = self.world(@"planetelo");
             let mut agent_games: AgentGames = world.read_model(0);
             agent_games.game_ids
+        }
+
+        fn get_player_game_id(self: @ContractState, address: ContractAddress) -> u128 {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(address);
+            player.game_id
         }
     }
 

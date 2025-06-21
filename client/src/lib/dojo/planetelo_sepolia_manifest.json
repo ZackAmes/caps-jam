@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0xcdf692968cd60a4a9007d177f8c7c939783e9ef5ec0d2a8dd382820455b90c",
-    "seed": "pladfsasdsdfsdffs",
+    "address": "0x724f99307b94dc5d781ad464cc00ebfb60a0efcf8c5d7430295dacb3ebd3056",
+    "seed": "pladfsasdsdfsasddffs",
     "name": "Planetelo",
     "entrypoints": [
       "uuid",
@@ -1328,7 +1328,7 @@
   },
   "contracts": [
     {
-      "address": "0x34f1410266bfb9f4da39c33735393b21de782710bf1ce097f79993e73870ab",
+      "address": "0x67395b6d41e5817b6bd2d1685ceb0c2aec0ed4c138736f15938e19bb7f84de0",
       "class_hash": "0x500a6a0319f352ed2c7475fc6036ed85d25e3f36ac2888da16f30b3517abeb0",
       "abi": [
         {
@@ -1742,7 +1742,7 @@
       ]
     },
     {
-      "address": "0x25be8efbc3b62195397ff7c346e336e9f5ce1d7dbb6598f586f1edc0da537a9",
+      "address": "0x2e07d60abb7fe71df2bca04dcc5c6081623c6c4863737871bc2a4a4511cd021",
       "class_hash": "0x953845fba8399779474cdf00325ad39f2a2ebe117b5091c69617bbce90f7e2",
       "abi": [
         {

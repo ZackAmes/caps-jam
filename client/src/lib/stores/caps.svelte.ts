@@ -29,11 +29,12 @@ let energy = $derived(Number(game_state?.game.turn_count) + 2)
 
 export const caps = {
 
-    get_game: async () => {
-        if (planetelo.current_game_id) {
-            let res = (await caps_contract.get_game(planetelo.current_game_id)).unwrap()
+    get_game: async (id: number) => {
+        console.log('getting game', id)
+            let res = (await caps_contract.get_game(id)).unwrap()
             game_state = { game: res[0], caps: res[1] } 
             initial_state = { game: res[0], caps: res[1] }
+            planetelo.set_current_game_id(id);
             console.log(game_state)
             for (let cap of game_state.caps) {
                 if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
@@ -41,7 +42,6 @@ export const caps = {
                     cap_types.push(cap_type)
                 }
             }
-        }
     },
 
     get_cap_at: (x: number, y: number) => {

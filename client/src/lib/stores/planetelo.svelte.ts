@@ -4,6 +4,7 @@ import planetelo_manifest from "../dojo/planetelo_sepolia_manifest.json";
 import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
 import { caps } from "./caps.svelte";
+import caps_planetelo_manifest from "../../../../contracts/manifest_sepolia.json";
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
@@ -14,17 +15,23 @@ let plantelo_contract = new Contract(
     rpc
 ).typedv2(planetelo_manifest.contracts[0].abi as Abi)
 
+let caps_planetelo_contract = new Contract(
+    caps_planetelo_manifest.contracts[1].abi,
+    caps_planetelo_manifest.contracts[1].address,
+    rpc
+).typedv2(caps_planetelo_manifest.contracts[1].abi as Abi)
+
 let game_id = shortString.encodeShortString("caps");
 
 let queue_status = $state<number | null>(null)
 let current_game_id = $state<number | null>(null)
+let agent_game_id = $state<number | null>(null)
+let planetelo_game_id = $state<number | null>(null)
 let elo = $state<number | null>(null)
 
 export const planetelo = {
     address: planetelo_manifest.contracts[0].address,
     get_status: async () => {
-        console.log(plantelo_contract)
-        console.log(game_id)
         console.log(account.account!.address)
         let status = parseInt(await plantelo_contract.get_status(account.account!.address, game_id, "0x0"));
         console.log(status)
@@ -35,9 +42,13 @@ export const planetelo = {
         queue_status = status;
 
         let res = {status, elo, queue_length, game_id, winner: null};
+        let agent_game_id = await caps_planetelo_contract.get_player_game_id(account.account!.address);
+        console.log(agent_game_id)
+        agent_game_id = agent_game_id;
 
         if (status == 2) {
             let current_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
+            planetelo_game_id = current_game_id;
             res.game_id = current_game_id;
         }
         console.log(res)
@@ -50,8 +61,39 @@ export const planetelo = {
             console.log(status)
             queue_status = status.status;
             if (status.status == 2) {
-                current_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
+                planetelo_game_id = await plantelo_contract.get_player_game_id(account.account!.address, game_id, "0x0");
+                current_game_id = planetelo_game_id;
             }
+            agent_game_id = await caps_planetelo_contract.get_player_game_id(account.account!.address);
+            
+        }
+    },
+
+    play_agent: async () => {
+        if (account.account) {
+            let res = await account.account?.execute(
+                [{
+                    contractAddress: caps_planetelo_contract.address,
+                    entrypoint: 'play_agent',
+                    calldata: []
+                }]
+            );
+            console.log(res);
+            planetelo.update_status();
+        }
+    },
+
+    settle_agent_game: async () => {
+        if (account.account) {
+            let res = await account.account?.execute(
+                [{
+                    contractAddress: caps_planetelo_contract.address,
+                    entrypoint: 'settle_agent_game',
+                    calldata: []
+                }]
+            );
+            console.log(res);
+            planetelo.update_status();
         }
     },
 
@@ -104,7 +146,26 @@ export const planetelo = {
         current_game_id = null;
         queue_status = null;
         elo = null;
+        agent_game_id = null;
+        planetelo_game_id = null;
 
+    },
+
+    set_current_game_id: (id: number) => {
+        current_game_id = id;
+    },
+
+    switch_current_game: () => {
+        if (!planetelo_game_id || !agent_game_id) {
+            planetelo.get_status();
+            return;
+        }
+        if (current_game_id == agent_game_id) {
+            current_game_id = planetelo_game_id;
+        }
+        else {
+            current_game_id = agent_game_id;
+        }
     },
 
     get queue_status() {
@@ -113,6 +174,14 @@ export const planetelo = {
 
     get current_game_id() {
         return current_game_id;
+    },
+
+    get agent_game_id() {
+        return agent_game_id;
+    },
+
+    get planetelo_game_id() {
+        return planetelo_game_id;
     },
 
     get elo() {

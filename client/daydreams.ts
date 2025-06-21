@@ -94,6 +94,7 @@ const capsContext = context({
             let active_games = await caps_planetelo_contract.get_agent_games()
 
             console.log('active_games', active_games)
+
       
 
             timeout = setTimeout(async () => {
@@ -101,9 +102,12 @@ const capsContext = context({
                 let active_games = await caps_planetelo_contract.get_agent_games()
 
                 console.log('active_games', active_games)
+
+            let to_play = active_games[0];
+
+            let piece_info = await get_piece_info_str(to_play)
+            let game_state = await get_game_state_str(to_play)
       
-                let piece_info = await caps_actions_contract.get_piece_info()
-                let game_state = await caps_actions_contract.get_game_state()
       
               let context = {
                 id: "caps",

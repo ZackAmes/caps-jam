@@ -44,10 +44,16 @@
         <Game />
       </Canvas>
     </div>
+    {:else if planetelo.agent_game_id && !caps.game_state}
+    <div class="card">
+      <button onclick={() => {
+        caps.get_game(planetelo.agent_game_id!);
+      }}>Get Agent Game</button>
+    </div>
   {:else if planetelo.queue_status == 2 && !caps.game_state}
   <div class="card">
     <button onclick={() => {
-      caps.get_game();
+      caps.get_game(planetelo.planetelo_game_id!);
     }}>Get Game</button>
   </div>
   {:else if planetelo.queue_status == 2 && caps.game_state && caps.game_state.game.over}
