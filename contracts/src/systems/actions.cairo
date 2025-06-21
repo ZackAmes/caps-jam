@@ -9,6 +9,7 @@ pub trait IActions<T> {
     fn get_cap_data(self: @T, cap_type: u16) -> Option<CapType>;
 }
 
+
 // dojo decorator
 #[dojo::contract]
 pub mod actions {
@@ -16,6 +17,7 @@ pub mod actions {
     use starknet::{ContractAddress, get_caller_address};
     use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType};
     use caps::helpers::{get_player_pieces, get_piece_locations};
+    use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
@@ -142,7 +144,7 @@ pub mod actions {
                         let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
-                        if(!cap.check_attack(@cap_type.attack_range, *target, @world)) {
+                        if(!cap.check_in_range(*target, cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
                         piece_at_location.dmg_taken += cap_type.attack_dmg;
@@ -155,6 +157,10 @@ pub mod actions {
                         }
                         world.write_model(@cap);
                         world.write_model(@game);
+                    },
+                    ActionType::Ability(target) => {
+                        assert!(cap.check_ability(*target, game_id, @world), "Ability is not valid");
+                        panic!("Ability is not implemented");
                     }
                 }
                 i = i + 1;
@@ -194,6 +200,7 @@ pub mod actions {
                     move_cost: 1,
                     attack_cost: 1,
                     attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+                    ability_range: array![],
                     move_range: Vec2 { x: 1, y: 1 },
                     attack_dmg: 1,
                     base_health: 10,
@@ -205,6 +212,7 @@ pub mod actions {
                     move_cost: 1,
                     attack_cost: 1,
                     attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+                    ability_range: array![],
                     move_range: Vec2 { x: 1, y: 1 },
                     attack_dmg: 1,
                     base_health: 10,
@@ -216,6 +224,7 @@ pub mod actions {
                     move_cost: 1,
                     attack_cost: 3,
                     attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 0, y: 3 }],
+                    ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
                     move_range: Vec2 { x: 2, y: 2 },
                     attack_dmg: 5,
                     base_health: 5,
@@ -227,6 +236,7 @@ pub mod actions {
                     move_cost: 1,
                     attack_cost: 2,
                     attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
+                    ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
                     move_range: Vec2 { x: 3, y: 3 },
                     attack_dmg: 3,
                     base_health: 5,

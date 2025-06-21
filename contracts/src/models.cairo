@@ -1,7 +1,7 @@
 use starknet::{ContractAddress};
 use dojo::model::{ModelStorage};
 use dojo::world::WorldStorage;
-use core::dict::Felt252Dict;
+use caps::helpers::get_piece_locations;
 
 #[derive(Copy, Drop, Serde, Debug)]
 #[dojo::model]
@@ -105,6 +105,7 @@ pub struct CapType {
     pub attack_cost: u8,
     // Attack range is the squares relative to the cap's position that can be attacked
     pub attack_range: Array<Vec2>,
+    pub ability_range: Array<Vec2>,
     // Move range is the x range, y range
     pub move_range: Vec2,
     pub attack_dmg: u16,
@@ -123,6 +124,7 @@ pub struct Action {
 pub enum ActionType {
     Move: Vec2,
     Attack: Vec2,
+    Ability: Vec2,
 }
 
 #[generate_trait]
@@ -203,12 +205,11 @@ pub impl CapImpl of CapTrait {
         self.position = new_position;
     }
 
-    fn check_attack(self: @Cap, attack_range: @Array<Vec2>, target: Vec2, world: @WorldStorage) -> bool {
-        let mut i = 0;
+    fn check_in_range(self: @Cap, target: Vec2, range: Array<Vec2>) -> bool {
         let mut valid = false;
-        
-        while i < attack_range.len() {
-            let to_check: Vec2 = *attack_range[i];
+        let mut i = 0;
+        while i < range.len() {
+            let to_check: Vec2 = *range[i];
             if target.x >= *self.position.x && target.y >= *self.position.y {
                 if to_check.x + *self.position.x > 6 {
                     i+=1;
@@ -284,6 +285,54 @@ pub impl CapImpl of CapTrait {
             i += 1;
         };
         valid
+    }
+
+    fn check_ability(self: @Cap, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
+        let mut locations = get_piece_locations(game_id, world);
+        let cap_type: CapType = world.read_model(*self.cap_type);
+        match *self.cap_type {
+            // Red Tower
+            // Towers have no abilities for now
+            0 => {
+                false
+            },
+
+            //Blue Tower
+            1 => {
+                false
+            },
+            // Red Basic
+            2 => {
+                let in_range = self.check_in_range(target, cap_type.ability_range);
+                let at_location_index = locations.get((*self.position.x * 7 + *self.position.y).into());
+                let at_location: Cap = world.read_model(at_location_index);
+                //Must be opponent
+                if at_location.owner == *self.owner {
+                    return false;
+                }
+                if in_range {
+                    return true;
+                }
+                false
+            },
+            // Blue Basic
+            3 => {
+                let in_range = self.check_in_range(target, cap_type.ability_range);
+                let at_location_index = locations.get((*self.position.x * 7 + *self.position.y).into());
+                let at_location: Cap = world.read_model(at_location_index);
+                //Must be player's piece
+                if at_location.owner != *self.owner {
+                    return false;
+                }
+                if in_range {
+                    return true;
+                }
+                false
+            },
+            _ => {
+                false
+            },
+        }
     }
 }
 
