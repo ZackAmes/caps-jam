@@ -22,6 +22,7 @@
     "@cartridge/controller": "^0.7.13",
     "@daydreamsai/chromadb": "^0.3.8",
     "@daydreamsai/core": "^0.3.8",
+    "@daydreamsai/defai": "^0.3.8",
     "@daydreamsai/discord": "^0.3.8",
     "@threlte/core": "^8.0.5",
     "@threlte/extras": "^9.4.0",
