@@ -23,6 +23,9 @@ let selected_cap = $state<Cap | null>(null)
 
 let cap_types = $state<Array<CapType>>([])
 
+let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
+let energy = $derived(Number(game_state?.game.turn_count) + 2)
+
 export const caps = {
 
     get_game: async () => {
@@ -70,6 +73,7 @@ export const caps = {
     reset_move: () => {
         current_move = []
         selected_cap = null
+        energy = max_energy
     },
 
     add_action: (action: Action) => {
@@ -78,6 +82,9 @@ export const caps = {
     },
 
     handle_click: (position: {x: number, y: number}) => {
+        let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+        let move_cost = Number(cap_type?.move_cost)
+        let attack_cost = Number(cap_type?.attack_cost)
         if (selected_cap && selected_cap.position.x == position.x && selected_cap.position.y == position.y) {
             selected_cap = null
           }
@@ -89,23 +96,48 @@ export const caps = {
             if (selected_cap.position.x == position.x) {
               if (BigInt(position.y) > BigInt(selected_cap.position.y)) {
                 let action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}, Attack: undefined})
+                if (energy < move_cost) {
+                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
+                    return
+                }
+                energy -= move_cost
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
                 let action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
+                if (energy < move_cost) {
+                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
+                    return
+                }
+                energy -= move_cost
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
             else if (selected_cap.position.y == position.y) {
               if (BigInt(position.x) > BigInt(selected_cap.position.x)) {
                 let action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}, Attack: undefined})
+                if (energy < move_cost) {
+                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
+                    return
+                }
+                energy -= move_cost
                 caps.add_action({cap_id: selected_cap.id, action_type})
               } else {
                 let action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
+                if (energy < move_cost) {
+                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
+                    return
+                }
+                energy -= move_cost
                 caps.add_action({cap_id: selected_cap.id, action_type})
               }
             }
           } else if (selected_cap && cap && cap.owner != account.account?.address) {
             let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}})
+            if (energy < attack_cost) {
+                alert(`Not enough energy! Need ${attack_cost} but only have ${energy}`)
+                return
+            }
+            energy -= attack_cost
             caps.add_action({cap_id: selected_cap.id, action_type})
           }
           console.log('selected_cap', selected_cap)
@@ -123,6 +155,18 @@ export const caps = {
 
     get cap_types() {
         return cap_types;
+    },
+
+    get current_move() {
+        return current_move
+    },
+
+    get energy() {
+        return energy
+    },
+
+    get max_energy() {
+        return max_energy
     }
     
 

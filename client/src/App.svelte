@@ -9,7 +9,7 @@
   import { account } from './lib/stores/account.svelte'
     import Matchmaking from './lib/Matchmaking.svelte';
     import CapData from './lib/ui/cap_data.svelte';
-
+    import MoveData from './lib/ui/move_data.svelte';
   $effect(() => {
     console.log(planetelo.queue_status)
  //   planetelo.update_status();
@@ -38,6 +38,7 @@
     <button onclick={() => {
       caps.take_turn();
     }}>Take Turn</button>
+    <MoveData />
     <div class="game-container">
       <Canvas>
         <Game />
