@@ -15,7 +15,7 @@ import {
   import { google } from "@ai-sdk/google";
   import { discord } from "@daydreamsai/discord";
   import { StarknetChain } from "@daydreamsai/defai";
-  import { CapType } from "../contracts/bindings/typescript/models.gen";
+  import { CapType, Action } from "../contracts/bindings/typescript/models.gen";
   // Validate environment before proceeding
   const env = validateEnv(
     z.object({
@@ -25,7 +25,7 @@ import {
     })
   );
 
-import { Contract, type Abi } from "starknet";
+import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
 import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
 import caps_manifest from "../contracts/manifest_sepolia.json";
@@ -96,6 +96,12 @@ const capsContext = context({
             console.log('active_games', active_games)
 
       
+            let to_play = active_games[0];
+
+            let piece_info = await get_piece_info_str(to_play)
+            let game_state = await get_game_state_str(to_play)
+            console.log('piece_info', piece_info)
+            console.log('game_state', game_state)
 
             timeout = setTimeout(async () => {
 
@@ -149,7 +155,7 @@ const capsContext = context({
             Move Cost: ${cap_type.move_cost}
             Attack Cost: ${cap_type.attack_cost}
             Move Range: ${cap_type.move_range.x}, ${cap_type.move_range.y}
-            Attack Range: ${cap_type.attack_range.map(range => `${range.x}, ${range.y}`).join(", ")}
+            Attack Range: ${cap_type.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
             Attack Damage: ${cap_type.attack_dmg}
             Base Health: ${cap_type.base_health}
             `
@@ -176,7 +182,7 @@ const capsContext = context({
         }
         
         // Convert grid to ASCII string
-        let asciiGrid = '\nGame Board:\n';
+        let asciiGrid = '\nGame Board for game_id: ' + game_id + ':\n';
         asciiGrid += '  ' + Array.from({length: gridSize}, (_, i) => i).join(' ') + '\n';
         
         for (let y = 0; y < gridSize; y++) {
@@ -193,8 +199,22 @@ const capsContext = context({
         
         
         // Add caps details
-        let capsDetails = '\nCaps Details:\n';
-        capsDetails += game_state.caps.map(cap => {
+        let owned_caps = game_state.caps.filter(cap => {
+          return cap.owner == 2597078226917024488083389374508788873626221284030589812100304688300591636319n
+        })
+        let opponent_caps = game_state.caps.filter(cap => {
+          return cap.owner != 2597078226917024488083389374508788873626221284030589812100304688300591636319n
+        })
+        console.log('owned_caps', owned_caps)
+        let capsDetails = '\nYour Caps Details:\n';
+        capsDetails += owned_caps.map(cap => {
+          let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
+          let cur_health = cap_type?.base_health - cap.dmg_taken;
+
+            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
+        }).join('\n');
+        capsDetails += '\n\nOpponent Caps Details:\n';
+        capsDetails += opponent_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = cap_type?.base_health - cap.dmg_taken;
 
@@ -209,14 +229,38 @@ export const take_turn = (chain: StarknetChain) => action({
     name: "take_turn",
     description: "Take a turn in the game",
     schema: z.object({
+        game_id: z.number().describe("should be the id of the game to take a turn in"),
         actions: z.array(z.object({
             type: z.string().describe("should be Move or Attack"),
+            id: z.number().describe("should be the id of the cap to move or attack"),
             arg1: z.number().describe("should be the direction for Move, or the x coord of the target for Attack"),
             arg2: z.number().describe("should be the distance for Move, or the y coord of the target for Attack")
             
     }))}),
-    async handler(args: { actions: { type: string, arg1: number, arg2: number }[] }, ctx: any, agent: Agent) {
-        console.log('actions', args)
+    async handler(args: { game_id: number, actions: { type: string, id: number, arg1: number, arg2: number }[] }, ctx: any, agent: Agent) {
+
+      let actions: Array<Action> = []
+      if (args.actions[0].type == "Move") {
+        let action_type = new CairoCustomEnum({ Move: {x: args.actions[0].arg1, y: BigInt(args.actions[0].arg2)}, Attack: undefined})
+        actions.push({cap_id: args.actions[0].id, action_type: action_type})
+      }
+      else if (args.actions[0].type == "Attack") {
+        let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: args.actions[0].arg1, y: args.actions[0].arg2}})
+        actions.push({cap_id: args.actions[0].id, action_type: action_type})
+      }
+
+      let calldata = CallData.compile([args.game_id, actions])
+      console.log('calldata', calldata)
+
+      let res = await chain.account.execute(
+        [{
+          contractAddress: caps_actions_contract.address,
+          entrypoint: 'take_turn',
+          calldata: calldata
+        }]
+      )
+
+      console.log('res', res)
     }
 })
       
@@ -269,13 +313,14 @@ export const take_turn = (chain: StarknetChain) => action({
 
       Also, remember that pieces cannot move to a coordinate if it is already occupied by a piece, and can only attack opponents pieces.
 
-      Here are all the pieces that are in the current game: 
+      Here is the information about the pieces that are in the current game: 
       {{piece_info}}
 
-      Here is the current game state:
+      Here is the current game state, including the board and the pieces:
       {{game_state}}
 
       Remember that the most important thing is to submit valid moves.
+      This means that you should only every try to move pieces that are yours. and attack pieces that are your opponent's.
 
   `
   
