@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x494ea48bf89af75ceba400030493c519a386d78d57a6bb5595d5a639ae634cb",
-      "class_hash": "0x6b5ce909c2d6d023e43532fccc29cd2f403126a21344203cc8034d99d0b1459",
+      "class_hash": "0x58fa1826697f6f8475ccf41473ace30b00fb19d5fb60ddd7635fe63293614b1",
       "abi": [
         {
           "type": "impl",
@@ -1526,6 +1526,10 @@
           "type": "struct",
           "name": "caps::models::CapType",
           "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u16"
+            },
             {
               "name": "name",
               "type": "core::byte_array::ByteArray"
@@ -2058,6 +2062,12 @@
       "class_hash": "0x59ed3b5ab3600fb737b82a24d074043bb5b47e22beae679264d7ed43557d5f",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
+    },
+    {
+      "members": [],
+      "class_hash": "0x2b68941374e29466c3d94306912b4057f03159ba805a4f3ac4d98bb92c6e88e",
+      "tag": "caps-CapType",
+      "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
     {
       "members": [],
