@@ -94,8 +94,11 @@ pub struct Cap {
     pub dmg_taken: u16,
 }
 
-#[derive(Drop, Serde, Debug)]
+#[derive(Drop, Serde, Debug, Introspect)]
+#[dojo::model]
 pub struct CapType {
+    #[key]
+    pub id: u16,
     pub name: ByteArray,
     pub description: ByteArray,
     pub move_cost: u8,
@@ -107,6 +110,8 @@ pub struct CapType {
     pub attack_dmg: u16,
     pub base_health: u16,
 }
+
+
 
 #[derive(Drop, Serde, Clone, Introspect)]
 pub struct Action {

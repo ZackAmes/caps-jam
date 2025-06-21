@@ -25,6 +25,23 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
+	const build_actions_getCapData_calldata = (capType: BigNumberish): DojoCall => {
+		return {
+			contractName: "actions",
+			entrypoint: "get_cap_data",
+			calldata: [capType],
+		};
+	};
+
+	const actions_getCapData = async (capType: BigNumberish) => {
+		try {
+			return await provider.call("dojo_starter", build_actions_getCapData_calldata(capType));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
 	const build_actions_getGame_calldata = (gameId: BigNumberish): DojoCall => {
 		return {
 			contractName: "actions",
@@ -128,6 +145,8 @@ export function setupWorld(provider: DojoProvider) {
 		actions: {
 			createGame: actions_createGame,
 			buildCreateGameCalldata: build_actions_createGame_calldata,
+			getCapData: actions_getCapData,
+			buildGetCapDataCalldata: build_actions_getCapData_calldata,
 			getGame: actions_getGame,
 			buildGetGameCalldata: build_actions_getGame_calldata,
 			takeTurn: actions_takeTurn,

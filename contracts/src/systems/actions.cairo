@@ -186,6 +186,7 @@ pub mod actions {
             let mut world = self.world_default();
             let res = match cap_type {
                 0 => Option::Some(CapType {
+                    id: 0,
                     name: "Red Tower",
                     description: "Cap 1",
                     move_cost: 1,
@@ -196,6 +197,7 @@ pub mod actions {
                     base_health: 10,
                 }),
                 1 => Option::Some(CapType {
+                    id: 1,
                     name: "Blue Tower",
                     description: "Cap 2",
                     move_cost: 1,
@@ -206,6 +208,7 @@ pub mod actions {
                     base_health: 10,
                 }),
                 2 => Option::Some(CapType {
+                    id: 2,
                     name: "Red Basic",
                     description: "Cap 3",
                     move_cost: 1,
@@ -216,6 +219,7 @@ pub mod actions {
                     base_health: 5,
                 }),
                 3 => Option::Some(CapType {
+                    id: 3,
                     name: "Blue Basic",
                     description: "Cap 4",
                     move_cost: 1,

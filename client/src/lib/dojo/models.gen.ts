@@ -7,12 +7,41 @@ export interface Cap {
 	id: BigNumberish;
 	owner: string;
 	position: Vec2;
+	cap_type: BigNumberish;
+	dmg_taken: BigNumberish;
+}
+
+// Type definition for `caps::models::CapType` struct
+export interface CapType {
+	id: BigNumberish;
+	name: string;
+	description: string;
+	move_cost: BigNumberish;
+	attack_cost: BigNumberish;
+	attack_range: Array<Vec2>;
+	move_range: Vec2;
+	attack_dmg: BigNumberish;
+	base_health: BigNumberish;
+}
+
+// Type definition for `caps::models::CapTypeValue` struct
+export interface CapTypeValue {
+	name: string;
+	description: string;
+	move_cost: BigNumberish;
+	attack_cost: BigNumberish;
+	attack_range: Array<Vec2>;
+	move_range: Vec2;
+	attack_dmg: BigNumberish;
+	base_health: BigNumberish;
 }
 
 // Type definition for `caps::models::CapValue` struct
 export interface CapValue {
 	owner: string;
 	position: Vec2;
+	cap_type: BigNumberish;
+	dmg_taken: BigNumberish;
 }
 
 // Type definition for `caps::models::Game` struct
@@ -97,6 +126,8 @@ export type ActionTypeEnum = CairoCustomEnum;
 export interface SchemaType extends ISchemaType {
 	caps: {
 		Cap: Cap,
+		CapType: CapType,
+		CapTypeValue: CapTypeValue,
 		CapValue: CapValue,
 		Game: Game,
 		GameValue: GameValue,
@@ -116,10 +147,35 @@ export const schema: SchemaType = {
 			id: 0,
 			owner: "",
 		position: { x: 0, y: 0, },
+			cap_type: 0,
+			dmg_taken: 0,
+		},
+		CapType: {
+			id: 0,
+		name: "",
+		description: "",
+			move_cost: 0,
+			attack_cost: 0,
+			attack_range: [{ x: 0, y: 0, }],
+		move_range: { x: 0, y: 0, },
+			attack_dmg: 0,
+			base_health: 0,
+		},
+		CapTypeValue: {
+		name: "",
+		description: "",
+			move_cost: 0,
+			attack_cost: 0,
+			attack_range: [{ x: 0, y: 0, }],
+		move_range: { x: 0, y: 0, },
+			attack_dmg: 0,
+			base_health: 0,
 		},
 		CapValue: {
 			owner: "",
 		position: { x: 0, y: 0, },
+			cap_type: 0,
+			dmg_taken: 0,
 		},
 		Game: {
 			id: 0,
@@ -179,6 +235,8 @@ export const schema: SchemaType = {
 };
 export enum ModelsMapping {
 	Cap = 'caps-Cap',
+	CapType = 'caps-CapType',
+	CapTypeValue = 'caps-CapTypeValue',
 	CapValue = 'caps-CapValue',
 	Game = 'caps-Game',
 	GameValue = 'caps-GameValue',

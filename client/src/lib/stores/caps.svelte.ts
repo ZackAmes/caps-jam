@@ -3,7 +3,7 @@ import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
 import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
-import type { Game, Cap, Action, ActionType } from "./../dojo/models.gen"
+import type { Game, Cap, Action, ActionType, CapType } from "./../dojo/models.gen"
 
 
 let rpc = new RpcProvider({
@@ -21,6 +21,8 @@ let current_move = $state<Array<Action>>([])
 
 let selected_cap = $state<Cap | null>(null)
 
+let cap_types = $state<Array<CapType>>([])
+
 export const caps = {
 
     get_game: async () => {
@@ -28,6 +30,12 @@ export const caps = {
             let res = (await caps_contract.get_game(planetelo.current_game_id)).unwrap()
             game_state = { game: res[0], caps: res[1] }
             console.log(game_state)
+            for (let cap of game_state.caps) {
+                if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
+                    let cap_type = await caps_contract.get_cap_type(cap.cap_type)
+                    cap_types.push(cap_type)
+                }
+            }
         }
     },
 
@@ -100,6 +108,8 @@ export const caps = {
             let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}})
             caps.add_action({cap_id: selected_cap.id, action_type})
           }
+          console.log('selected_cap', selected_cap)
+          console.log('cap_type', cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type))
     },
 
     get selected_cap() {
