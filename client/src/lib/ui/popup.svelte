@@ -1,6 +1,6 @@
 <script lang="ts">
     import { caps } from '../stores/caps.svelte';
-    
+    import type { Cap } from '../dojo/models.gen';
     let popup = caps.popup_state;
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
@@ -13,9 +13,43 @@
         x: popup.render_position.x, // offset from board edge
         y: popup.render_position.y - 150
     } : { x: 300, y: 100 });
+    let get_action_details = (cap: Cap) => {
+        if (!cap || !caps.cap_types) return [];
+        
+        const capType = caps.cap_types.find(ct => ct.id == cap.cap_type);
+        if (!capType) return [];
+        
+        return popup.available_actions.map(action => {
+            let cost = 0;
+            let canAfford = true;
+            
+            switch (action.type) {
+                case 'move':
+                    cost = Number(capType.move_cost);
+                    break;
+                case 'attack':
+                    cost = Number(capType.attack_cost);
+                    break;
+                case 'ability':
+                    cost = Number(capType.ability_cost);
+                    break;
+            }
+            
+            canAfford = caps.energy >= cost;
+            
+            return {
+                ...action,
+                cost,
+                canAfford,
+                label: `${action.label} (${cost})`
+            };
+        })
+    }
+    // Get the cost and availability for each action
+    let actionDetails = $derived(get_action_details(caps.selected_cap!));
     
-    function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string}) {
-        if (popup.position) {
+    function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean}) {
+        if (popup.position && action.canAfford) {
             caps.execute_action(action.type, popup.position);
         }
     }
@@ -55,11 +89,18 @@
             </div>
             
             <div class="content">
+                <div class="energy-display">
+                    Energy: {caps.energy}/{caps.max_energy}
+                </div>
+                
                 <div class="action-buttons">
-                    {#each popup.available_actions as action}
+                    {#each actionDetails as action}
                         <button 
                             class="action-button action-{action.type}"
+                            class:disabled={!action.canAfford}
                             onclick={() => handleActionClick(action)}
+                            disabled={!action.canAfford}
+                            title={action.canAfford ? '' : `Need ${action.cost} energy (have ${caps.energy})`}
                         >
                             {action.label}
                         </button>
@@ -83,7 +124,7 @@
         border: 2px solid #333;
         border-radius: 4px;
         padding: 8px;
-        width: 120px;
+        width: 140px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         font-family: Arial, sans-serif;
         font-size: 12px;
@@ -122,6 +163,18 @@
         color: #444;
     }
 
+    .energy-display {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 3px;
+        padding: 4px 6px;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #0369a1;
+        text-align: center;
+    }
+
     .action-buttons {
         display: flex;
         flex-direction: column;
@@ -133,13 +186,25 @@
         border: none;
         border-radius: 3px;
         cursor: pointer;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         transition: all 0.2s;
+        position: relative;
     }
 
-    .action-button:hover {
+    .action-button:hover:not(.disabled) {
         transform: translateY(-1px);
+    }
+
+    .action-button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background-color: #9ca3af !important;
+        color: #6b7280 !important;
+    }
+
+    .action-button.disabled:hover {
+        transform: none;
     }
 
     .action-move {
@@ -147,7 +212,7 @@
         color: white;
     }
 
-    .action-move:hover {
+    .action-move:hover:not(.disabled) {
         background-color: #2563eb;
     }
 
@@ -156,7 +221,7 @@
         color: white;
     }
 
-    .action-attack:hover {
+    .action-attack:hover:not(.disabled) {
         background-color: #dc2626;
     }
 
@@ -165,7 +230,7 @@
         color: white;
     }
 
-    .action-ability:hover {
+    .action-ability:hover:not(.disabled) {
         background-color: #7c3aed;
     }
 </style>

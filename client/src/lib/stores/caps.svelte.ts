@@ -3,7 +3,7 @@ import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
 import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
-import type { Game, Cap, Action, ActionType, CapType, Vec2 } from "./../dojo/models.gen"
+import type { Game, Cap, Action, ActionType, CapType, Vec2, Effect } from "./../dojo/models.gen"
 
 
 let rpc = new RpcProvider({
@@ -15,14 +15,14 @@ let caps_contract = new Contract(
     rpc
 ).typedv2(manifest.contracts[0].abi as Abi)
 
-let game_state = $state<{game: Game, caps: Array<Cap>}>()
+let game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
 
 let current_move = $state<Array<Action>>([])
 
-let initial_state = $state<{game: Game, caps: Array<Cap>}>()
+let initial_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
 let selected_cap = $state<Cap | null>(null)
 let popup_state = $state<{
-    visible: boolean,
+    visible: boolean,   
     position: {x: number, y: number} | null,
     render_position: {x: number, y: number} | null,
     available_actions: Array<{type: 'move' | 'attack' | 'ability', label: string}> 
@@ -147,8 +147,8 @@ let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.position.
 
 let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
-let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
-let energy = $state(max_energy)
+let max_energy = $derived(Number(game_state?.game.turn_count ?? 0) + 2)
+let energy = max_energy
 
 
 
@@ -272,6 +272,7 @@ export const caps = {
                     cap_types.push(cap_type)
                 }
             }
+            energy = max_energy;
     },
 
     get_cap_at: (x: number, y: number) => {
@@ -293,13 +294,16 @@ export const caps = {
             console.log(res)
             current_move = []
             selected_cap = null
+            energy = max_energy;
         }
     },
     
     reset: () => {
         game_state = undefined;
         current_move = [];
+        energy = max_energy;
         selected_cap = null;
+        
     },
 
     reset_move: () => {
