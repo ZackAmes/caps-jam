@@ -17,11 +17,21 @@ pub enum Status {
 
 #[derive(Drop, Serde, Introspect)]
 #[dojo::model]
+pub struct GlobalStats {
+    #[key]
+    id: u8,
+    games_played: u64,
+}
+
+#[derive(Drop, Serde, Introspect)]
+#[dojo::model]
 pub struct AgentGames {
     #[key]
     id: u8,
     game_ids: Array<u128>,
     address: ContractAddress,
+    wins: u8,
+    losses: u8,
 }
 
 #[derive(Drop, Serde, Introspect)]
@@ -31,6 +41,8 @@ pub struct Player {
     address: ContractAddress,
     in_game: bool,
     game_id: u128,
+    agent_wins: u8,
+    agent_losses: u8,
 }
 
 #[starknet::interface]
@@ -44,7 +56,7 @@ trait IPlanetelo<T> {
 
 #[dojo::contract]
 mod planetelo {
-    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player};
+    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player, GlobalStats};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use dojo::world::{WorldStorage, WorldStorageTrait};    
     use dojo::model::{ModelStorage};
@@ -122,7 +134,22 @@ mod planetelo {
             };
 
             if found {
+                let game: Game = caps_world.read_model(player.game_id);
+                let (over, winner) = @game.check_over(@caps_world);
+                if *winner == player_address {
+                    player.agent_wins += 1;
+                    agent_games.losses += 1;
+                }
+                else if *winner == agent_games.address {
+                    agent_games.wins += 1;
+                    player.agent_losses += 1;
+                } else {
+                    panic!("Winner is neither player nor agent????");
+                }
                 agent_games.game_ids = new_ids;
+                let mut global_stats: GlobalStats = world.read_model(0);
+                global_stats.games_played += 1;
+                world.write_model(@global_stats);
                 world.write_model(@agent_games);
                 player.in_game = false;
                 player.game_id = 0;

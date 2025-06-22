@@ -405,6 +405,7 @@ pub struct Effect {
     pub effect_id: u64,
     pub effect_type: EffectType,
     pub target: EffectTarget,
+    pub remaining_triggers: u8,
 }
 
 #[derive(Copy, Drop, Serde, Introspect)]

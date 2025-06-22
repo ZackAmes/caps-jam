@@ -93,14 +93,21 @@ const capsContext = context({
 
               let i = 0;
               let to_play = 0;
+              let found = false;
               while (i < active_games.length) {
                 to_play = active_games[i];
                 game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
                 if (!game_state[0].over) {
                   console.log('found game to play')
+                  found = true;
                   break;
                 }
                 i+=1;
+              }
+
+              if (!found) {
+                console.log('no game to play')
+                return;
               }
 
               let game_state_str = await get_game_state_str(to_play)
@@ -133,10 +140,11 @@ const capsContext = context({
         ${cap_type?.id}: ${cap_type?.name}
         Move Cost: ${cap_type?.move_cost}
         Attack Cost: ${cap_type?.attack_cost}
-        Move Range: ${cap_type?.move_range.x}, ${cap_type?.move_range.y}
+        Ability Cost: ${cap_type?.ability_cost}
+        Attack Damage: ${cap_type?.attack_dmg}
+        Move Range: x: ${cap_type?.move_range.x}, y: ${cap_type?.move_range.y}
         Attack Pattern: ${cap_type?.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
         Ability Pattern: ${cap_type?.ability_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
-        Ability Cost: ${cap_type?.ability_cost}
         Ability Target: ${cap_type?.ability_target.activeVariant()}
         Ability Description: ${cap_type?.ability_description}
         `

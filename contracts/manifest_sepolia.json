@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x6dc5e3b2bcbf5c13814bc680f68e223b03d0eba0fe280d1d410a3ff280361e3",
-    "seed": "casdsfsdsls",
+    "address": "0x2cf4d9b59fd9a2b5e9c98c42e7bf90758a660c3f73dd7bd88ad0f5b5990431",
+    "seed": "ca12sdsfsdsls",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x9d001ed9ee005a9eff13f6c7866e1a232872312cb68886e60b59ce8c943d4a",
-      "class_hash": "0x132d001b353939ca020e6682ab35228cf0b352fcaea65798d5be01b44defb84",
+      "address": "0x380f182e79d023da69432670ebef809f62bebf903f3758936b7531f4e4c8f",
+      "class_hash": "0x6d5a2de8d24c8887ba2ee4dc309176fcf7c3c2864fab87cde0c7a36dada80ce",
       "abi": [
         {
           "type": "impl",
@@ -1843,8 +1843,8 @@
       ]
     },
     {
-      "address": "0x79a8da447e7360fde6112eebf6634dd3ab8a542826fc8a80d8fb2ff4e41eee7",
-      "class_hash": "0x4c2aae7b923ab5f534752902fcd97df7432ef444ea3433f615fce4d182c3654",
+      "address": "0x21e168a172597326f3742f9d97d19c40a809738dc4cbe235ef0a125f09d5895",
+      "class_hash": "0x12093da723419f39b7a4ae3697a7bc14c2cef0448b5d1d8ea5e5cc0dc8e4340",
       "abi": [
         {
           "type": "impl",
@@ -2206,7 +2206,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x1f8143ec80bbc89a44d861e1c34e4efab5b381e12958f2a4d58705ba4eb648b",
+      "class_hash": "0x3e6716cea3d23e23efda1cc3a113dee14914d5ac9c09a0a3e64ccaa7e8476ef",
       "tag": "caps-Effect",
       "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
     },
@@ -2224,19 +2224,25 @@
     },
     {
       "members": [],
+      "class_hash": "0x605a27ff77d7d34d9fa2763253e38401e3e74ad660ad5e6258a1ebf73d27b73",
+      "tag": "caps-GlobalStats",
+      "selector": "0x773bde9b14ec210e2d80fbd561c5715411c7d1b640bec35a7cd357b35ae510f"
+    },
+    {
+      "members": [],
       "class_hash": "0xdd1b87e685f79a67e791c2dca233ecbb69db299cfc35e4ffb733d35f3d95c6",
       "tag": "caps-Square",
       "selector": "0x25162d41aa11d953b327257d2132ea33b48a49e2146e30ebda33a9c8456114a"
     },
     {
       "members": [],
-      "class_hash": "0x3132923cf1e8dc7fdc732d9fd387d659c40b3169f2047962ac532875a1b1014",
+      "class_hash": "0x266337fd7b249f407c4d5b58dd298073dd576f0dc0c20b7c70796dccdd1130f",
       "tag": "planetelo-AgentGames",
       "selector": "0x3de9da2014687def6774ff51edeaf6ca81a5ea6259a5fd5a3f5ffb751fd99c0"
     },
     {
       "members": [],
-      "class_hash": "0x5354a6678d815cbc80d9af4c153574c6dd33f4ede1b0c2f378e4bd4cd6e60b9",
+      "class_hash": "0x6bcdd7613d015817b45daa318853495ab00fdf251ddb2f742d028f2fb49b141",
       "tag": "planetelo-Player",
       "selector": "0x54015881ce1a0053b8c9e3c5fe475c73734ecf4897aa47c9751ee98134b1dc8"
     }
@@ -2244,7 +2250,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x4082969a9b656ae12ec95590a7d99852b91225ca675c432978dda54c40ae669",
+      "class_hash": "0x72ef60ced7649d79f90c36829f4b20e6298cf66b7293027e254bac957aabb39",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }

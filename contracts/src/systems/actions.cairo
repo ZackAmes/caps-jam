@@ -22,16 +22,15 @@ pub mod actions {
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
 
-    #[storage]
-    struct Storage {
-        games_counter: u64,
-    }
-
     #[derive(Copy, Drop, Serde)]
     #[dojo::event]
     pub struct Moved {
         #[key]
         pub player: ContractAddress,
+        #[key]
+        pub game_id: u64,
+        #[key]
+        pub turn_number: u64,
         pub turn: Span<Action>,
     }
 
@@ -115,9 +114,7 @@ pub mod actions {
 
             let (over, _) = @game.check_over(@world);
             if *over {
-                if !game.over {
-                    world.write_model(@game);
-                }
+                panic!("Game is over");
             }
             let mut i = 0;
 
@@ -178,7 +175,7 @@ pub mod actions {
             game.over = *over;
             world.write_model(@game);
 
-            world.emit_event(@Moved { player: get_caller_address(), turn: clone.span() });
+            world.emit_event(@Moved { player: get_caller_address(), game_id: game_id, turn_number: game.turn_count-1, turn: clone.span() });
         }
 
         fn get_game(self: @ContractState, game_id: u64) -> Option<(Game, Span<Cap>)> {

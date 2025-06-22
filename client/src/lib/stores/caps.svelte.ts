@@ -340,19 +340,16 @@ export const caps = {
         // If cap is selected, check for available actions at clicked position
         if (selected_cap) {
             let available_actions = get_available_actions_at_position(position)
-            console.log('Available actions:', available_actions)
             
             if (available_actions.length > 0) {
                 // Show popup with available actions
 
-                console.log(e.nativeEvent.screenX, e.nativeEvent.screenY)
                 popup_state = {
                     visible: true,
                     position: position,
                     render_position: {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY},
                     available_actions: available_actions
                 }
-                console.log('Popup state set to visible')
             }
         }
     },
