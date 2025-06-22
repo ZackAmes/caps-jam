@@ -111,6 +111,7 @@ pub struct CapType {
     pub attack_dmg: u16,
     pub base_health: u16,
     pub ability_target: TargetType,
+    pub ability_cost: u8,
 }
 
 

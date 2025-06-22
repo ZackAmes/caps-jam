@@ -24,6 +24,7 @@ export interface CapType {
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
 	ability_target: TargetTypeEnum;
+	ability_cost: BigNumberish;
 }
 
 // Type definition for `caps::models::CapTypeValue` struct
@@ -38,6 +39,7 @@ export interface CapTypeValue {
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
 	ability_target: TargetTypeEnum;
+	ability_cost: BigNumberish;
 }
 
 // Type definition for `caps::models::CapValue` struct
@@ -216,6 +218,7 @@ export const schema: SchemaType = {
 				OpponentCap: undefined,
 				AnyCap: undefined,
 				AnySquare: undefined, }),
+			ability_cost: 0,
 		},
 		CapTypeValue: {
 		name: "",
@@ -234,6 +237,7 @@ export const schema: SchemaType = {
 				OpponentCap: undefined,
 				AnyCap: undefined,
 				AnySquare: undefined, }),
+			ability_cost: 0,
 		},
 		CapValue: {
 			owner: "",

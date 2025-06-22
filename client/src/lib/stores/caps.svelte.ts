@@ -21,6 +21,17 @@ let current_move = $state<Array<Action>>([])
 
 let initial_state = $state<{game: Game, caps: Array<Cap>}>()
 let selected_cap = $state<Cap | null>(null)
+let popup_state = $state<{
+    visible: boolean,
+    position: {x: number, y: number} | null,
+    render_position: {x: number, y: number} | null,
+    available_actions: Array<{type: 'move' | 'attack' | 'ability', label: string}> 
+}>({
+    visible: false,
+    position: null,
+    render_position: null,
+    available_actions: []
+})
 
 const get_valid_ability_targets = (id: number) => {
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
@@ -91,7 +102,7 @@ const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | unde
                 res.push({x: position.x + i, y: position.y})
             }
         }
-        if (position.x - i > 0) {
+        if (position.x - i >= 0) {
             let cap_at = caps.get_cap_at(position.x - i, position.y)
             console.log(cap_at)
             if (!cap_at) {
@@ -108,7 +119,7 @@ const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | unde
                 res.push({x: position.x, y: position.y + i})
             }
         }
-        if (position.y - i > 0) {
+        if (position.y - i >= 0) {
             let cap_at = caps.get_cap_at(position.x, position.y - i)
             if (!cap_at) {
                 res.push({x: position.x, y: position.y - i})
@@ -137,7 +148,114 @@ let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.position.
 let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
 let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
-let energy = $derived(Number(game_state?.game.turn_count) + 2)
+let energy = $state(max_energy)
+
+
+
+const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2> | undefined) => {
+    if (!range) {
+        return []
+    }
+    let res = []
+    for (let val of range) {
+            res.push({x: position.x + Number(val.x), y: position.y + Number(val.y)})
+        
+            res.push({x: position.x - Number(val.x), y: position.y - Number(val.y)})
+        
+            res.push({x: position.x + Number(val.x), y: position.y - Number(val.y)})
+        
+            res.push({x: position.x - Number(val.x), y: position.y + Number(val.y)})
+        
+    }
+    return res
+}
+
+const get_available_actions_at_position = (position: {x: number, y: number}) => {
+    if (!selected_cap) return []
+    
+    let actions: Array<{type: 'move' | 'attack' | 'ability', label: string}> = []
+    
+    // Check if position is a valid move
+    let is_valid_move = valid_moves.some(move => move.x === position.x && move.y === position.y)
+    if (is_valid_move) {
+        actions.push({type: 'move', label: 'Move'})
+    }
+    
+    // Check if position is a valid attack
+    let is_valid_attack = valid_attacks.some(attack => attack.x === position.x && attack.y === position.y)
+    if (is_valid_attack) {
+        actions.push({type: 'attack', label: 'Attack'})
+    }
+    
+    // Check if position is a valid ability target
+    let is_valid_ability = valid_ability_targets.some(target => target.x === position.x && target.y === position.y)
+    if (is_valid_ability) {
+        actions.push({type: 'ability', label: 'Use Ability'})
+    }
+    
+    return actions
+}
+
+const execute_action = (action_type: 'move' | 'attack' | 'ability', position: {x: number, y: number}) => {
+    if (!selected_cap) return
+    
+    let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+    let move_cost = Number(cap_type?.move_cost)
+    let attack_cost = Number(cap_type?.attack_cost)
+    let ability_cost = Number(cap_type?.ability_cost)
+    
+    if (action_type === 'move') {
+        if (energy < move_cost) {
+            alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
+            return
+        }
+        
+        let cairo_action_type;
+        if (selected_cap.position.x == position.x) {
+            if (BigInt(position.y) > BigInt(selected_cap.position.y)) {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}, Attack: undefined})
+            } else {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
+            }
+        } else if (selected_cap.position.y == position.y) {
+            if (BigInt(position.x) > BigInt(selected_cap.position.x)) {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}, Attack: undefined})
+            } else {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
+            }
+        }
+        
+        energy -= move_cost
+        selected_cap.position = position;
+        console.log(selected_cap)
+        caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type!})
+    }
+    else if (action_type === 'attack') {
+        if (energy < attack_cost) {
+            alert(`Not enough energy! Need ${attack_cost} but only have ${energy}`)
+            return
+        }
+        
+        let cairo_action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}, Ability: undefined})
+        energy -= attack_cost
+        caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
+    }
+    else if (action_type === 'ability') {
+        if (energy < ability_cost) {
+            alert(`Not enough energy! Need ${ability_cost} but only have ${energy}`)
+            return
+        }
+        
+        let cairo_action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
+        energy -= ability_cost
+        caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
+    }
+    
+    // Close popup after action
+    popup_state.visible = false
+    popup_state.position = null
+    popup_state.available_actions = []
+}
 
 export const caps = {
 
@@ -189,6 +307,9 @@ export const caps = {
         selected_cap = null
         energy = max_energy
         game_state = initial_state
+        popup_state.visible = false
+        popup_state.position = null
+        popup_state.available_actions = []
     },
 
     add_action: (action: Action) => {
@@ -196,69 +317,52 @@ export const caps = {
         console.log(current_move)
     },
 
-    handle_click: (position: {x: number, y: number}) => {
-        let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
-        let move_cost = Number(cap_type?.move_cost)
-        let attack_cost = Number(cap_type?.attack_cost)
+    handle_click: (position: {x: number, y: number}, e: any) => {
+        // If clicking on selected cap, deselect it
         if (selected_cap && selected_cap.position.x == position.x && selected_cap.position.y == position.y) {
             selected_cap = null
-          }
-          let cap = caps.get_cap_at(position.x, position.y)
-          if (!selected_cap && cap && cap.owner == account.account?.address) {
+            return
+        }
+
+        console.log(e)
+        
+        let cap = caps.get_cap_at(position.x, position.y)
+        
+        // If no cap selected and clicking on own cap, select it
+        if (!selected_cap && cap && cap.owner == account.account?.address) {
             selected_cap = cap
-          } 
-          else if (selected_cap && !cap) {
-            if (selected_cap.position.x == position.x) {
-              if (BigInt(position.y) > BigInt(selected_cap.position.y)) {
-                let action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}, Attack: undefined})
-                if (energy < move_cost) {
-                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
-                    return
-                }
-                energy -= move_cost
-                selected_cap.position = position;
-                caps.add_action({cap_id: selected_cap.id, action_type})
-              } else {
-                let action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
-                if (energy < move_cost) {
-                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
-                    return
-                }
-                energy -= move_cost
-                selected_cap.position = position;
-                caps.add_action({cap_id: selected_cap.id, action_type})
-              }
+            if (energy === 0) {
+                energy = max_energy
             }
-            else if (selected_cap.position.y == position.y) {
-              if (BigInt(position.x) > BigInt(selected_cap.position.x)) {
-                let action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}, Attack: undefined})
-                if (energy < move_cost) {
-                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
-                    return
+            return
+        } 
+        
+        // If cap is selected, check for available actions at clicked position
+        if (selected_cap) {
+            let available_actions = get_available_actions_at_position(position)
+            console.log('Available actions:', available_actions)
+            
+            if (available_actions.length > 0) {
+                // Show popup with available actions
+
+                console.log(e.nativeEvent.screenX, e.nativeEvent.screenY)
+                popup_state = {
+                    visible: true,
+                    position: position,
+                    render_position: {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY},
+                    available_actions: available_actions
                 }
-                energy -= move_cost
-                selected_cap.position = position;
-                caps.add_action({cap_id: selected_cap.id, action_type})
-              } else {
-                let action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
-                if (energy < move_cost) {
-                    alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
-                    return
-                }
-                energy -= move_cost
-                selected_cap.position = position;
-                caps.add_action({cap_id: selected_cap.id, action_type})
-              }
+                console.log('Popup state set to visible')
             }
-          } else if (selected_cap && cap && cap.owner != account.account?.address) {
-            let action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
-            if (energy < attack_cost) {
-                alert(`Not enough energy! Need ${attack_cost} but only have ${energy}`)
-                return
-            }
-            energy -= attack_cost
-            caps.add_action({cap_id: selected_cap.id, action_type})
-          }
+        }
+    },
+
+    execute_action: execute_action,
+
+    close_popup: () => {
+        popup_state.visible = false
+        popup_state.position = null
+        popup_state.available_actions = []
     },
 
     get selected_cap() {
@@ -297,24 +401,8 @@ export const caps = {
         return valid_attacks
     },
 
+    get popup_state() {
+        return popup_state
+    },
+
 }
-
-
-const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2> | undefined) => {
-    if (!range) {
-        return []
-    }
-    let res = []
-    for (let val of range) {
-            res.push({x: position.x + Number(val.x), y: position.y + Number(val.y)})
-        
-            res.push({x: position.x - Number(val.x), y: position.y - Number(val.y)})
-        
-            res.push({x: position.x + Number(val.x), y: position.y - Number(val.y)})
-        
-            res.push({x: position.x - Number(val.x), y: position.y + Number(val.y)})
-        
-    }
-    return res
-}
-

@@ -71,8 +71,8 @@
 
 {#each positions as position}
   {@const color = get_color(position)}
-    <T.Mesh position={[position.x, position.y, 0]} onclick={() => {
-      caps.handle_click(position)
+    <T.Mesh position={[position.x, position.y, 0]} onclick={(e: MouseEvent) => {
+      caps.handle_click(position, e)
   }}>
     <T.BoxGeometry args={[1, 1, .1]} />
     <T.MeshBasicMaterial color={color} />

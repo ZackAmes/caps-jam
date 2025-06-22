@@ -10,7 +10,7 @@
     import Matchmaking from './lib/Matchmaking.svelte';
     import CapData from './lib/ui/cap_data.svelte';
     import MoveData from './lib/ui/move_data.svelte';
-
+    import Popup from './lib/ui/popup.svelte';
 </script>
 
 <main>
@@ -21,6 +21,9 @@
   <Matchmaking />
   {#if caps.selected_cap}
     <CapData />
+  {/if}
+  {#if caps.popup_state.visible}
+    <Popup />
   {/if}
   {#if (planetelo.queue_status == 2 || planetelo.current_game_id == planetelo.agent_game_id) && caps.game_state && !caps.game_state.game.over}
 

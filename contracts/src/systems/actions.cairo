@@ -205,6 +205,7 @@ pub mod actions {
                     attack_dmg: 1,
                     base_health: 10,
                     ability_target: TargetType::None,
+                    ability_cost: 0,
                 }),
                 1 => Option::Some(CapType {
                     id: 1,
@@ -218,6 +219,7 @@ pub mod actions {
                     attack_dmg: 1,
                     base_health: 10,
                     ability_target: TargetType::None,
+                    ability_cost: 0,
                 }),
                 2 => Option::Some(CapType {
                     id: 2,
@@ -231,6 +233,7 @@ pub mod actions {
                     attack_dmg: 5,
                     base_health: 5,
                     ability_target: TargetType::OpponentCap,
+                    ability_cost: 1,
                 }),
                 3 => Option::Some(CapType {
                     id: 3,
@@ -244,6 +247,7 @@ pub mod actions {
                     attack_dmg: 3,
                     base_health: 5,
                     ability_target: TargetType::TeamCap,
+                    ability_cost: 1,
                 }),
                 _ => Option::None,
             };

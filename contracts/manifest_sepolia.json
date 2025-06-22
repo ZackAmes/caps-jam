@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x7f2132976fec477656df91309e268e81bc4ba80dc13dfa964a3e857cf3d6157",
-      "class_hash": "0xc27cee53dbfed247a710772279254190c815b5b512dead48581385b6750e21",
+      "class_hash": "0x1205143deee43aa26fb2e0ace6a2dac519d0922f2bbb1d631f914b4c707af5c",
       "abi": [
         {
           "type": "impl",
@@ -1603,6 +1603,10 @@
             {
               "name": "ability_target",
               "type": "caps::models::TargetType"
+            },
+            {
+              "name": "ability_cost",
+              "type": "core::integer::u8"
             }
           ]
         },
@@ -2176,7 +2180,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x71281cd005ce9639c8fbc14dc5ed3db3458c7cf4b2c6b9ba863bf580e3baa33",
+      "class_hash": "0x60527d7ff62c3bd09b88a55f575ca682b5c4e3828da49f159c9d2a73dcb3232",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
