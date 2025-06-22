@@ -67,11 +67,12 @@ trait IPlanetelo<T> {
     fn get_player_game_id(self: @T, address: ContractAddress) -> u128;
     fn select_team(ref self: T, team: u16);
     fn invite(ref self: T, player2: ContractAddress);
-    fn get_invites(self: @T) -> Array<u128>;
-    fn get_custom_games(self: @T) -> Array<CustomGames>;
+    fn get_player_invites(self: @T, address: ContractAddress) -> Array<u128>;
+    fn get_player_custom_games(self: @T, address: ContractAddress) -> Array<CustomGames>;
     fn accept_invite(ref self: T, invite_id: u128);
     fn decline_invite(ref self: T, invite_id: u128);
     fn settle_custom_game(ref self: T, game_id: u128);
+    fn get_player_stats(self: @T, address: ContractAddress) -> (u8, u8);
 }
 
 #[dojo::contract]
@@ -228,9 +229,9 @@ mod planetelo {
             world.write_model(@invite);
         }
 
-        fn get_invites(self: @ContractState) -> Array<u128> {
+        fn get_player_invites(self: @ContractState, address: ContractAddress) -> Array<u128> {
             let mut world = self.world(@"planetelo");
-            let mut player: Player = world.read_model(get_caller_address());
+            let mut player: Player = world.read_model(address);
             let mut invites: Array<u128> = ArrayTrait::new();
             let mut i = 0;
             while i < player.custom_game_ids.len() {
@@ -341,9 +342,9 @@ mod planetelo {
             
         }
 
-        fn get_custom_games(self: @ContractState) -> Array<CustomGames> {
+        fn get_player_custom_games(self: @ContractState, address: ContractAddress) -> Array<CustomGames> {
             let mut world = self.world(@"planetelo");
-            let mut player: Player = world.read_model(get_caller_address());
+            let mut player: Player = world.read_model(address);
             let mut custom_games: Array<CustomGames> = ArrayTrait::new();
             let mut i = 0;
             while i < player.custom_game_ids.len() {
@@ -352,6 +353,12 @@ mod planetelo {
                 i += 1;
             };
             custom_games
+        }
+
+        fn get_player_stats(self: @ContractState, address: ContractAddress) -> (u8, u8) {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(address);
+            (player.agent_wins, player.agent_losses)
         }
     }
 

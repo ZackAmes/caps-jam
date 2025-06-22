@@ -11,11 +11,13 @@
     import CapData from './lib/ui/cap_data.svelte';
     import MoveData from './lib/ui/move_data.svelte';
     import Popup from './lib/ui/popup.svelte';
+    import Profile from './lib/ui/Profile.svelte';
 </script>
 
 <main>
   <h1>Caps</h1>
 
+  <Profile />
 
   <Login />
   <Matchmaking />

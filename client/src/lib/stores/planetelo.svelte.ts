@@ -5,6 +5,8 @@ import { RpcProvider } from "starknet";
 import { shortString } from "starknet";
 import { caps } from "./caps.svelte";
 import caps_planetelo_manifest from "../../../../contracts/manifest_sepolia.json";
+import { get } from "svelte/store";
+import type { CustomGames } from "../dojo/models.gen";
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
@@ -27,6 +29,8 @@ let queue_status = $state<number | null>(null)
 let current_game_id = $state<number | null>(null)
 let agent_game_id = $state<number | null>(null)
 let planetelo_game_id = $state<number | null>(null)
+let invites = $state<Array<number>>([])
+let custom_games = $state<Array<CustomGames>>([])
 let elo = $state<number | null>(null)
 
 export const planetelo = {
@@ -54,6 +58,8 @@ export const planetelo = {
         else if (agent_game_id) {
             current_game_id = agent_game_id;
         }
+        invites = await planetelo.get_player_invites();
+        custom_games = await planetelo.get_player_custom_games();
         if (current_game_id) {
             caps.get_game(current_game_id);
         }
@@ -180,6 +186,60 @@ export const planetelo = {
         console.log(caps.game_state)
     },
 
+    get_player_invites: async () => {
+        let invites = await caps_planetelo_contract.get_player_invites(account.account!.address);
+        console.log(invites)
+        return invites;
+    },
+
+    get_player_custom_games: async () => {
+        let games = await caps_planetelo_contract.get_player_custom_games(account.account!.address);
+        console.log(games)
+        return games;
+    },
+
+    accept_invite: async (invite_id: number) => {
+        let res = await account.account?.execute(
+            [{
+                contractAddress: caps_planetelo_contract.address,
+                entrypoint: 'accept_invite',
+                calldata: [invite_id]
+            }]
+        );
+        console.log(res);
+        planetelo.update_status();
+    },
+
+    decline_invite: async (invite_id: number) => {
+        let res = await account.account?.execute(
+            [{
+                contractAddress: caps_planetelo_contract.address,
+                entrypoint: 'decline_invite',
+                calldata: [invite_id]
+            }]
+        );
+        console.log(res);
+        planetelo.update_status();
+    },
+
+    settle_custom_game: async (game_id: number) => {
+        let res = await account.account?.execute(
+            [{
+                contractAddress: caps_planetelo_contract.address,
+                entrypoint: 'settle_custom_game',
+                calldata: [game_id]
+            }]
+        );
+        console.log(res);
+        planetelo.update_status();
+    },
+
+    get_player_stats: async () => {
+        let stats = await caps_planetelo_contract.get_player_stats(account.account!.address);
+        console.log(stats)
+        return stats;
+    },
+
     get queue_status() {
         return queue_status;
     },
@@ -198,6 +258,14 @@ export const planetelo = {
 
     get elo() {
         return elo;
+    },
+
+    get invites() {
+        return invites;
+    },
+
+    get custom_games() {
+        return custom_games;
     }
 
 }

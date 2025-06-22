@@ -77,9 +77,9 @@ export interface Game {
 	turn_count: BigNumberish;
 	over: boolean;
 	active_start_of_turn_effects: Array<BigNumberish>;
-	active_damage_step_effects: Array<BigNumberish>;
 	active_move_step_effects: Array<BigNumberish>;
 	active_end_of_turn_effects: Array<BigNumberish>;
+	effect_counter: BigNumberish;
 }
 
 // Type definition for `caps::models::GameValue` struct
@@ -90,9 +90,9 @@ export interface GameValue {
 	turn_count: BigNumberish;
 	over: boolean;
 	active_start_of_turn_effects: Array<BigNumberish>;
-	active_damage_step_effects: Array<BigNumberish>;
 	active_move_step_effects: Array<BigNumberish>;
 	active_end_of_turn_effects: Array<BigNumberish>;
+	effect_counter: BigNumberish;
 }
 
 // Type definition for `caps::models::Global` struct
@@ -144,15 +144,32 @@ export interface AgentGamesValue {
 	losses: BigNumberish;
 }
 
+// Type definition for `caps::planetelo::CustomGames` struct
+export interface CustomGames {
+	id: BigNumberish;
+	player1: string;
+	player2: string;
+	game_id: BigNumberish;
+}
+
+// Type definition for `caps::planetelo::CustomGamesValue` struct
+export interface CustomGamesValue {
+	player1: string;
+	player2: string;
+	game_id: BigNumberish;
+}
+
 // Type definition for `caps::planetelo::GlobalStats` struct
 export interface GlobalStats {
 	id: BigNumberish;
 	games_played: BigNumberish;
+	custom_game_counter: BigNumberish;
 }
 
 // Type definition for `caps::planetelo::GlobalStatsValue` struct
 export interface GlobalStatsValue {
 	games_played: BigNumberish;
+	custom_game_counter: BigNumberish;
 }
 
 // Type definition for `caps::planetelo::Player` struct
@@ -162,6 +179,8 @@ export interface Player {
 	game_id: BigNumberish;
 	agent_wins: BigNumberish;
 	agent_losses: BigNumberish;
+	team: BigNumberish;
+	custom_game_ids: Array<BigNumberish>;
 }
 
 // Type definition for `caps::planetelo::PlayerValue` struct
@@ -170,6 +189,8 @@ export interface PlayerValue {
 	game_id: BigNumberish;
 	agent_wins: BigNumberish;
 	agent_losses: BigNumberish;
+	team: BigNumberish;
+	custom_game_ids: Array<BigNumberish>;
 }
 
 // Type definition for `caps::models::Action` struct
@@ -263,6 +284,8 @@ export interface SchemaType extends ISchemaType {
 		Vec2: Vec2,
 		AgentGames: AgentGames,
 		AgentGamesValue: AgentGamesValue,
+		CustomGames: CustomGames,
+		CustomGamesValue: CustomGamesValue,
 		GlobalStats: GlobalStats,
 		GlobalStatsValue: GlobalStatsValue,
 		Player: Player,
@@ -378,9 +401,9 @@ export const schema: SchemaType = {
 			turn_count: 0,
 			over: false,
 			active_start_of_turn_effects: [0],
-			active_damage_step_effects: [0],
 			active_move_step_effects: [0],
 			active_end_of_turn_effects: [0],
+			effect_counter: 0,
 		},
 		GameValue: {
 			player1: "",
@@ -389,9 +412,9 @@ export const schema: SchemaType = {
 			turn_count: 0,
 			over: false,
 			active_start_of_turn_effects: [0],
-			active_damage_step_effects: [0],
 			active_move_step_effects: [0],
 			active_end_of_turn_effects: [0],
+			effect_counter: 0,
 		},
 		Global: {
 			key: 0,
@@ -428,12 +451,25 @@ export const schema: SchemaType = {
 			wins: 0,
 			losses: 0,
 		},
+		CustomGames: {
+			id: 0,
+			player1: "",
+			player2: "",
+			game_id: 0,
+		},
+		CustomGamesValue: {
+			player1: "",
+			player2: "",
+			game_id: 0,
+		},
 		GlobalStats: {
 			id: 0,
 			games_played: 0,
+			custom_game_counter: 0,
 		},
 		GlobalStatsValue: {
 			games_played: 0,
+			custom_game_counter: 0,
 		},
 		Player: {
 			address: "",
@@ -441,12 +477,16 @@ export const schema: SchemaType = {
 			game_id: 0,
 			agent_wins: 0,
 			agent_losses: 0,
+			team: 0,
+			custom_game_ids: [0],
 		},
 		PlayerValue: {
 			in_game: false,
 			game_id: 0,
 			agent_wins: 0,
 			agent_losses: 0,
+			team: 0,
+			custom_game_ids: [0],
 		},
 		Action: {
 			cap_id: 0,
@@ -491,6 +531,8 @@ export enum ModelsMapping {
 	Vec2 = 'caps-Vec2',
 	AgentGames = 'caps-AgentGames',
 	AgentGamesValue = 'caps-AgentGamesValue',
+	CustomGames = 'caps-CustomGames',
+	CustomGamesValue = 'caps-CustomGamesValue',
 	GlobalStats = 'caps-GlobalStats',
 	GlobalStatsValue = 'caps-GlobalStatsValue',
 	Player = 'caps-Player',

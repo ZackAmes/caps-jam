@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x5b9989bad15a8530d864f81964eae017baefb6c463c7a39e71ea434899e7283",
-    "seed": "fdas31asdfcasdfsd123a",
+    "address": "0x108ab74bdb7009e887554b0e9dddd2692ccbb2542ef8ce412470a1c4f7c53c5",
+    "seed": "f123das31asdfcasdfsd123a",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0xf598e1034ddd190fa6a391d41e5c1ba92953965a030901f9e75079c2bc15a3",
-      "class_hash": "0xf5ed4af56cc869d808cd625a2aedea02acc7a6cf82a94fd0f0089364744cb3",
+      "address": "0x3633cfab41ddc69a380dc58cd1931bda065ebf3f2392a3994583c486913f322",
+      "class_hash": "0x404716c4dcaa7b57687593d10c71e488c2c8bc65f0055ad2500acbae0914daa",
       "abi": [
         {
           "type": "impl",
@@ -1959,8 +1959,8 @@
       ]
     },
     {
-      "address": "0x9354ec07e2eea7877a95c9646a7ef2a80b3af31b44a036a497957a4970f117",
-      "class_hash": "0x1d186b6ed2b171f6dbabaa0985b9d5b4616ece196d9ac0e8ecc14e2416cd2a1",
+      "address": "0x39a2806e054c9d4bf1120157ca2a19ffe1163fc1b5c48e280911799ca49ed24",
+      "class_hash": "0x82a0a663b314c49bf07de2f6006abd14b4f443cccd821c27da2b433450d3b",
       "abi": [
         {
           "type": "impl",
@@ -2156,8 +2156,13 @@
             },
             {
               "type": "function",
-              "name": "get_invites",
-              "inputs": [],
+              "name": "get_player_invites",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
               "outputs": [
                 {
                   "type": "core::array::Array::<core::integer::u128>"
@@ -2167,8 +2172,13 @@
             },
             {
               "type": "function",
-              "name": "get_custom_games",
-              "inputs": [],
+              "name": "get_player_custom_games",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
               "outputs": [
                 {
                   "type": "core::array::Array::<caps::planetelo::CustomGames>"
@@ -2211,6 +2221,22 @@
               ],
               "outputs": [],
               "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_player_stats",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "(core::integer::u8, core::integer::u8)"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },
