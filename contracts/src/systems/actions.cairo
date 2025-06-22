@@ -71,7 +71,7 @@ pub mod actions {
                 id: global.cap_counter + 2,
                 owner: p1,
                 position: Vec2 { x: 4, y: 0 },
-                cap_type: 2,
+                cap_type: 4,
                 dmg_taken: 0,
             };
 
@@ -87,7 +87,7 @@ pub mod actions {
                 id: global.cap_counter + 4,
                 owner: p2,
                 position: Vec2 { x: 4, y: 6 },
-                cap_type: 3,
+                cap_type: 5,
                 dmg_taken: 0,
             };
 
@@ -231,7 +231,7 @@ pub mod actions {
                     ability_cost: 0,
                 }),
                 2 => Option::Some(CapType {
-                    id: 3,
+                    id: 2,
                     name: "Yellow Tower",
                     description: "Yellow Tower",
                     move_cost: 1,
@@ -246,7 +246,7 @@ pub mod actions {
                     ability_cost: 0,
                 }),
                 3 => Option::Some(CapType {
-                    id: 4,
+                    id: 3,
                     name: "Green Tower",
                     description: "Green Tower",
                     move_cost: 1,
@@ -261,7 +261,7 @@ pub mod actions {
                     ability_cost: 0,
                 }),
                 4 => Option::Some(CapType {
-                    id: 2,
+                    id: 4,
                     name: "Red Basic",
                     description: "Cap 3",
                     move_cost: 1,
@@ -276,7 +276,7 @@ pub mod actions {
                     ability_cost: 3,
                 }),
                 5 => Option::Some(CapType {
-                    id: 3,
+                    id: 5,
                     name: "Blue Basic",
                     description: "Cap 4",
                     move_cost: 1,
@@ -291,7 +291,7 @@ pub mod actions {
                     ability_cost: 2,
                 }),
                 6 => Option::Some(CapType {
-                    id: 5,
+                    id: 6,
                     name: "Yellow Basic",
                     description: "Cap 5",
                     move_cost: 1,
@@ -306,7 +306,7 @@ pub mod actions {
                     ability_cost: 2,
                 }),
                 7 => Option::Some(CapType {
-                    id: 6,
+                    id: 7,
                     name: "Green Basic",
                     description: "Cap 6",
                     move_cost: 1,
@@ -322,7 +322,7 @@ pub mod actions {
 
                 }),
                 8 => Option::Some(CapType {
-                    id: 2,
+                    id: 8,
                     name: "Red Elite",
                     description: "Cap 8",
                     move_cost: 1,
@@ -337,7 +337,7 @@ pub mod actions {
                     ability_cost: 3,
                 }),
                 9 => Option::Some(CapType {
-                    id: 3,
+                    id: 9,
                     name: "Blue Elite",
                     description: "Cap 9",
                     move_cost: 1,
@@ -352,7 +352,7 @@ pub mod actions {
                     ability_cost: 2,
                 }),
                 10 => Option::Some(CapType {
-                    id: 5,
+                    id: 10,
                     name: "Yellow Elite",
                     description: "Cap 10",
                     move_cost: 1,
@@ -367,7 +367,7 @@ pub mod actions {
                     ability_cost: 2,
                 }),
                 11 => Option::Some(CapType {
-                    id: 6,
+                    id: 11,
                     name: "Green Elite",
                     description: "Cap 11",
                     move_cost: 1,

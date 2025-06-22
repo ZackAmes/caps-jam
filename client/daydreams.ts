@@ -79,25 +79,6 @@ const capsContext = context({
           let index = 0;
           let timeout: ReturnType<typeof setTimeout>;
 
-          let active_games = await caps_planetelo_contract.get_agent_games()
-
-          let i = 0;
-          let to_play = 0;
-          while (i < active_games.length) {
-            to_play = active_games[i];
-            let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
-            if (!game_state[0].over) {
-              console.log('found game to play')
-              break;
-            }
-            i+=1;
-          }
-
-          let game_state = await get_game_state_str(to_play)
-
-          console.log('game_state', game_state)
-    
-      
           // Function to schedule the next thought with random timing
           const scheduleNextThought = async () => {
             // Random delay between 3 and 10 minutes (180000-600000 ms)
@@ -108,12 +89,13 @@ const capsContext = context({
             timeout = setTimeout(async () => {
 
               let active_games = await caps_planetelo_contract.get_agent_games()
+              let game_state;
 
               let i = 0;
               let to_play = 0;
               while (i < active_games.length) {
                 to_play = active_games[i];
-                let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
+                game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
                 if (!game_state[0].over) {
                   console.log('found game to play')
                   break;
@@ -121,14 +103,13 @@ const capsContext = context({
                 i+=1;
               }
 
-              let game_state = await get_game_state_str(to_play)
+              let game_state_str = await get_game_state_str(to_play)
 
               console.log('game_state', game_state)
-        
       
               let context = {
-                id: "caps",
-                game_state: game_state,
+                id: "game:" + to_play + "turn: " + game_state[0].turn_count,
+                game_state: game_state_str,
               }
       
               send(capsContext, context, { text: "Take your turn" });
@@ -254,6 +235,7 @@ export const take_turn = (chain: StarknetChain) => action({
 
       let calldata = CallData.compile([args.game_id, actions])
 
+
       let res = await chain.account.execute(
         [{
           contractAddress: caps_actions_contract.address,
@@ -266,6 +248,7 @@ export const take_turn = (chain: StarknetChain) => action({
 
       let tx = await chain.provider.waitForTransaction(res.transaction_hash)
       if (!tx.isSuccess) {
+        console.log('tx failed', tx.statusReceipt)
         return {
           success: false,
           error: tx.statusReceipt
@@ -367,6 +350,9 @@ export const take_turn = (chain: StarknetChain) => action({
       for example to (3,1), (Move would be {direction: 0, distance: 2}), and then you can attack the piece at (2,1) (Attack would be {x: 2, y: 1}), since
       that square is within the pieces attack pattern after it has moved. 
 
+      Another thing to avoid is submitting an aditional attack after a piece has been destroyed. For example, if your piece does 4 damage and they 
+      have 7 health, then you will destroy the piece with 2 attacks, and including a 3rd attack will cause the move to fail.
+
       This is very important to keep track of, as this will be the biggest reason you attempt to submit invalid moves.
 
       You must always take an action in the game under any circumstances, and it must always be valid. If you submit an invalid move it will be very bad for you.
@@ -385,7 +371,6 @@ export const take_turn = (chain: StarknetChain) => action({
   });
 
   const agent = createDreams({
-    logLevel: LogLevel.DEBUG,
     model: google("gemini-2.5-flash"),
     container,
     extensions: [],

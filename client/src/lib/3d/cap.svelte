@@ -12,12 +12,15 @@
 
   // Get darker shade of base color (different from target indicators)
   const getBaseColor = (capTypeId: number) => {
-    switch (capTypeId) {
-      case 0: return "darkred";    // Red Tower
-      case 1: return "darkblue";   // Blue Tower  
-      case 2: return "darkred";    // Red Basic
-      case 3: return "darkblue";   // Blue Basic
-      default: return "gray";
+    let color_id = capTypeId % 4;
+    if (color_id == 0) {
+      return "darkred";
+    } else if (color_id == 1) {
+      return "darkblue";
+    } else if (color_id == 2) {
+      return "darkgreen";
+    } else if (color_id == 3) {
+      return "darkyellow";
     }
   };
 
@@ -49,6 +52,12 @@
     </T.Mesh>
   {:else if cap.cap_type == 3}
 
+    <!-- Main body -->
+    <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
+      <T.SphereGeometry />
+      <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+  {:else}
     <!-- Main body -->
     <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
       <T.SphereGeometry />
