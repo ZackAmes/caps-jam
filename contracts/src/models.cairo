@@ -98,6 +98,7 @@ pub struct Cap {
     pub dmg_taken: u16,
 }
 
+//This is never getting stored. It's just a model to generate the bindings
 #[derive(Drop, Serde, Debug, Introspect)]
 #[dojo::model]
 pub struct CapType {
@@ -110,6 +111,7 @@ pub struct CapType {
     // Attack range is the squares relative to the cap's position that can be attacked
     pub attack_range: Array<Vec2>,
     pub ability_range: Array<Vec2>,
+    pub ability_description: ByteArray,
     // Move range is the x range, y range
     pub move_range: Vec2,
     pub attack_dmg: u16,
@@ -303,13 +305,19 @@ pub impl CapImpl of CapTrait {
                 //none
             },
             2 => {
+                //none
+            },
+            3 => {
+                //none
+                },
+            4 => {
                 //Deal 5 damage to the target
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
                 cap_at_target.dmg_taken += 5;
                 world.write_model(@cap_at_target);
             },
-            3 => {
+            5 => {
                 //Heal 5 damage
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
@@ -319,7 +327,7 @@ pub impl CapImpl of CapTrait {
                 cap_at_target.dmg_taken -= 5;
                 world.write_model(@cap_at_target);
             },
-            _ => panic!("Invalid cap type"),
+            _ => panic!("Not yet implemented"),
         }
     }
 
