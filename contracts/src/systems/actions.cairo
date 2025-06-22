@@ -365,8 +365,8 @@ pub mod actions {
                     index += 1;
                 };
 
-                let mut i = 0;
-                while i < end_of_turn_effects.len() {
+                let mut j = 0;
+                while j < end_of_turn_effects.len() {
                     let effect: Effect = *end_of_turn_effects.at(i);
                     match effect.effect_type {
                         EffectType::Stun => {
@@ -377,7 +377,7 @@ pub mod actions {
                             continue;
                         }
                     }
-                    i += 1;
+                    j += 1;
                 };
 
                 match action.action_type {
@@ -390,11 +390,10 @@ pub mod actions {
                         else {
                             move_cost -= move_discount_amount;
                         }
-                        energy -= move_cost;
                         if stunned {
-                            let mut i = 0;
-                            while i < stun_effect_ids.len() {
-                                let mut effect: Effect = world.read_model(*stun_effect_ids.at(i));
+                            let mut j = 0;
+                            while j < stun_effect_ids.len() {
+                                let mut effect: Effect = world.read_model(*stun_effect_ids.at(j));
                                 match effect.target {
                                     EffectTarget::Cap(id) => {
                                         if id == cap.id {
@@ -406,9 +405,10 @@ pub mod actions {
                                         
                                     }
                                 }
-                                i += 1;
+                                j += 1;
                             }
                         }
+                        energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
@@ -461,9 +461,9 @@ pub mod actions {
                         else {
                             attack_cost -= attack_discount_amount;
                         }
-                        let mut i = 0;
-                        while i < attack_discount_ids.len() {
-                            let mut attack_discount_effect: Effect = world.read_model(*attack_discount_ids.at(i));
+                        let mut k = 0;
+                        while k < attack_discount_ids.len() {
+                            let mut attack_discount_effect: Effect = world.read_model(*attack_discount_ids.at(k));
                             attack_discount_effect.remaining_triggers -= 1;
                             if attack_discount_effect.remaining_triggers == 0 {
                                 world.erase_model(@attack_discount_effect);
@@ -472,15 +472,16 @@ pub mod actions {
                                 new_move_step_effect_ids.append(attack_discount_effect.effect_id);
                                 world.write_model(@attack_discount_effect);
                             }
-                            i += 1;
+                            k += 1;
                         };
                         energy -= attack_cost;
                         let mut attack_dmg = cap_type.attack_dmg;
                         if attack_bonus_amount > 0 {
                             attack_dmg += attack_bonus_amount.into();
                         }
-                        while i < attack_bonus_ids.len() {
-                            let mut attack_bonus_effect: Effect = world.read_model(*attack_bonus_ids.at(i));
+                        let mut l = 0;
+                        while l < attack_bonus_ids.len() {
+                            let mut attack_bonus_effect: Effect = world.read_model(*attack_bonus_ids.at(l));
                             attack_bonus_effect.remaining_triggers -= 1;
                             if attack_bonus_effect.remaining_triggers == 0 {
                                 world.erase_model(@attack_bonus_effect);
@@ -489,7 +490,7 @@ pub mod actions {
                                 new_move_step_effect_ids.append(attack_bonus_effect.effect_id);
                                 world.write_model(@attack_bonus_effect);
                             }
-                            i += 1;
+                            l += 1;
                         };
                         
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
@@ -500,7 +501,7 @@ pub mod actions {
                         if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        let mut i = 0;
+                        let mut m = 0;
                         let mut shield: Effect = Effect {
                             game_id: game_id,
                             effect_id: 0,
@@ -508,8 +509,8 @@ pub mod actions {
                             target: EffectTarget::Cap(0),
                             remaining_triggers: 0,
                         };
-                        while i < damage_step_effects.len() {
-                            let effect: Effect = *damage_step_effects.at(i);
+                        while m < damage_step_effects.len() {
+                            let effect: Effect = *damage_step_effects.at(m);
                             match effect.effect_type {
                                 EffectType::Shield(_) => {
                                     match effect.target {
@@ -547,7 +548,7 @@ pub mod actions {
                                     continue;
                                 }
                             }
-                            i += 1;
+                            m += 1;
                         };
                         match shield.effect_type {
                             EffectType::Shield(x) => {
@@ -594,9 +595,9 @@ pub mod actions {
             };
 
             if stunned {
-                let mut i = 0;
-                while i < stun_effect_ids.len() {
-                    let mut effect: Effect = world.read_model(*stun_effect_ids.at(i));
+                let mut n = 0;
+                while n < stun_effect_ids.len() {
+                    let mut effect: Effect = world.read_model(*stun_effect_ids.at(n));
                     if effect.remaining_triggers == 1 {
                         world.erase_model(@effect);
                     }
@@ -605,7 +606,7 @@ pub mod actions {
                         new_end_of_turn_effect_ids.append(effect.effect_id);
                         world.write_model(@effect);
                     }
-                    i += 1;
+                    n += 1;
                 }
             }
 

@@ -262,8 +262,8 @@ export const caps = {
     get_game: async (id: number) => {
         console.log('getting game', id)
             let res = (await caps_contract.get_game(id)).unwrap()
-            game_state = { game: res[0], caps: res[1] } 
-            initial_state = { game: res[0], caps: res[1] }
+            game_state = { game: res[0], caps: res[1], effects: res[2] } 
+            initial_state = { game: res[0], caps: res[1], effects: res[2] }
             planetelo.set_current_game_id(id);
             console.log(game_state)
             for (let cap of game_state.caps) {

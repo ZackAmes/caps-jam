@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x33ed11c51aab0e43e8beacf41e404dae06042c70ca245840f5b3657c83ddb8",
-    "seed": "c123a",
+    "address": "0x10c2ab05b6a3dfe9860bbd202d0e0de526e53c73a8cfbfbbc35f7680368565",
+    "seed": "casdfsd123a",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x2c27520658985d5962779dc19eb2362f509d03de7742ee8ac38bbc19cf626fd",
-      "class_hash": "0x3462b628da05dbda1e80c1b51bd094af6a60a803d1aa676b30e36a8a65c6588",
+      "address": "0x59ee20b6acfb00c5981d86e071258cc672f850c9ad871d605c1f4b4a91a53f3",
+      "class_hash": "0x749cadfb3cb28fb0e346dd52d2a9f31a21588b54e649b6c84d75fc05ff2c723",
       "abi": [
         {
           "type": "impl",
@@ -1951,7 +1951,7 @@
       ]
     },
     {
-      "address": "0x42bd38bf433870269f7e2d3b065feee2e7a92ab90159c17b7a6c7e217548e83",
+      "address": "0x5b2cd1622bf2ea1aaba41b438a59e53014c2a053f6a46fd9a6d88adda6fab2",
       "class_hash": "0x6b7b29f015696af4c344b5914186770f16f5f2f07784704776a6a991dd1d3ab",
       "abi": [
         {

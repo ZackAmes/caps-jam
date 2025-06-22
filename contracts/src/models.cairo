@@ -163,22 +163,22 @@ pub impl CapImpl of CapTrait {
         let mut new_position = *self.position;
         match direction {
             0 => if new_position.x + amt > 6 {
-                panic!("Move out of bounds");
+                panic!("Move out of bounds: would move to x: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.x + amt, new_position.x, amt);
             } else {
                 new_position.x += amt
             },
             1 => if amt > new_position.x {
-                panic!("Move out of bounds");
+                panic!("Move out of bounds: would move to x: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.x, new_position.x, amt);
             } else {
                 new_position.x -= amt
             },
             2 => if new_position.y + amt > 6 {
-                panic!("Move out of bounds");
+                panic!("Move out of bounds: would move to y: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.y + amt, new_position.y, amt);
             } else {
                 new_position.y += amt
             },
             3 => if amt > new_position.y {
-                panic!("Move out of bounds");
+                panic!("Move out of bounds: would move to y: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.y, new_position.y, amt  );
             } else {
                 new_position.y -= amt
             },
@@ -192,7 +192,7 @@ pub impl CapImpl of CapTrait {
         match direction {
             0 => {
                 if new_position.x + amount > 6 {
-                    panic!("Move out of bounds");
+                    panic!("Move out of bounds: would move to x: {} (start: {}, amt: {}) (Move)", new_position.x + amount, new_position.x, amount);
                 }
                 if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
@@ -201,7 +201,7 @@ pub impl CapImpl of CapTrait {
             },
             1 => {
                 if amount > new_position.x {
-                    panic!("Move out of bounds");
+                    panic!("Move out of bounds: would move to x: -{} (start: {}, amt: {}) (Move)", amount - new_position.x, new_position.x, amount);
                 }
                 if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
@@ -210,7 +210,7 @@ pub impl CapImpl of CapTrait {
             },
             2 => {
                 if new_position.y + amount > 6 {
-                    panic!("Move out of bounds");
+                    panic!("Move out of bounds: would move to y: {} (start: {}, amt: {}) (Move)", new_position.y + amount, new_position.y, amount);
                 }
                 if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");
@@ -219,7 +219,7 @@ pub impl CapImpl of CapTrait {
             },
             3 => {
                 if amount > new_position.y {
-                    panic!("Move out of bounds");
+                    panic!("Move out of bounds: would move to y: -{} (start: {}, amt: {}) (Move)", amount - new_position.y, new_position.y, amount);
                 }
                 if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");

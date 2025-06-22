@@ -58,12 +58,14 @@ export interface Effect {
 	effect_id: BigNumberish;
 	effect_type: EffectTypeEnum;
 	target: EffectTargetEnum;
+	remaining_triggers: BigNumberish;
 }
 
 // Type definition for `caps::models::EffectValue` struct
 export interface EffectValue {
 	effect_type: EffectTypeEnum;
 	target: EffectTargetEnum;
+	remaining_triggers: BigNumberish;
 }
 
 // Type definition for `caps::models::Game` struct
@@ -130,12 +132,27 @@ export interface AgentGames {
 	id: BigNumberish;
 	game_ids: Array<BigNumberish>;
 	address: string;
+	wins: BigNumberish;
+	losses: BigNumberish;
 }
 
 // Type definition for `caps::planetelo::AgentGamesValue` struct
 export interface AgentGamesValue {
 	game_ids: Array<BigNumberish>;
 	address: string;
+	wins: BigNumberish;
+	losses: BigNumberish;
+}
+
+// Type definition for `caps::planetelo::GlobalStats` struct
+export interface GlobalStats {
+	id: BigNumberish;
+	games_played: BigNumberish;
+}
+
+// Type definition for `caps::planetelo::GlobalStatsValue` struct
+export interface GlobalStatsValue {
+	games_played: BigNumberish;
 }
 
 // Type definition for `caps::planetelo::Player` struct
@@ -143,12 +160,16 @@ export interface Player {
 	address: string;
 	in_game: boolean;
 	game_id: BigNumberish;
+	agent_wins: BigNumberish;
+	agent_losses: BigNumberish;
 }
 
 // Type definition for `caps::planetelo::PlayerValue` struct
 export interface PlayerValue {
 	in_game: boolean;
 	game_id: BigNumberish;
+	agent_wins: BigNumberish;
+	agent_losses: BigNumberish;
 }
 
 // Type definition for `caps::models::Action` struct
@@ -160,6 +181,8 @@ export interface Action {
 // Type definition for `caps::systems::actions::actions::Moved` struct
 export interface Moved {
 	player: string;
+	game_id: BigNumberish;
+	turn_number: BigNumberish;
 	turn: Array<Action>;
 }
 
@@ -186,6 +209,14 @@ export const effectType = [
 	'Heal',
 	'DOT',
 	'MoveBonus',
+	'AttackBonus',
+	'BonusRange',
+	'MoveDiscount',
+	'AttackDiscount',
+	'AbilityDiscount',
+	'ExtraEnergy',
+	'Stun',
+	'Double',
 ] as const;
 export type EffectType = { [key in typeof effectType[number]]: string };
 export type EffectTypeEnum = CairoCustomEnum;
@@ -232,6 +263,8 @@ export interface SchemaType extends ISchemaType {
 		Vec2: Vec2,
 		AgentGames: AgentGames,
 		AgentGamesValue: AgentGamesValue,
+		GlobalStats: GlobalStats,
+		GlobalStatsValue: GlobalStatsValue,
 		Player: Player,
 		PlayerValue: PlayerValue,
 		Action: Action,
@@ -299,25 +332,43 @@ export const schema: SchemaType = {
 			game_id: 0,
 			effect_id: 0,
 		effect_type: new CairoCustomEnum({ 
-					DamageBuff: "",
+					DamageBuff: 0,
 				Shield: undefined,
 				Heal: undefined,
 				DOT: undefined,
-				MoveBonus: undefined, }),
+				MoveBonus: undefined,
+				AttackBonus: undefined,
+				BonusRange: undefined,
+				MoveDiscount: undefined,
+				AttackDiscount: undefined,
+				AbilityDiscount: undefined,
+				ExtraEnergy: undefined,
+				Stun: undefined,
+				Double: undefined, }),
 		target: new CairoCustomEnum({ 
 					Cap: 0,
 				Square: undefined, }),
+			remaining_triggers: 0,
 		},
 		EffectValue: {
 		effect_type: new CairoCustomEnum({ 
-					DamageBuff: "",
+					DamageBuff: 0,
 				Shield: undefined,
 				Heal: undefined,
 				DOT: undefined,
-				MoveBonus: undefined, }),
+				MoveBonus: undefined,
+				AttackBonus: undefined,
+				BonusRange: undefined,
+				MoveDiscount: undefined,
+				AttackDiscount: undefined,
+				AbilityDiscount: undefined,
+				ExtraEnergy: undefined,
+				Stun: undefined,
+				Double: undefined, }),
 		target: new CairoCustomEnum({ 
 					Cap: 0,
 				Square: undefined, }),
+			remaining_triggers: 0,
 		},
 		Game: {
 			id: 0,
@@ -368,19 +419,34 @@ export const schema: SchemaType = {
 			id: 0,
 			game_ids: [0],
 			address: "",
+			wins: 0,
+			losses: 0,
 		},
 		AgentGamesValue: {
 			game_ids: [0],
 			address: "",
+			wins: 0,
+			losses: 0,
+		},
+		GlobalStats: {
+			id: 0,
+			games_played: 0,
+		},
+		GlobalStatsValue: {
+			games_played: 0,
 		},
 		Player: {
 			address: "",
 			in_game: false,
 			game_id: 0,
+			agent_wins: 0,
+			agent_losses: 0,
 		},
 		PlayerValue: {
 			in_game: false,
 			game_id: 0,
+			agent_wins: 0,
+			agent_losses: 0,
 		},
 		Action: {
 			cap_id: 0,
@@ -391,6 +457,8 @@ export const schema: SchemaType = {
 		},
 		Moved: {
 			player: "",
+			game_id: 0,
+			turn_number: 0,
 			turn: [{ cap_id: 0, action_type: new CairoCustomEnum({ 
 				Move: { x: 0, y: 0, },
 				Attack: undefined,
@@ -423,6 +491,8 @@ export enum ModelsMapping {
 	Vec2 = 'caps-Vec2',
 	AgentGames = 'caps-AgentGames',
 	AgentGamesValue = 'caps-AgentGamesValue',
+	GlobalStats = 'caps-GlobalStats',
+	GlobalStatsValue = 'caps-GlobalStatsValue',
 	Player = 'caps-Player',
 	PlayerValue = 'caps-PlayerValue',
 	Action = 'caps-Action',
