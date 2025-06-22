@@ -1171,7 +1171,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         11 => Option::Some(CapType {
@@ -1186,7 +1186,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         12 => Option::Some(CapType {
@@ -1201,7 +1201,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
             base_health: 10,
-            ability_target: TargetType::None,
+            ability_target: TargetType::TeamCap,
             ability_cost: 0,
         }),
         13 => Option::Some(CapType {
@@ -1216,7 +1216,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
             base_health: 10,
-            ability_target: TargetType::None,
+            ability_target: TargetType::OpponentCap,
             ability_cost: 0,
         }),
         14 => Option::Some(CapType {
@@ -1231,7 +1231,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
             base_health: 10,
-            ability_target: TargetType::None,
+                ability_target: TargetType::TeamCap,
             ability_cost: 0,
         }),
         15 => Option::Some(CapType {
@@ -1246,7 +1246,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
             base_health: 10,
-            ability_target: TargetType::None,
+            ability_target: TargetType::TeamCap,
             ability_cost: 0,
         }),
         16 => Option::Some(CapType {
@@ -1291,7 +1291,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         19 => Option::Some(CapType {
@@ -1306,7 +1306,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         20 => Option::Some(CapType {
@@ -1336,7 +1336,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::OpponentCap,
             ability_cost: 2,
         }),
         22 => Option::Some(CapType {
@@ -1366,7 +1366,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 3, y: 3 },
             attack_dmg: 3,
             base_health: 6,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         _ => Option::None,

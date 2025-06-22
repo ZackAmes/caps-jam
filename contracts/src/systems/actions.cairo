@@ -77,13 +77,37 @@ pub mod actions {
             let p1_cap3 = Cap {
                 id: global.cap_counter + 3,
                 owner: p2,
-                position: Vec2 { x: 3, y: 6 },
+                position: Vec2 { x: 3, y: 0 },
                 cap_type: 8,
                 dmg_taken: 0,
             };
 
+            let p1_cap4 = Cap {
+                id: global.cap_counter + 4,
+                owner: p1,
+                position: Vec2 { x: 1, y: 0 },
+                cap_type: 12,
+                dmg_taken: 0,
+            };
+            let p1_cap5 = Cap {
+                id: global.cap_counter + 5,
+                owner: p1,
+                position: Vec2 { x: 5, y: 0 },
+                cap_type: 16,
+                dmg_taken: 0,
+            };
+
+            let p1_cap6 = Cap {
+                id: global.cap_counter + 6,
+                owner: p1,
+                position: Vec2 { x: 3, y: 1 },
+                cap_type: 20,
+                dmg_taken: 0,
+            };
+
+
             let p2_cap1 = Cap {
-                id: global.cap_counter + 3,
+                id: global.cap_counter + 7,
                 owner: p2,
                 position: Vec2 { x: 2, y: 6 },
                 cap_type: 1,
@@ -91,7 +115,7 @@ pub mod actions {
             };
 
             let p2_cap2 = Cap {
-                id: global.cap_counter + 4,
+                id: global.cap_counter + 8,
                 owner: p2,
                 position: Vec2 { x: 4, y: 6 },
                 cap_type: 5,
@@ -101,29 +125,67 @@ pub mod actions {
             
 
             let p2_cap3 = Cap {
-                id: global.cap_counter + 4,
+                id: global.cap_counter + 9,
                 owner: p2,
                 position: Vec2 { x: 3, y: 6 },
                 cap_type: 9,
                 dmg_taken: 0,
             };
 
+            let p2_cap4 = Cap {
+                id: global.cap_counter + 10,
+                owner: p2,
+                position: Vec2 { x: 1, y: 6 },
+                cap_type: 13,
+                dmg_taken: 0,
+            };
+
+            let p2_cap5 = Cap {
+                id: global.cap_counter + 11,
+                owner: p2,
+                position: Vec2 { x: 5, y: 6 },
+                cap_type: 17,
+                dmg_taken: 0,
+            };
+
+            
+
+            let p2_cap6 = Cap {
+                id: global.cap_counter + 12,
+                owner: p2,
+                position: Vec2 { x: 3, y: 5 },
+                cap_type: 21,
+                dmg_taken: 0,
+            };
+
             game.add_cap(p1_cap1.id);
             game.add_cap(p1_cap2.id);
             game.add_cap(p1_cap3.id);
+            game.add_cap(p1_cap4.id);
+            game.add_cap(p1_cap5.id);
+            game.add_cap(p1_cap6.id);
             game.add_cap(p2_cap1.id);
             game.add_cap(p2_cap2.id);
             game.add_cap(p2_cap3.id);
+            game.add_cap(p2_cap4.id);
+            game.add_cap(p2_cap5.id);
+            game.add_cap(p2_cap6.id);
 
-            global.cap_counter = global.cap_counter + 4;
+            global.cap_counter = global.cap_counter + 12;
 
             world.write_model(@game);
             world.write_model(@p1_cap1);
             world.write_model(@p1_cap2);
             world.write_model(@p1_cap3);
+            world.write_model(@p1_cap4);
+            world.write_model(@p1_cap5);
+            world.write_model(@p1_cap6);
             world.write_model(@p2_cap1);
             world.write_model(@p2_cap2);
             world.write_model(@p2_cap3);
+            world.write_model(@p2_cap4);
+            world.write_model(@p2_cap5);
+            world.write_model(@p2_cap6);
 
             game_id
         }
