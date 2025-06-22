@@ -566,23 +566,13 @@ pub mod actions {
                 i += 1;
             };
 
-            let mut i = 0;
+            let mut i: u64 = 0;
             let mut effects: Array<Effect> = ArrayTrait::new();
-            while i < game.active_move_step_effects.len() {
-                let effect: Effect = world.read_model(*game.active_move_step_effects[i]);
-                effects.append(effect);
-                i += 1;
-            };
-            i = 0;
-            while i < game.active_end_of_turn_effects.len() {
-                let effect: Effect = world.read_model(*game.active_end_of_turn_effects[i]);
-                effects.append(effect);
-                i += 1;
-            };
-            i = 0;
-            while i < game.active_start_of_turn_effects.len() {
-                let effect: Effect = world.read_model(*game.active_start_of_turn_effects[i]);
-                effects.append(effect);
+            while i < game.effect_counter {
+                let effect: Effect = world.read_model((game_id, i).into());
+                if effect.remaining_triggers > 0 {
+                    effects.append(effect);
+                }
                 i += 1;
             };
             Option::Some((game, caps.span(), effects.span()))
