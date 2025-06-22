@@ -145,13 +145,18 @@ pub mod actions {
             let mut i = 0;
             while i < start_of_turn_effects.len() {
                 let effect: Effect = *start_of_turn_effects.at(i);
-                if effect.effect_type == EffectType::ExtraEnergy {
-                    extra_energy += 1;
+                match effect.effect_type {
+                    EffectType::ExtraEnergy(x) => {
+                        extra_energy += x;
+                    },
+                    _ => {
+                        continue;
+                    }
                 }
                 i += 1;
             };
 
-            let mut energy: u8 = game.turn_count.try_into().unwrap() + 2;
+            let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
             while i < turn.len() {
                 let action = turn.at(i);
@@ -159,6 +164,56 @@ pub mod actions {
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
+                let mut move_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
+                let mut attack_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
+                let mut ability_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
+                let mut stun: (bool, Array<u64>) = (false, ArrayTrait::new());
+                let mut double: (bool, Array<u64>) = (false, ArrayTrait::new());
+                let mut attack_bonus: (u8, Array<u64>) = (0, ArrayTrait::new());
+                let mut bonus_range: (u8, Array<u64>) = (0, ArrayTrait::new());
+
+                let mut index = 0;
+                while index < move_step_effects.len() {
+                    let effect: Effect = *move_step_effects.at(index);
+
+                    match effect.effect_type {
+                        EffectType::Double => {
+                            double = (true, array![effect.effect_id]);
+                        },
+                        EffectType::MoveDiscount(x) => {
+                            let (discount, mut ids) = move_discount;
+                            ids.append(effect.effect_id);
+                            move_discount = (discount + x, ids);
+                        },
+                        EffectType::AttackDiscount(x) => {
+                            let (discount, mut ids) = attack_discount;
+                            ids.append(effect.effect_id);
+                            attack_discount = (discount + x, ids);
+                        },
+                        EffectType::AbilityDiscount(x) => {
+                            let (discount, mut ids) = ability_discount;
+                            ids.append(effect.effect_id);
+                            ability_discount = (discount + x, ids);
+                        },   
+                        EffectType::Stun => {
+                            stun = (true, array![effect.effect_id]);
+                        },
+                        EffectType::AttackBonus(x) => {
+                            let (bonus, mut ids) = attack_bonus;
+                            ids.append(effect.effect_id);
+                            attack_bonus = (bonus + x, ids);
+                        },
+                        EffectType::BonusRange(x) => {
+                            let (range, mut ids) = bonus_range;
+                            ids.append(effect.effect_id);
+                            bonus_range = (range + x, ids);
+                        },
+                        _ => {
+                            continue;
+                        }
+                    }
+                    index += 1;
+                };
 
                 match action.action_type {
                     ActionType::Move(dir) => {

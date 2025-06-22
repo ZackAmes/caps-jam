@@ -410,17 +410,17 @@ pub struct Effect {
 
 #[derive(Copy, Drop, Serde, PartialEq, Introspect)]
 pub enum EffectType {
-    DamageBuff,
-    Shield,
-    Heal,
-    DOT,
-    MoveBonus,
-    AttackBonus,
-    BonusRange,
-    MoveDiscount,
-    AttackDiscount,
-    AbilityDiscount,
-    ExtraEnergy,
+    DamageBuff: u8,
+    Shield: u8,
+    Heal: u8,
+    DOT: u8,
+    MoveBonus: u8,
+    AttackBonus: u8,
+    BonusRange: u8,
+    MoveDiscount: u8,
+    AttackDiscount: u8,
+    AbilityDiscount: u8,
+    ExtraEnergy: u8,
     Stun,
     Double,
 }
