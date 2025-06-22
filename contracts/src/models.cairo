@@ -35,12 +35,16 @@ pub struct Game {
     pub caps_ids: Array<u64>,
     pub turn_count: u64,
     pub over: bool,
+    pub active_start_of_turn_effects: Array<u64>,
+    pub active_damage_step_effects: Array<u64>,
+    pub active_move_step_effects: Array<u64>,
+    pub active_end_of_turn_effects: Array<u64>,
 }
 
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     fn new(id: u64, player1: ContractAddress, player2: ContractAddress) -> Game {
-        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false }
+        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, active_start_of_turn_effects: ArrayTrait::new(), active_damage_step_effects: ArrayTrait::new(), active_move_step_effects: ArrayTrait::new(), active_end_of_turn_effects: ArrayTrait::new() }
     }
 
     fn add_cap(ref self: Game, cap_id: u64) {
@@ -289,6 +293,36 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
+    fn use_ability(ref self: Cap, cap_type: CapType, target: Vec2, game_id: u64, ref world: WorldStorage) {
+        let mut locations = get_piece_locations(game_id, @world);
+        match self.cap_type {
+            0 => {
+                //none
+            },
+            1 => {
+                //none
+            },
+            2 => {
+                //Deal 5 damage to the target
+                let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+                cap_at_target.dmg_taken += 5;
+                world.write_model(@cap_at_target);
+            },
+            3 => {
+                //Heal 5 damage
+                let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+                if cap_at_target.dmg_taken < 5 {
+                    cap_at_target.dmg_taken = 0;
+                }
+                cap_at_target.dmg_taken -= 5;
+                world.write_model(@cap_at_target);
+            },
+            _ => panic!("Invalid cap type"),
+        }
+    }
+
 }
 
 #[derive(Copy, Drop, Serde, Clone, Debug, PartialEq, Introspect)]
@@ -352,6 +386,53 @@ pub impl TargetTypeImpl of TargetTypeTrait {
 pub struct Vec2 {
     pub x: u8,
     pub y: u8,
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+#[dojo::model]
+pub struct Effect {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub effect_id: u64,
+    pub effect_type: EffectType,
+    pub target: EffectTarget,
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+pub enum EffectType {
+    DamageBuff,
+    Shield,
+    Heal,
+    DOT,
+    MoveBonus,
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+pub enum EffectTarget {
+    Cap: u64,
+    Square: Vec2,
+}
+
+#[generate_trait]
+pub impl EffectImpl of EffectTrait {
+    fn get_timing(self: @Effect) -> Timing {
+        match self.effect_type {
+            EffectType::DamageBuff => Timing::DamageStep,
+            EffectType::Shield => Timing::StartOfTurn,
+            EffectType::Heal => Timing::StartOfTurn,
+            EffectType::DOT => Timing::EndOfTurn,
+            EffectType::MoveBonus => Timing::MoveStep,
+        }
+    }
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+pub enum Timing {
+    StartOfTurn,
+    DamageStep,
+    MoveStep,
+    EndOfTurn,
 }
 
 #[generate_trait]

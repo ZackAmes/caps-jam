@@ -116,11 +116,6 @@
         font-size: 16px;
     }
 
-    .header span {
-        color: #666;
-        font-size: 12px;
-    }
-
     .content {
         color: #444;
     }

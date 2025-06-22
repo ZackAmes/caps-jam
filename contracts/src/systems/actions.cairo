@@ -54,6 +54,10 @@ pub mod actions {
                 caps_ids: ArrayTrait::new(),
                 turn_count: 0,
                 over: false,
+                active_start_of_turn_effects: ArrayTrait::new(),
+                active_damage_step_effects: ArrayTrait::new(),
+                active_move_step_effects: ArrayTrait::new(),
+                active_end_of_turn_effects: ArrayTrait::new(),
             };
 
             let p1_cap1 = Cap {
@@ -160,9 +164,10 @@ pub mod actions {
                     },
                     ActionType::Ability(target) => {
                         let cap_type = self.get_cap_data(cap.cap_type).unwrap();
+                        let cap_type_2 = self.get_cap_data(cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        assert!(cap_type.ability_target.is_valid(@cap, cap_type, *target, game_id, @world), "Ability is not valid");
-                        panic!("Ability is not implemented");
+                        assert!(cap_type.ability_target.is_valid(@cap, cap_type_2, *target, game_id, @world), "Ability is not valid");
+                        cap.use_ability(cap_type, *target, game_id, ref world);
                     }
                 }
                 i = i + 1;

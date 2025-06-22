@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x7f2132976fec477656df91309e268e81bc4ba80dc13dfa964a3e857cf3d6157",
-      "class_hash": "0x1fc5978782eccee9766f995e72f65b701679204e425d9c92bd02d0db0535f90",
+      "class_hash": "0x56d43404f5653a948070d4e47b49cfe6917b4302a87e7611a428d049ee4f8f2",
       "abi": [
         {
           "type": "impl",
@@ -1473,6 +1473,22 @@
             {
               "name": "over",
               "type": "core::bool"
+            },
+            {
+              "name": "active_start_of_turn_effects",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "active_damage_step_effects",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "active_move_step_effects",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "active_end_of_turn_effects",
+              "type": "core::array::Array::<core::integer::u64>"
             }
           ]
         },
@@ -1824,7 +1840,7 @@
     },
     {
       "address": "0x28bb7a180952a3b35e8a3f834bcca66504ef58314512e65d88be5d30ea53420",
-      "class_hash": "0xf93ef9bcd50cc474d9f325a24f317670818020f64e649ccc7aef945235bb2e",
+      "class_hash": "0x4c2aae7b923ab5f534752902fcd97df7432ef444ea3433f615fce4d182c3654",
       "abi": [
         {
           "type": "impl",
@@ -2186,7 +2202,13 @@
     },
     {
       "members": [],
-      "class_hash": "0x1560cfe1782858d55b70316097458e22553690a3f7f7e370caa92d72f7db1dd",
+      "class_hash": "0x1f8143ec80bbc89a44d861e1c34e4efab5b381e12958f2a4d58705ba4eb648b",
+      "tag": "caps-Effect",
+      "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
+    },
+    {
+      "members": [],
+      "class_hash": "0x65d713781d3ec53e03728bc5859817f67dcf2a950b70625cef9c31a598b6172",
       "tag": "caps-Game",
       "selector": "0xe9697c6c427792aaa8a422a17897c4b838d7d6c76261f43cce21228c294477"
     },

@@ -9,8 +9,7 @@ import {
     validateEnv,
     action,
     Agent,
-  } from "@daydreamsai/core";
-  import { createChromaVectorStore } from "@daydreamsai/chromadb";
+  } from "../../daydreams/packages/core/src";
   import { z } from "zod";
   import { google } from "@ai-sdk/google";
   import { discord } from "@daydreamsai/discord";
@@ -90,44 +89,15 @@ const capsContext = context({
       
             console.log(`Scheduling next game check in ${delay / 60000} minutes`);
 
-
-            let active_games = await caps_planetelo_contract.get_agent_games()
-
-            console.log('active_games', active_games)
-
-              let i = 0;
-              let to_play = 0;
-              while (i < active_games.length) {
-                to_play = active_games[i];
-                let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
-                console.log('game_state', game_state[0].over)
-                if (!game_state[0].over) {
-                  console.log('found game to play')
-                  break;
-                }
-                i+=1;
-              }
-
-              console.log('to_play', to_play)
-
-              let piece_info = await get_piece_info_str(to_play)
-              let game_state = await get_game_state_str(to_play)
-        
-              console.log('piece_info', piece_info)
-              console.log('game_state', game_state)
-
             timeout = setTimeout(async () => {
 
               let active_games = await caps_planetelo_contract.get_agent_games()
 
-              console.log('active_games', active_games)
-
               let i = 0;
               let to_play = 0;
               while (i < active_games.length) {
                 to_play = active_games[i];
                 let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
-                console.log('game_state', game_state[0].over)
                 if (!game_state[0].over) {
                   console.log('found game to play')
                   break;
@@ -135,11 +105,11 @@ const capsContext = context({
                 i+=1;
               }
 
-              console.log('to_play', to_play)
-
-
               let piece_info = await get_piece_info_str(to_play)
               let game_state = await get_game_state_str(to_play)
+
+              console.log('game_state', game_state)
+              console.log('piece_info', piece_info)
         
       
               let context = {
@@ -383,7 +353,7 @@ export const take_turn = (chain: StarknetChain) => action({
     logLevel: LogLevel.DEBUG,
     model: google("gemini-2.5-flash"),
     container,
-    extensions: [discord],
+    extensions: [],
     inputs: {
       caps_check: caps_check(chain),
     },
