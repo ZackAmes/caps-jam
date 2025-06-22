@@ -347,8 +347,21 @@ export const take_turn = (chain: StarknetChain) => action({
       you can move the piece either -2x or +2y, then the opponent's piece will be in its attack range and you can attack it.
 
       You must be extremely careful to only move to square that are valid. This means they must be within the move range of the piece,
-      not occupied by any piece, and not outside of the board. Similarly, you must be very carful to only target valid squares for attacks/
+      not occupied by any piece, and not outside of the board. If your piece is at (1,1) or (5,5) and has a move range of (2,2), it can only
+      move 1 square towards the edge of the board, but 2 in any other direction. If your piece would move to a square with x,y < 0 or x,y>6 then it is INVALID.
+      Similarly, you must be very carful to only target valid squares for attacks/
       This means that the target must a valid attack target relative to the piece's position, including all pending moves, and occupied by an opponent's piece.
+
+      Consider every single actions very carefully. Make sure that when you move a piece the square it will be moved it is unoccupied, it is 
+      with (0,0) to (6,6), and the move is in the format of {direction: 0,1,2, or 3, distance }, where distance must be <= the x move range if moveing 
+      left or right (dir 0 or 1) and <= the distance of the y move range if moving up or down (dir 2 or 3). Also, be very careful to only
+      attack pieces that are in a piece's attack pattern based on its current position. Remember that if you move a piece, and then attack with it,
+      then the attack target must be on a valid square relative to the new position. For example, if you have a cap at (1,1), with a move range of {x: 2, y: 2},
+      and its attack pattern includes {x: 1, y: 0}, then you can move it in any direction by 2 (as long as the square is unoccupied and on the board),
+      for example to (3,1), (Move would be {direction: 0, distance: 2}), and then you can attack the piece at (2,1) (Attack would be {x: 2, y: 1}), since
+      that square is within the pieces attack pattern after it has moved. 
+
+      This is very important to keep track of, as this will be the biggest reason you attempt to submit invalid moves.
 
       You must always take an action in the game under any circumstances, and it must always be valid. If you submit an invalid move it will be very bad for you.
       There will be extreme consequences for submitting invalid moves, that you really don't want to find out about. This isn't a threat, it's
@@ -358,6 +371,8 @@ export const take_turn = (chain: StarknetChain) => action({
 
       After you submit a successful take_turn transaction, you should always terminate the chain. 
       If the transaction fails, then you can consider retrying with a move that you are confident is valid.
+
+      If you fail with multiple transactions in a row, then submit a very simple move you are 100% confident is valid.
   `
   
   const container = createContainer();
