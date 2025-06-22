@@ -4,7 +4,7 @@ use caps::models::{Game, Cap};
 use starknet::ContractAddress;
 use dojo::world::WorldStorage;
 use core::dict::Felt252Dict;
-
+use caps::models::Effect;
 
 pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldStorage) -> Array<u64> {
     let mut game: Game = world.read_model(game_id);
@@ -38,4 +38,42 @@ pub fn get_piece_locations(game_id: u64, world: @WorldStorage) -> Felt252Dict<u6
     };
 
     locations
+}
+
+pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>, Array<Effect>) {
+    let mut game: Game = world.read_model(game_id);
+    let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
+    let mut damage_step_effects: Array<Effect> = ArrayTrait::new();
+    let mut move_step_effects: Array<Effect> = ArrayTrait::new();
+    let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
+
+    let mut i = 0;
+    while i< game.active_start_of_turn_effects.len() {
+        let effect: Effect = world.read_model(*game.active_start_of_turn_effects[i]);
+        start_of_turn_effects.append(effect);
+        i += 1;
+    };
+
+    i = 0;
+    while i< game.active_damage_step_effects.len() {
+        let effect: Effect = world.read_model(*game.active_damage_step_effects[i]);
+        damage_step_effects.append(effect);
+        i += 1;
+    };
+
+    i = 0;
+    while i< game.active_move_step_effects.len() {
+        let effect: Effect = world.read_model(*game.active_move_step_effects[i]);
+        move_step_effects.append(effect);
+        i += 1;
+    };
+
+    i = 0;
+    while i< game.active_end_of_turn_effects.len() {
+        let effect: Effect = world.read_model(*game.active_end_of_turn_effects[i]);
+        end_of_turn_effects.append(effect);
+        i += 1;
+    };
+
+    (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects)
 }

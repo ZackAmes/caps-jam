@@ -390,13 +390,13 @@ pub impl TargetTypeImpl of TargetTypeTrait {
     }
 }
 
-#[derive(Copy, Drop, Serde, IntrospectPacked, Debug)]
+#[derive(Copy, Drop, Serde, PartialEq, Introspect, Debug)]
 pub struct Vec2 {
     pub x: u8,
     pub y: u8,
 }
 
-#[derive(Copy, Drop, Serde, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
 #[dojo::model]
 pub struct Effect {
     #[key]
@@ -408,7 +408,7 @@ pub struct Effect {
     pub remaining_triggers: u8,
 }
 
-#[derive(Copy, Drop, Serde, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
 pub enum EffectType {
     DamageBuff,
     Shield,
@@ -425,7 +425,7 @@ pub enum EffectType {
     Double,
 }
 
-#[derive(Copy, Drop, Serde, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
 pub enum EffectTarget {
     Cap: u64,
     Square: Vec2,

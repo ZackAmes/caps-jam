@@ -1,4 +1,4 @@
-use caps::models::{Vec2, Game, Cap, Action, CapType};
+use caps::models::{Vec2, Game, Cap, Action, CapType, Effect, EffectType};
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
@@ -15,8 +15,8 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait};
-    use caps::helpers::{get_player_pieces, get_piece_locations};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType};
+    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
@@ -74,6 +74,14 @@ pub mod actions {
                 dmg_taken: 0,
             };
 
+            let p1_cap3 = Cap {
+                id: global.cap_counter + 3,
+                owner: p2,
+                position: Vec2 { x: 3, y: 6 },
+                cap_type: 8,
+                dmg_taken: 0,
+            };
+
             let p2_cap1 = Cap {
                 id: global.cap_counter + 3,
                 owner: p2,
@@ -90,18 +98,32 @@ pub mod actions {
                 dmg_taken: 0,
             };
 
+            
+
+            let p2_cap3 = Cap {
+                id: global.cap_counter + 4,
+                owner: p2,
+                position: Vec2 { x: 3, y: 6 },
+                cap_type: 9,
+                dmg_taken: 0,
+            };
+
             game.add_cap(p1_cap1.id);
             game.add_cap(p1_cap2.id);
+            game.add_cap(p1_cap3.id);
             game.add_cap(p2_cap1.id);
             game.add_cap(p2_cap2.id);
+            game.add_cap(p2_cap3.id);
 
             global.cap_counter = global.cap_counter + 4;
 
             world.write_model(@game);
             world.write_model(@p1_cap1);
             world.write_model(@p1_cap2);
+            world.write_model(@p1_cap3);
             world.write_model(@p2_cap1);
             world.write_model(@p2_cap2);
+            world.write_model(@p2_cap3);
 
             game_id
         }
@@ -116,7 +138,18 @@ pub mod actions {
             if *over {
                 panic!("Game is over");
             }
+
+            let (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
+
+            let mut extra_energy: u8 = 0;
             let mut i = 0;
+            while i < start_of_turn_effects.len() {
+                let effect: Effect = *start_of_turn_effects.at(i);
+                if effect.effect_type == EffectType::ExtraEnergy {
+                    extra_energy += 1;
+                }
+                i += 1;
+            };
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2;
 

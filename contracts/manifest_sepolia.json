@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x380f182e79d023da69432670ebef809f62bebf903f3758936b7531f4e4c8f",
-      "class_hash": "0x6d5a2de8d24c8887ba2ee4dc309176fcf7c3c2864fab87cde0c7a36dada80ce",
+      "class_hash": "0x4219ee007da7e28ecef85a59da0103152a9b5bd7a74a18941729cc81a137f5",
       "abi": [
         {
           "type": "impl",
@@ -1844,7 +1844,7 @@
     },
     {
       "address": "0x21e168a172597326f3742f9d97d19c40a809738dc4cbe235ef0a125f09d5895",
-      "class_hash": "0x12093da723419f39b7a4ae3697a7bc14c2cef0448b5d1d8ea5e5cc0dc8e4340",
+      "class_hash": "0x6b7b29f015696af4c344b5914186770f16f5f2f07784704776a6a991dd1d3ab",
       "abi": [
         {
           "type": "impl",
@@ -2194,19 +2194,19 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x59ed3b5ab3600fb737b82a24d074043bb5b47e22beae679264d7ed43557d5f",
+      "class_hash": "0x410eb0104e80025897058f718d95bcc8247393c804597d230ee201d2e322c7e",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
     },
     {
       "members": [],
-      "class_hash": "0xa742fef6c8f6f163a29356214ade2e0990d733863a094155eba9d54dd98be2",
+      "class_hash": "0x1d246d4f1c2f28b6f1129a4ffb4215cc98775acc45ed6a32b8d4b156fc6cf7a",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
     {
       "members": [],
-      "class_hash": "0x3e6716cea3d23e23efda1cc3a113dee14914d5ac9c09a0a3e64ccaa7e8476ef",
+      "class_hash": "0x489e850a0ea0b53123385a6028132264ccdee02f58cb77ea70a033bfb5f822e",
       "tag": "caps-Effect",
       "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
     },
@@ -2250,7 +2250,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x72ef60ced7649d79f90c36829f4b20e6298cf66b7293027e254bac957aabb39",
+      "class_hash": "0x3173dbacd12d947f7b979b27cd260ab2fef641e1731b0154dafde9249fb895d",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }
