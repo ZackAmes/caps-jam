@@ -22,10 +22,13 @@ let current_move = $state<Array<Action>>([])
 let initial_state = $state<{game: Game, caps: Array<Cap>}>()
 let selected_cap = $state<Cap | null>(null)
 
-let valid_ability_targets = $derived(() => {
+const get_valid_ability_targets = (id: number) => {
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+    console.log(cap_type)
     let target_type = cap_type?.ability_target.activeVariant();
     let ability_range = cap_type?.ability_range
+    console.log(target_type)
+    console.log(ability_range)
     if (target_type == 'None') {
         return []
     }
@@ -35,6 +38,7 @@ let valid_ability_targets = $derived(() => {
     else if (target_type == 'TeamCap') {
         let res = []
         let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        console.log(in_range)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
             if (cap_at && cap_at.owner == account.account?.address) {
@@ -70,23 +74,52 @@ let valid_ability_targets = $derived(() => {
         return in_range
     }
     return []
-})
+}
 
-let valid_moves = $derived(() => {
-    let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
-    let move_range = cap_type?.move_range
-    let in_range = get_moves_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, move_range!)
-    return in_range
-})
+const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | undefined) => {
+    if (!range) {
+        return []
+    }
+    let res = [];
+    let i = 0;
+    while (i < Number(range.x)) {
+        if (position.x + i < 6) {
+            res.push({x: position.x + i, y: position.y})
+        }
+        if (position.x - i > 0) {
+            res.push({x: position.x - i, y: position.y})
+        }
+        i++;
+    }
+    i = 0;
+    while (i < Number(range.y)) {
+        if (position.y + i < 6) {
+            res.push({x: position.x, y: position.y + i})
+        }
+        if (position.y - i > 0) {
+            res.push({x: position.x, y: position.y - i})
+        }
+        i++;
+    }
+    return res
+}
 
-let valid_attacks = $derived(() => {
+const get_valid_attacks = (id: number) => {
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
     let attack_range = cap_type?.attack_range
     let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, attack_range!)
+    in_range = in_range.filter(val => caps.get_cap_at(val.x, val.y) && caps.get_cap_at(val.x, val.y)?.owner != account.account?.address)
     return in_range
-})
+}
+
 
 let cap_types = $state<Array<CapType>>([])
+
+let valid_ability_targets = $derived(get_valid_ability_targets(Number(selected_cap?.cap_type)))
+
+let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)?.move_range!))
+
+let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
 let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
 let energy = $derived(Number(game_state?.game.turn_count) + 2)
@@ -252,46 +285,21 @@ export const caps = {
 }
 
 
-const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2>) => {
+const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2> | undefined) => {
+    if (!range) {
+        return []
+    }
     let res = []
     for (let val of range) {
-        if (position.x + Number(val.x) == selected_cap?.position.x && position.y + Number(val.y) == selected_cap?.position.y) {
             res.push({x: position.x + Number(val.x), y: position.y + Number(val.y)})
-        }
-        if (position.x - Number(val.x) == selected_cap?.position.x && position.y - Number(val.y) == selected_cap?.position.y) {
+        
             res.push({x: position.x - Number(val.x), y: position.y - Number(val.y)})
-        }
-        if (position.x + Number(val.x) == selected_cap?.position.x && position.y - Number(val.y) == selected_cap?.position.y) {
+        
             res.push({x: position.x + Number(val.x), y: position.y - Number(val.y)})
-        }
-        if (position.x - Number(val.x) == selected_cap?.position.x && position.y + Number(val.y) == selected_cap?.position.y) {
+        
             res.push({x: position.x - Number(val.x), y: position.y + Number(val.y)})
-        }
+        
     }
     return res
 }
 
-const get_moves_in_range = (position: {x: number, y: number}, range: Vec2) => {
-    let res = [];
-    let i = 0;
-    while (i < Number(range.x)) {
-        if (position.x + i < 6) {
-            res.push({x: position.x + i, y: position.y})
-        }
-        if (position.x - i > 0) {
-            res.push({x: position.x - i, y: position.y})
-        }
-        i++;
-    }
-    i = 0;
-    while (i < Number(range.y)) {
-        if (position.y + i < 6) {
-            res.push({x: position.x, y: position.y + i})
-        }
-        if (position.y - i > 0) {
-            res.push({x: position.x, y: position.y - i})
-        }
-        i++;
-    }
-    return res
-}
