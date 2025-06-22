@@ -7,6 +7,7 @@
   import { caps } from "./stores/caps.svelte";
   import type { Cap, ActionType } from "./dojo/models.gen";
   import { CairoCustomEnum } from "starknet";
+  import CapModel from "./3d/cap.svelte";
   interactivity();
 
   let { camera } = useThrelte()
@@ -77,9 +78,8 @@
     <T.MeshBasicMaterial color={color} />
   </T.Mesh>
   {#if caps.game_state && caps.get_cap_at(position.x, position.y)}
-    <T.Mesh position={[position.x, position.y, 0]}>
-      <T.BoxGeometry args={[.3, .3, .1]} />
-      <T.MeshBasicMaterial color="green" />
-    </T.Mesh>
+    {@const cap = caps.get_cap_at(position.x, position.y)!}
+    {@const player = cap.owner === account.account?.address ? 1 : 2}
+    <CapModel {cap} {position} {player} />
   {/if}
 {/each}
