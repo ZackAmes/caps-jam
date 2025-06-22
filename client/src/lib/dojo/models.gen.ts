@@ -20,6 +20,7 @@ export interface CapType {
 	attack_cost: BigNumberish;
 	attack_range: Array<Vec2>;
 	ability_range: Array<Vec2>;
+	ability_description: string;
 	move_range: Vec2;
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
@@ -35,6 +36,7 @@ export interface CapTypeValue {
 	attack_cost: BigNumberish;
 	attack_range: Array<Vec2>;
 	ability_range: Array<Vec2>;
+	ability_description: string;
 	move_range: Vec2;
 	attack_dmg: BigNumberish;
 	base_health: BigNumberish;
@@ -50,6 +52,20 @@ export interface CapValue {
 	dmg_taken: BigNumberish;
 }
 
+// Type definition for `caps::models::Effect` struct
+export interface Effect {
+	game_id: BigNumberish;
+	effect_id: BigNumberish;
+	effect_type: EffectTypeEnum;
+	target: EffectTargetEnum;
+}
+
+// Type definition for `caps::models::EffectValue` struct
+export interface EffectValue {
+	effect_type: EffectTypeEnum;
+	target: EffectTargetEnum;
+}
+
 // Type definition for `caps::models::Game` struct
 export interface Game {
 	id: BigNumberish;
@@ -58,6 +74,10 @@ export interface Game {
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
 	over: boolean;
+	active_start_of_turn_effects: Array<BigNumberish>;
+	active_damage_step_effects: Array<BigNumberish>;
+	active_move_step_effects: Array<BigNumberish>;
+	active_end_of_turn_effects: Array<BigNumberish>;
 }
 
 // Type definition for `caps::models::GameValue` struct
@@ -67,6 +87,10 @@ export interface GameValue {
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
 	over: boolean;
+	active_start_of_turn_effects: Array<BigNumberish>;
+	active_damage_step_effects: Array<BigNumberish>;
+	active_move_step_effects: Array<BigNumberish>;
+	active_end_of_turn_effects: Array<BigNumberish>;
 }
 
 // Type definition for `caps::models::Global` struct
@@ -144,6 +168,28 @@ export interface MovedValue {
 	turn: Array<Action>;
 }
 
+// Type definition for `caps::models::EffectTarget` enum
+export const effectTarget = [
+	'Cap',
+	'Square',
+] as const;
+export type EffectTarget = { 
+	Cap: BigNumberish,
+	Square: Vec2,
+};
+export type EffectTargetEnum = CairoCustomEnum;
+
+// Type definition for `caps::models::EffectType` enum
+export const effectType = [
+	'DamageBuff',
+	'Shield',
+	'Heal',
+	'DOT',
+	'MoveBonus',
+] as const;
+export type EffectType = { [key in typeof effectType[number]]: string };
+export type EffectTypeEnum = CairoCustomEnum;
+
 // Type definition for `caps::models::TargetType` enum
 export const targetType = [
 	'None',
@@ -175,6 +221,8 @@ export interface SchemaType extends ISchemaType {
 		CapType: CapType,
 		CapTypeValue: CapTypeValue,
 		CapValue: CapValue,
+		Effect: Effect,
+		EffectValue: EffectValue,
 		Game: Game,
 		GameValue: GameValue,
 		Global: Global,
@@ -208,6 +256,7 @@ export const schema: SchemaType = {
 			attack_cost: 0,
 			attack_range: [{ x: 0, y: 0, }],
 			ability_range: [{ x: 0, y: 0, }],
+		ability_description: "",
 		move_range: { x: 0, y: 0, },
 			attack_dmg: 0,
 			base_health: 0,
@@ -227,6 +276,7 @@ export const schema: SchemaType = {
 			attack_cost: 0,
 			attack_range: [{ x: 0, y: 0, }],
 			ability_range: [{ x: 0, y: 0, }],
+		ability_description: "",
 		move_range: { x: 0, y: 0, },
 			attack_dmg: 0,
 			base_health: 0,
@@ -245,6 +295,30 @@ export const schema: SchemaType = {
 			cap_type: 0,
 			dmg_taken: 0,
 		},
+		Effect: {
+			game_id: 0,
+			effect_id: 0,
+		effect_type: new CairoCustomEnum({ 
+					DamageBuff: "",
+				Shield: undefined,
+				Heal: undefined,
+				DOT: undefined,
+				MoveBonus: undefined, }),
+		target: new CairoCustomEnum({ 
+					Cap: 0,
+				Square: undefined, }),
+		},
+		EffectValue: {
+		effect_type: new CairoCustomEnum({ 
+					DamageBuff: "",
+				Shield: undefined,
+				Heal: undefined,
+				DOT: undefined,
+				MoveBonus: undefined, }),
+		target: new CairoCustomEnum({ 
+					Cap: 0,
+				Square: undefined, }),
+		},
 		Game: {
 			id: 0,
 			player1: "",
@@ -252,6 +326,10 @@ export const schema: SchemaType = {
 			caps_ids: [0],
 			turn_count: 0,
 			over: false,
+			active_start_of_turn_effects: [0],
+			active_damage_step_effects: [0],
+			active_move_step_effects: [0],
+			active_end_of_turn_effects: [0],
 		},
 		GameValue: {
 			player1: "",
@@ -259,6 +337,10 @@ export const schema: SchemaType = {
 			caps_ids: [0],
 			turn_count: 0,
 			over: false,
+			active_start_of_turn_effects: [0],
+			active_damage_step_effects: [0],
+			active_move_step_effects: [0],
+			active_end_of_turn_effects: [0],
 		},
 		Global: {
 			key: 0,
@@ -327,6 +409,10 @@ export enum ModelsMapping {
 	CapType = 'caps-CapType',
 	CapTypeValue = 'caps-CapTypeValue',
 	CapValue = 'caps-CapValue',
+	Effect = 'caps-Effect',
+	EffectTarget = 'caps-EffectTarget',
+	EffectType = 'caps-EffectType',
+	EffectValue = 'caps-EffectValue',
 	Game = 'caps-Game',
 	GameValue = 'caps-GameValue',
 	Global = 'caps-Global',

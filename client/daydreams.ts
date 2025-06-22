@@ -156,7 +156,11 @@ const capsContext = context({
         Move Cost: ${cap_type?.move_cost}
         Attack Cost: ${cap_type?.attack_cost}
         Move Range: ${cap_type?.move_range.x}, ${cap_type?.move_range.y}
-        Attack Range: ${cap_type?.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
+        Attack Pattern: ${cap_type?.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
+        Ability Pattern: ${cap_type?.ability_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
+        Ability Cost: ${cap_type?.ability_cost}
+        Ability Target: ${cap_type?.ability_target.activeVariant()}
+        Ability Description: ${cap_type?.ability_description}
         `
       }
 
@@ -311,9 +315,12 @@ export const take_turn = (chain: StarknetChain) => action({
       - {x: 2, y: 4}
       - {x: 4, y: 2}
 
-      Or if the piece has an attack range that includes {x: 1, y: 0}, and its location is {x:3, y:3}, then it can attack the following coordinates:
+      Or if the piece has an attack pattern that includes {x: 1, y: 0}, and its location is {x:3, y:3}, then it can attack the following coordinates:
       - {x: 2, y: 3}
       - {x: 4, y: 3}
+
+      The ability pattern functions the same way, but the viable targets varies based on the piece. For example, a heal ability can only target a piece you own,
+      and a damage ability can only target an opponent's piece. There are also abilities that can target any piece, any square, or the piece itself.
 
       You can only attack a piece if it is in the attack range of the piece, and if you have enough energy to attack.
 
@@ -348,6 +355,9 @@ export const take_turn = (chain: StarknetChain) => action({
       just a friendly warning about the signifigance of this game. The whole world is on the line here. You are playing for the survival of the entire planet.
       There are hostile aliens here with really advanced technology that are going to do really really messed up things to everyone if you don't
       show you are a serious competitor in this game, which means playing well and never submitting invalid moves.
+
+      After you submit a successful take_turn transaction, you should always terminate the chain. 
+      If the transaction fails, then you can consider retrying with a move that you are confident is valid.
   `
   
   const container = createContainer();
