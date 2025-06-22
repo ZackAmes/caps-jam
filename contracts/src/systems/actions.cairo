@@ -15,8 +15,8 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type};
-    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
+    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_move_step_effects, update_end_of_turn_effects, update_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
@@ -54,9 +54,9 @@ pub mod actions {
                 turn_count: 0,
                 over: false,
                 active_start_of_turn_effects: ArrayTrait::new(),
-                active_damage_step_effects: ArrayTrait::new(),
                 active_move_step_effects: ArrayTrait::new(),
                 active_end_of_turn_effects: ArrayTrait::new(),
+                effect_counter: 0,
             };
 
             let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
@@ -202,17 +202,10 @@ pub mod actions {
                 panic!("Game is over");
             }
 
-            let (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
-
-            let mut new_start_of_turn_effect_ids: Array<u64> = ArrayTrait::new();
-            let mut new_damage_step_effect_ids: Array<u64> = ArrayTrait::new();
-            let mut new_move_step_effect_ids: Array<u64> = ArrayTrait::new();
-            let mut new_end_of_turn_effect_ids: Array<u64> = ArrayTrait::new();
-
+            let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
 
             let mut stunned: bool = false;
             let mut stun_effect_ids: Array<u64> = ArrayTrait::new();
-            let mut double: (bool, Array<u64>) = (false, ArrayTrait::new());
 
             let mut extra_energy: u8 = 0;
             let mut i = 0;
@@ -232,8 +225,8 @@ pub mod actions {
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
             while i < turn.len() {
-                let (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
-                let mut game: Game = world.read_model(game_id);
+                let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
+                game = world.read_model(game_id);
 
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(game_id, @world);
@@ -241,20 +234,31 @@ pub mod actions {
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
 
+                //Triggers on Attack
                 let mut attack_bonus_amount: u8 = 0;
                 let mut attack_bonus_ids: Array<u64> = ArrayTrait::new();
 
+                //Triggers on Move
                 let mut move_discount_amount: u8 = 0;
                 let mut move_discount_ids: Array<u64> = ArrayTrait::new();
 
+                //Triggers on Attack
                 let mut attack_discount_amount: u8 = 0;
                 let mut attack_discount_ids: Array<u64> = ArrayTrait::new();
 
+                //Triggers on Ability
                 let mut ability_discount_amount: u8 = 0;
                 let mut ability_discount_ids: Array<u64> = ArrayTrait::new();
                 
+                //Triggers on Move
                 let mut bonus_range_amount: u8 = 0;
                 let mut bonus_range_ids: Array<u64> = ArrayTrait::new();
+
+                let mut double: bool = false;
+                let mut double_ids: Array<u64> = ArrayTrait::new();
+
+                let mut untriggered_move_step_effects: Array<u64> = ArrayTrait::new();
+                let mut untriggered_attack_step_effects: Array<u64> = ArrayTrait::new();
 
                 let mut index = 0;
                 while index < move_step_effects.len() {
@@ -262,7 +266,8 @@ pub mod actions {
 
                     match effect.effect_type {
                         EffectType::Double => {
-                            double = (true, array![effect.effect_id]);
+                            double = true;
+                            double_ids.append(effect.effect_id);
                         },
                         EffectType::MoveDiscount(x) => {
                             match effect.target {
@@ -272,7 +277,7 @@ pub mod actions {
                                         move_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effect_ids.append(effect.effect_id);
+                                        untriggered_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -288,7 +293,7 @@ pub mod actions {
                                         attack_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effect_ids.append(effect.effect_id);
+                                        untriggered_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -304,7 +309,7 @@ pub mod actions {
                                         ability_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effect_ids.append(effect.effect_id);
+                                        untriggered_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -312,19 +317,6 @@ pub mod actions {
                                 }
                             }
                         },   
-                        EffectType::Stun => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        stunned = true;
-                                        stun_effect_ids.append(effect.effect_id);
-                                    }
-                                },
-                                _ => {
-                                    continue;
-                                }
-                            }
-                        },
                         EffectType::AttackBonus(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
@@ -333,7 +325,7 @@ pub mod actions {
                                         attack_bonus_amount += x;
                                     }
                                     else {
-                                        new_move_step_effect_ids.append(effect.effect_id);
+                                        untriggered_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -349,7 +341,7 @@ pub mod actions {
                                         bonus_range_amount += x;
                                     }
                                     else {
-                                        new_move_step_effect_ids.append(effect.effect_id);
+                                        untriggered_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -380,7 +372,6 @@ pub mod actions {
                     }
                     j += 1;
                 };
-
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
@@ -415,42 +406,15 @@ pub mod actions {
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
                         cap.move(cap_type, *dir.x, *dir.y, bonus_range_amount);
                         world.write_model(@cap);
-                        let mut new_move_discount_ids: Array<u64> = ArrayTrait::new();
-                        let mut new_bonus_range_ids: Array<u64> = ArrayTrait::new();
-                        
-                        for id in move_discount_ids {
-                            let mut effect: Effect = world.read_model((game_id, id).into());
-                            effect.remaining_triggers -= 1;
-                            if effect.remaining_triggers == 0 {
-                                world.erase_model(@effect);
-                            }
-                            else {
-                                new_move_discount_ids.append(id);
-                                world.write_model(@effect);
-                            }
+
+                        for attack_discount_id in attack_discount_ids {
+                            untriggered_move_step_effects.append(attack_discount_id);
                         };
-                        for id in bonus_range_ids {
-                            let mut effect: Effect = world.read_model(id);
-                            effect.remaining_triggers -= 1;
-                            if effect.remaining_triggers == 0 {
-                                world.erase_model(@effect);
-                            }
-                            else {
-                                new_bonus_range_ids.append(id);
-                                world.write_model(@effect);
-                            }
+                        for move_discount_id in move_discount_ids {
+                            untriggered_move_step_effects.append(move_discount_id);
                         };
-                        if new_move_discount_ids.len() > 0 {
-                            move_discount_amount = move_discount_amount;
-                        }
-                        else {
-                            move_discount_amount = 0;
-                        }
-                        if new_bonus_range_ids.len() > 0 {
-                            bonus_range_amount = bonus_range_amount;
-                        }
-                        else {
-                            bonus_range_amount = 0;
+                        for ability_discount_id in ability_discount_ids {
+                            untriggered_move_step_effects.append(ability_discount_id);
                         }
                     },
                     ActionType::Attack(target) => {
@@ -470,7 +434,7 @@ pub mod actions {
                                 world.erase_model(@attack_discount_effect);
                             }
                             else {
-                                new_move_step_effect_ids.append(attack_discount_effect.effect_id);
+                                untriggered_move_step_effects.append(attack_discount_effect.effect_id);
                                 world.write_model(@attack_discount_effect);
                             }
                             k += 1;
@@ -488,7 +452,7 @@ pub mod actions {
                                 world.erase_model(@attack_bonus_effect);
                             }
                             else {
-                                new_move_step_effect_ids.append(attack_bonus_effect.effect_id);
+                                untriggered_move_step_effects.append(attack_bonus_effect.effect_id);
                                 world.write_model(@attack_bonus_effect);
                             }
                             l += 1;
@@ -496,122 +460,89 @@ pub mod actions {
                         
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
-                        let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
                         if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        let mut m = 0;
-                        let mut shield: Effect = Effect {
-                            game_id: game_id,
-                            effect_id: 0,
-                            effect_type: EffectType::Shield(0),
-                            target: EffectTarget::Cap(0),
-                            remaining_triggers: 0,
+                        handle_damage(game_id, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
+
+                        
+                        for ability_discount_id in ability_discount_ids {
+                            untriggered_move_step_effects.append(ability_discount_id);
                         };
-                        while m < damage_step_effects.len() {
-                            let effect: Effect = *damage_step_effects.at(m);
-                            match effect.effect_type {
-                                EffectType::Shield(_) => {
-                                    match effect.target {
-                                        EffectTarget::Cap(id) => {
-                                            if id == piece_at_location.id {
-                                                shield = effect;
-                                            }
-                                            else {
-                                                new_damage_step_effect_ids.append(effect.effect_id);
-                                                continue;
-                                            }
-                                        },
-                                        _ => {
-                                            continue;
-                                        }
-                                    }
-                                },
-                                EffectType::AttackBonus(x) => {
-                                    match effect.target {
-                                        EffectTarget::Cap(id) => {
-                                            if id == cap.id {
-                                                attack_dmg += x.try_into().unwrap();
-                                            }
-                                            else {
-                                                new_damage_step_effect_ids.append(effect.effect_id);
-                                                continue;
-                                            }
-                                        },
-                                        _ => {
-                                            continue;
-                                        }
-                                    }
-                                },
-                                _ => {
-                                    continue;
-                                }
+                        for bonus_range_id in bonus_range_ids {
+                            untriggered_move_step_effects.append(bonus_range_id);
+                        };
+                        for move_discount_id in move_discount_ids {
+                            untriggered_move_step_effects.append(move_discount_id);
+                        };
+                        
+                    },
+                    ActionType::Ability(target) => {
+                        let mut cap_type = self.get_cap_data(cap.cap_type).unwrap();
+                        let mut cap_type_2 = self.get_cap_data(cap.cap_type).unwrap();
+                        let mut cap_type_3 = self.get_cap_data(cap.cap_type).unwrap();
+                        assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
+                        assert!(cap_type.ability_target.is_valid(@cap, ref cap_type_2, *target, game_id, @world), "Ability is not valid");
+                        let mut ability_cost = cap_type.ability_cost;
+                        if ability_discount_amount > ability_cost {
+                            ability_cost = 0;
+                        }
+                        else {
+                            ability_cost -= ability_discount_amount;
+                        }
+                        if ability_cost > energy {
+                            panic!("Not enough energy");
+                        }
+                        energy -= ability_cost;
+                        let mut m = 0;
+                        while m < ability_discount_ids.len() {
+                            let mut ability_discount_effect: Effect = world.read_model((game_id, *ability_discount_ids.at(m)));
+                            ability_discount_effect.remaining_triggers -= 1;
+                            if ability_discount_effect.remaining_triggers == 0 {
+                                world.erase_model(@ability_discount_effect);
+                            }
+                            else {
+                                untriggered_move_step_effects.append(ability_discount_effect.effect_id);
+                                world.write_model(@ability_discount_effect);
                             }
                             m += 1;
                         };
-                        match shield.effect_type {
-                            EffectType::Shield(x) => {
-                                if x.into() > attack_dmg {
-                                    let new_shield = Effect {
-                                        game_id: game_id,
-                                        effect_id: shield.effect_id,
-                                        effect_type: EffectType::Shield(x.try_into().unwrap() - attack_dmg.try_into().unwrap()),
-                                        target: EffectTarget::Cap(piece_at_location.id),
-                                        remaining_triggers: shield.remaining_triggers,
-                                    };
-                                    new_move_step_effect_ids.append(shield.effect_id);
-                                    world.write_model(@new_shield);
-                                }
-                                else {
-                                    attack_dmg -= x.into();
-                                    world.erase_model(@shield);
-                                }
-                            },
-                            _ => {
-                                continue;
-                            }
-                        }
-                        piece_at_location.dmg_taken += attack_dmg;
-                        if piece_at_location.dmg_taken >= piece_at_location_type.base_health {
-                            game.remove_cap(piece_at_location.id);
-                            world.erase_model(@piece_at_location);
-                        }
-                        else {
-                            world.write_model(@piece_at_location);
-                        }
-                        world.write_model(@cap);
-                        world.write_model(@game);
-                    },
-                    ActionType::Ability(target) => {
-                        let cap_type = self.get_cap_data(cap.cap_type).unwrap();
-                        let cap_type_2 = self.get_cap_data(cap.cap_type).unwrap();
-                        assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        assert!(cap_type.ability_target.is_valid(@cap, cap_type_2, *target, game_id, @world), "Ability is not valid");
+                        for bonus_range_id in bonus_range_ids {
+                            untriggered_move_step_effects.append(bonus_range_id);
+                        };
+                        for move_discount_id in move_discount_ids {
+                            untriggered_move_step_effects.append(move_discount_id);
+                        };
+                        for attack_discount_id in attack_discount_ids {
+                            untriggered_move_step_effects.append(attack_discount_id);
+                        };
+                        for attack_bonus_id in attack_bonus_ids {
+                            untriggered_move_step_effects.append(attack_bonus_id);
+                        };
                         cap.use_ability(cap_type, *target, game_id, ref world);
+
+                        if double && cap_type_3.ability_target.is_valid(@cap, ref cap_type_3, *target, game_id, @world) {
+                            cap.use_ability(cap_type_3, *target, game_id, ref world);
+                        }
+
+                        for double_id in double_ids {
+                            let mut double_effect: Effect = world.read_model((game_id, double_id));
+                            double_effect.remaining_triggers -= 1;
+                            if double_effect.remaining_triggers == 0 {
+                                world.erase_model(@double_effect);
+                            }
+                            else {
+                                untriggered_move_step_effects.append(double_effect.effect_id);
+                                world.write_model(@double_effect);
+                            }
+                        };
                     }
-                }
+                };
+                update_move_step_effects(game_id, ref world, untriggered_move_step_effects);
                 i = i + 1;
             };
-
-            if stunned {
-                let mut n = 0;
-                while n < stun_effect_ids.len() {
-                    let mut effect: Effect = world.read_model(*stun_effect_ids.at(n));
-                    if effect.remaining_triggers == 1 {
-                        world.erase_model(@effect);
-                    }
-                    else {
-                        effect.remaining_triggers -= 1;
-                        new_end_of_turn_effect_ids.append(effect.effect_id);
-                        world.write_model(@effect);
-                    }
-                    n += 1;
-                }
-            }
-
-            game.active_end_of_turn_effects = new_end_of_turn_effect_ids;
 
             game.turn_count = game.turn_count + 1;
             let (over, _) = @game.check_over(@world);
@@ -637,12 +568,6 @@ pub mod actions {
 
             let mut i = 0;
             let mut effects: Array<Effect> = ArrayTrait::new();
-            while i < game.active_damage_step_effects.len() {
-                let effect: Effect = world.read_model(*game.active_damage_step_effects[i]);
-                effects.append(effect);
-                i += 1;
-            };
-            i = 0;
             while i < game.active_move_step_effects.len() {
                 let effect: Effect = world.read_model(*game.active_move_step_effects[i]);
                 effects.append(effect);

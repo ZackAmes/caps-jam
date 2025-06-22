@@ -1,6 +1,6 @@
 
 use dojo::model::{ModelStorage};
-use caps::models::{Game, Cap};
+use caps::models::{Game, Cap, GameTrait};
 use starknet::ContractAddress;
 use dojo::world::WorldStorage;
 use core::dict::Felt252Dict;
@@ -40,10 +40,9 @@ pub fn get_piece_locations(game_id: u64, world: @WorldStorage) -> Felt252Dict<u6
     locations
 }
 
-pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>, Array<Effect>) {
+pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
     let mut game: Game = world.read_model(game_id);
     let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
-    let mut damage_step_effects: Array<Effect> = ArrayTrait::new();
     let mut move_step_effects: Array<Effect> = ArrayTrait::new();
     let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
 
@@ -51,13 +50,6 @@ pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>,
     while i< game.active_start_of_turn_effects.len() {
         let effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects[i]).into());
         start_of_turn_effects.append(effect);
-        i += 1;
-    };
-
-    i = 0;
-    while i< game.active_damage_step_effects.len() {
-        let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects[i]).into());
-        damage_step_effects.append(effect);
         i += 1;
     };
 
@@ -75,5 +67,79 @@ pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>,
         i += 1;
     };
 
-    (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects)
+    (start_of_turn_effects, move_step_effects, end_of_turn_effects)
+}
+
+pub fn update_start_of_turn_effects(game_id: u64, ref world: WorldStorage) {
+    let mut game: Game = world.read_model(game_id);
+    let mut i = 0;
+    while i < game.active_start_of_turn_effects.len() {
+        let mut effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects[i]).into());
+        effect.remaining_triggers -= 1;
+        if effect.remaining_triggers == 0 {
+            game.remove_effect(effect);
+            world.erase_model(@effect);
+            world.write_model(@game);
+        }
+        else {
+            world.write_model(@effect);
+        }
+        i += 1;
+    }
+}
+
+pub fn update_move_step_effects(game_id: u64, ref world: WorldStorage, untriggered_effects: Array<u64>) {
+    let mut game: Game = world.read_model(game_id);
+    let mut i = 0;
+    let mut new_ids: Array<u64> = ArrayTrait::new();
+    while i < game.active_move_step_effects.len() {
+        let effect_id = *game.active_move_step_effects.at(i);
+        let mut j = 0;
+        let mut untriggered = false;
+        while j < untriggered_effects.len() {
+            if effect_id == *untriggered_effects.at(j) {
+                new_ids.append(effect_id);
+                untriggered = true;
+                break;
+            }
+            j += 1;
+        };
+        if !untriggered {
+            let mut effect: Effect = world.read_model((game_id, effect_id).into());
+            effect.remaining_triggers -= 1;
+            if effect.remaining_triggers == 0 {
+                game.remove_effect(effect);
+                world.erase_model(@effect);
+            }
+            else {
+                new_ids.append(effect_id);
+                world.write_model(@effect);
+            }
+        }
+        i+=1;
+    };
+    game.active_move_step_effects = new_ids;
+    world.write_model(@game);
+}
+
+pub fn update_end_of_turn_effects(game_id: u64, ref world: WorldStorage) {
+    let mut game: Game = world.read_model(game_id);
+    let mut i = 0;
+    let mut new_ids: Array<u64> = ArrayTrait::new();
+    while i < game.active_end_of_turn_effects.len() {
+        let effect_id = *game.active_end_of_turn_effects.at(i);
+        let mut effect: Effect = world.read_model((game_id, effect_id).into());
+        effect.remaining_triggers -= 1;
+        if effect.remaining_triggers == 0 {
+            game.remove_effect(effect);
+            world.erase_model(@effect);
+        }
+        else {
+            new_ids.append(effect_id);
+            world.write_model(@effect);
+        }
+        i += 1;
+    };
+    game.active_end_of_turn_effects = new_ids;
+    world.write_model(@game);
 }
