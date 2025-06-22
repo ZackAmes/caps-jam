@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x441723c5f14721f696b0ffa8ad6c6418af5bb6f08b7591eb1b7d50dcd0a9c32",
-    "seed": "capsfsdsls",
+    "address": "0x6dc5e3b2bcbf5c13814bc680f68e223b03d0eba0fe280d1d410a3ff280361e3",
+    "seed": "casdsfsdsls",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x7f2132976fec477656df91309e268e81bc4ba80dc13dfa964a3e857cf3d6157",
-      "class_hash": "0x56d43404f5653a948070d4e47b49cfe6917b4302a87e7611a428d049ee4f8f2",
+      "address": "0x9d001ed9ee005a9eff13f6c7866e1a232872312cb68886e60b59ce8c943d4a",
+      "class_hash": "0x395efe81d01c79905c3b708746d4d9140436e71da7a65fb6a64dc19f8997c06",
       "abi": [
         {
           "type": "impl",
@@ -1605,6 +1605,10 @@
               "type": "core::array::Array::<caps::models::Vec2>"
             },
             {
+              "name": "ability_description",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
               "name": "move_range",
               "type": "caps::models::Vec2"
             },
@@ -1839,7 +1843,7 @@
       ]
     },
     {
-      "address": "0x28bb7a180952a3b35e8a3f834bcca66504ef58314512e65d88be5d30ea53420",
+      "address": "0x79a8da447e7360fde6112eebf6634dd3ab8a542826fc8a80d8fb2ff4e41eee7",
       "class_hash": "0x4c2aae7b923ab5f534752902fcd97df7432ef444ea3433f615fce4d182c3654",
       "abi": [
         {
@@ -2196,7 +2200,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x60527d7ff62c3bd09b88a55f575ca682b5c4e3828da49f159c9d2a73dcb3232",
+      "class_hash": "0xa742fef6c8f6f163a29356214ade2e0990d733863a094155eba9d54dd98be2",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },

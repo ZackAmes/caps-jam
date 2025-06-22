@@ -63,9 +63,6 @@
   }
 
   $effect(() => {
-    console.log(caps.valid_ability_targets)
-    console.log(caps.valid_moves)
-    console.log(caps.valid_attacks)
   })
 </script>
 
@@ -79,7 +76,6 @@
   </T.Mesh>
   {#if caps.game_state && caps.get_cap_at(position.x, position.y)}
     {@const cap = caps.get_cap_at(position.x, position.y)!}
-    {@const player = cap.owner === account.account?.address ? 1 : 2}
-    <CapModel {cap} {position} {player} />
+    <CapModel {cap} {position} />
   {/if}
 {/each}

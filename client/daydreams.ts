@@ -233,7 +233,7 @@ export const take_turn = (chain: StarknetChain) => action({
         actions: z.array(z.object({
             type: z.string().describe("should be Move or Attack"),
             id: z.number().describe("should be the id of the cap to move or attack"),
-            arg1: z.number().describe("should be the direction for Move, or the x coord of the target for Attack"),
+            arg1: z.number().describe("should be the direction for (0: +x, 1: -x, 2: +y, 3: -y) Move, or the x coord of the target for Attack"),
             arg2: z.number().describe("should be the distance for Move, or the y coord of the target for Attack")
             
     }))}),
@@ -308,12 +308,18 @@ export const take_turn = (chain: StarknetChain) => action({
 
       Attacks take a pair of coordinates as an argument, where the coords are the target of the attack.
 
-      The attack range of a piece is all of the cooridates it is able to hit relative to its position.
+      The attack range of a piece is all of the cooridates it is able to hit relative to its position. It is symmetric so (1,1) means that pieces that are on squares (-1,-1), (1,-1), (-1,1) relative to the piece are also in the attack range.
       For example, if a piece has an attack range that includes {x: 1, y: 1}, and its location is {x:3, y:3}, then it can attack the following coordinates:
       - {x: 2, y: 2}
       - {x: 4, y: 4}
       - {x: 2, y: 4}
       - {x: 4, y: 2}
+
+      Another example is if the piece has an attack range of {x: 2, y: 1}, and its location is {x:3, y:3}, then it can attack the following coordinates:
+      - {x: 1, y: 2}
+      - {x: 1, y: 4}
+      - {x: 5, y: 2}
+      - {x: 5, y: 4}
 
       Or if the piece has an attack pattern that includes {x: 1, y: 0}, and its location is {x:3, y:3}, then it can attack the following coordinates:
       - {x: 2, y: 3}
