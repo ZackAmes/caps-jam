@@ -231,81 +231,57 @@ pub impl CapImpl of CapTrait {
         self.position = new_position;
     }
 
-    fn check_in_range(self: @Cap, target: Vec2, range: Array<Vec2>) -> bool {
+    fn check_in_range(self: @Cap, target: Vec2, range: @Array<Vec2>) -> bool {
         let mut valid = false;
         let mut i = 0;
         while i < range.len() {
             let to_check: Vec2 = *range[i];
             if target.x >= *self.position.x && target.y >= *self.position.y {
                 if to_check.x + *self.position.x > 6 {
-                    i+=1;
-                    continue;
                 }
                 if to_check.y + *self.position.y > 6 {
-                    i+=1;
-                    continue;
                 }
                 if *self.position.x + to_check.x == target.x && *self.position.y + to_check.y == target.y {
                     valid = true;
                     break;
                 }
                 else {
-                    i+=1;
-                    continue;
                 }
             }
             else if target.x <= *self.position.x && target.y <= *self.position.y {
                 if to_check.x > *self.position.x {
-                    i+=1;
-                    continue;
                 }
                 if to_check.y > *self.position.y {
-                    i+=1;
-                    continue;
                 }
                 if *self.position.x - to_check.x == target.x && *self.position.y - to_check.y == target.y {
                     valid = true;
                     break;
                 }
                 else {
-                    i+=1;
-                    continue;
                 }
             }
             else if target.x <= *self.position.x && target.y >= *self.position.y {
                 if to_check.x > *self.position.x  {
-                    i+=1;
-                    continue;
                 }
                 if to_check.y + *self.position.y > 6 {
-                    i+=1;
-                    continue;
                 }
                 if *self.position.x - to_check.x == target.x && *self.position.y + to_check.y == target.y {
                     valid = true;
                     break;
                 }
                 else {
-                    i+=1;
-                    continue;
                 }
             }
             else if target.x >= *self.position.x && target.y <= *self.position.y {
                 if to_check.x + *self.position.x > 6 {
-                    i+=1;
-                    continue;
                 }
                 if to_check.y > *self.position.y {
-                    i+=1;
-                    continue;
                 }
                 if *self.position.x + to_check.x == target.x && *self.position.y - to_check.y == target.y {
                     valid = true;
                     break;
                 }
                 else {
-                    i+=1;
-                    continue;
                 }
             }
             i += 1;
@@ -883,21 +859,30 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 true
             },
             TargetType::TeamCap => {
-                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
+                let in_range = cap.check_in_range(target, @cap_type.ability_range);
+                assert!(in_range, "Target not in range");
                 let mut locations = get_piece_locations(game_id, world);
-                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
+                let at_location_index = locations.get((target.x * 7 + target.y).into());
+                assert!(at_location_index != 0, "No cap at location");
                 let at_location: Cap = world.read_model(at_location_index);
                 //Must be player
+                assert!(at_location.owner == *cap.owner, "Cap is not owned by player");
                 if in_range && at_location.owner == *cap.owner {
                     return true;
                 }
                 false
             },
             TargetType::OpponentCap => {
-                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
+                let in_range = cap.check_in_range(target, @cap_type.ability_range);
+                assert!(in_range, "Target not in range");
                 let mut locations = get_piece_locations(game_id, world);
-                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
+                let at_location_index = locations.get((target.x * 7 + target.y).into());
+                assert!(at_location_index != 0, "No cap at location");
                 let at_location: Cap = world.read_model(at_location_index);
+                assert!(*cap.owner != starknet::contract_address_const::<0x0>(), "Cap owner 0?");
+                assert!(at_location.owner != *cap.owner, "Cap is owned by player");
                 //Must be opponent
                 if in_range && at_location.owner != *cap.owner {
                     return true;
@@ -905,16 +890,19 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 false
             },
             TargetType::AnyCap => {
-                let in_range = cap.check_in_range(target, cap_type.ability_range);
+                assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
+                let in_range = cap.check_in_range(target, @cap_type.ability_range);
+                assert!(in_range, "Target not in range");
                 let mut locations = get_piece_locations(game_id, world);
-                let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
+                let at_location_index = locations.get((target.x * 7 + target.y).into());
                 if at_location_index != 0 && in_range {
                     return true;
                 }
                 false
             },
             TargetType::AnySquare => {
-                cap.check_in_range(target, cap_type.ability_range)
+                assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
+                cap.check_in_range(target, @cap_type.ability_range)
                 
             },
         }
@@ -977,8 +965,8 @@ pub impl EffectImpl of EffectTrait {
             EffectType::AttackDiscount => Timing::MoveStep,
             EffectType::AbilityDiscount => Timing::MoveStep,
             EffectType::ExtraEnergy => Timing::StartOfTurn,
-            EffectType::Stun => Timing::MoveStep,
-            EffectType::Double => Timing::DamageStep,
+            EffectType::Stun => Timing::EndOfTurn,
+            EffectType::Double => Timing::EndOfTurn,
         }
     }
 }
@@ -1015,7 +1003,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "None",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1030,7 +1018,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "None",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1045,7 +1033,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "None",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1060,7 +1048,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "None",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1196,7 +1184,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "Deal 1 damage to an ally to make its next attack deal 3 more damage",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1211,7 +1199,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "Stun a target enemy unit",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1226,7 +1214,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "Target unit gains move range equal to its shield health",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1241,7 +1229,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "Repeat the effect of the ally's next ability (if possible)",
             move_range: Vec2 { x: 1, y: 1 },
             attack_dmg: 1,
@@ -1255,7 +1243,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             description: "Cap 3",
             move_cost: 1,
             attack_cost: 2,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
+            attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
             ability_description: "Inflict target with burn that deals 1 damage each turn for 3 turns",
             move_range: Vec2 { x: 2, y: 2 },
@@ -1315,7 +1303,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             description: "Cap 8",
             move_cost: 1,
             attack_cost: 2,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
+            attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
             ability_description: "Deal 4 damage to self and 7 damage to an enemy",
             move_range: Vec2 { x: 2, y: 2 },
@@ -1330,7 +1318,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             description: "Cap 9",
             move_cost: 1,
             attack_cost: 2,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
+            attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Deal 8 damage to an enemy, but stun this unit next turn",
             move_range: Vec2 { x: 3, y: 3 },

@@ -5,7 +5,7 @@ use starknet::ContractAddress;
 pub trait IActions<T> {
     fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress) -> u64;
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
-    fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>)>;
+    fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
     fn get_cap_data(self: @T, cap_type: u16) -> Option<CapType>;
 }
 
@@ -76,7 +76,7 @@ pub mod actions {
 
             let p1_cap3 = Cap {
                 id: global.cap_counter + 3,
-                owner: p2,
+                owner: p1,
                 position: Vec2 { x: 3, y: 0 },
                 cap_type: 8,
                 dmg_taken: 0,
@@ -208,6 +208,11 @@ pub mod actions {
             let mut new_move_step_effect_ids: Array<u64> = ArrayTrait::new();
             let mut new_end_of_turn_effect_ids: Array<u64> = ArrayTrait::new();
 
+
+            let mut stunned: bool = false;
+            let mut stun_effect_ids: Array<u64> = ArrayTrait::new();
+            let mut double: (bool, Array<u64>) = (false, ArrayTrait::new());
+
             let mut extra_energy: u8 = 0;
             let mut i = 0;
             while i < start_of_turn_effects.len() {
@@ -226,13 +231,14 @@ pub mod actions {
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
             while i < turn.len() {
+                let (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
+                let mut game: Game = world.read_model(game_id);
+
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(game_id, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
-                let mut stun: (bool, Array<u64>) = (false, ArrayTrait::new());
-                let mut double: (bool, Array<u64>) = (false, ArrayTrait::new());
 
                 let mut attack_bonus_amount: u8 = 0;
                 let mut attack_bonus_ids: Array<u64> = ArrayTrait::new();
@@ -309,7 +315,8 @@ pub mod actions {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == cap.id {
-                                        stun = (true, array![effect.effect_id]);
+                                        stunned = true;
+                                        stun_effect_ids.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -358,6 +365,21 @@ pub mod actions {
                     index += 1;
                 };
 
+                let mut i = 0;
+                while i < end_of_turn_effects.len() {
+                    let effect: Effect = *end_of_turn_effects.at(i);
+                    match effect.effect_type {
+                        EffectType::Stun => {
+                            stunned = true;
+                            stun_effect_ids.append(effect.effect_id);
+                        },
+                        _ => {
+                            continue;
+                        }
+                    }
+                    i += 1;
+                };
+
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
@@ -369,6 +391,24 @@ pub mod actions {
                             move_cost -= move_discount_amount;
                         }
                         energy -= move_cost;
+                        if stunned {
+                            let mut i = 0;
+                            while i < stun_effect_ids.len() {
+                                let mut effect: Effect = world.read_model(*stun_effect_ids.at(i));
+                                match effect.target {
+                                    EffectTarget::Cap(id) => {
+                                        if id == cap.id {
+                                            panic!("Cannot move stunned cap");
+                                            
+                                        }
+                                    },
+                                    _ => {
+                                        
+                                    }
+                                }
+                                i += 1;
+                            }
+                        }
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
@@ -457,7 +497,7 @@ pub mod actions {
                         let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
-                        if(!cap.check_in_range(*target, cap_type.attack_range)) {
+                        if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
                         let mut i = 0;
@@ -553,6 +593,24 @@ pub mod actions {
                 i = i + 1;
             };
 
+            if stunned {
+                let mut i = 0;
+                while i < stun_effect_ids.len() {
+                    let mut effect: Effect = world.read_model(*stun_effect_ids.at(i));
+                    if effect.remaining_triggers == 1 {
+                        world.erase_model(@effect);
+                    }
+                    else {
+                        effect.remaining_triggers -= 1;
+                        new_end_of_turn_effect_ids.append(effect.effect_id);
+                        world.write_model(@effect);
+                    }
+                    i += 1;
+                }
+            }
+
+            game.active_end_of_turn_effects = new_end_of_turn_effect_ids;
+
             game.turn_count = game.turn_count + 1;
             let (over, _) = @game.check_over(@world);
             game.over = *over;
@@ -561,7 +619,7 @@ pub mod actions {
             world.emit_event(@Moved { player: get_caller_address(), game_id: game_id, turn_number: game.turn_count-1, turn: clone.span() });
         }
 
-        fn get_game(self: @ContractState, game_id: u64) -> Option<(Game, Span<Cap>)> {
+        fn get_game(self: @ContractState, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)> {
             let mut world = self.world_default();
             let game: Game = world.read_model(game_id);
             if game.player1 == starknet::contract_address_const::<0x0>(){
@@ -574,7 +632,33 @@ pub mod actions {
                 caps.append(cap);
                 i += 1;
             };
-            Option::Some((game, caps.span()))
+
+            let mut i = 0;
+            let mut effects: Array<Effect> = ArrayTrait::new();
+            while i < game.active_damage_step_effects.len() {
+                let effect: Effect = world.read_model(*game.active_damage_step_effects[i]);
+                effects.append(effect);
+                i += 1;
+            };
+            i = 0;
+            while i < game.active_move_step_effects.len() {
+                let effect: Effect = world.read_model(*game.active_move_step_effects[i]);
+                effects.append(effect);
+                i += 1;
+            };
+            i = 0;
+            while i < game.active_end_of_turn_effects.len() {
+                let effect: Effect = world.read_model(*game.active_end_of_turn_effects[i]);
+                effects.append(effect);
+                i += 1;
+            };
+            i = 0;
+            while i < game.active_start_of_turn_effects.len() {
+                let effect: Effect = world.read_model(*game.active_start_of_turn_effects[i]);
+                effects.append(effect);
+                i += 1;
+            };
+            Option::Some((game, caps.span(), effects.span()))
         }
 
         fn get_cap_data(self: @ContractState, cap_type: u16) -> Option<CapType> {

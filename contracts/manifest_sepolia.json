@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x2cf4d9b59fd9a2b5e9c98c42e7bf90758a660c3f73dd7bd88ad0f5b5990431",
-    "seed": "ca12sdsfsdsls",
+    "address": "0x33ed11c51aab0e43e8beacf41e404dae06042c70ca245840f5b3657c83ddb8",
+    "seed": "c123a",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x380f182e79d023da69432670ebef809f62bebf903f3758936b7531f4e4c8f",
-      "class_hash": "0x4219ee007da7e28ecef85a59da0103152a9b5bd7a74a18941729cc81a137f5",
+      "address": "0x2c27520658985d5962779dc19eb2362f509d03de7742ee8ac38bbc19cf626fd",
+      "class_hash": "0x3462b628da05dbda1e80c1b51bd094af6a60a803d1aa676b30e36a8a65c6588",
       "abi": [
         {
           "type": "impl",
@@ -1530,11 +1530,119 @@
         },
         {
           "type": "enum",
-          "name": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>)>",
+          "name": "caps::models::EffectType",
+          "variants": [
+            {
+              "name": "DamageBuff",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Shield",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Heal",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "DOT",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "MoveBonus",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AttackBonus",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "BonusRange",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "MoveDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AttackDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AbilityDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "ExtraEnergy",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Stun",
+              "type": "()"
+            },
+            {
+              "name": "Double",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "caps::models::EffectTarget",
+          "variants": [
+            {
+              "name": "Cap",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "Square",
+              "type": "caps::models::Vec2"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::Effect",
+          "members": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "effect_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "effect_type",
+              "type": "caps::models::EffectType"
+            },
+            {
+              "name": "target",
+              "type": "caps::models::EffectTarget"
+            },
+            {
+              "name": "remaining_triggers",
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<caps::models::Effect>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<caps::models::Effect>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)>",
           "variants": [
             {
               "name": "Some",
-              "type": "(caps::models::Game, core::array::Span::<caps::models::Cap>)"
+              "type": "(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)"
             },
             {
               "name": "None",
@@ -1695,7 +1803,7 @@
               ],
               "outputs": [
                 {
-                  "type": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>)>"
+                  "type": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)>"
                 }
               ],
               "state_mutability": "view"
@@ -1843,7 +1951,7 @@
       ]
     },
     {
-      "address": "0x21e168a172597326f3742f9d97d19c40a809738dc4cbe235ef0a125f09d5895",
+      "address": "0x42bd38bf433870269f7e2d3b065feee2e7a92ab90159c17b7a6c7e217548e83",
       "class_hash": "0x6b7b29f015696af4c344b5914186770f16f5f2f07784704776a6a991dd1d3ab",
       "abi": [
         {
@@ -2206,7 +2314,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x489e850a0ea0b53123385a6028132264ccdee02f58cb77ea70a033bfb5f822e",
+      "class_hash": "0x160fcd8bd403f0a7876aa589241e50f728cc35ea61283b8a858d8c667a93ab8",
       "tag": "caps-Effect",
       "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
     },
