@@ -15,7 +15,7 @@ import {
   import { google } from "@ai-sdk/google";
   import { discord } from "@daydreamsai/discord";
   import { StarknetChain } from "@daydreamsai/defai";
-  import { CapType, Action } from "../contracts/bindings/typescript/models.gen";
+  import { CapType, Action } from "../client/src/lib/dojo/models.gen";
   // Validate environment before proceeding
   const env = validateEnv(
     z.object({
@@ -237,14 +237,14 @@ const capsContext = context({
         let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
         capsDetails += owned_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
-          let cur_health = cap_type?.base_health - cap.dmg_taken;
+          let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
 
             return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
         }).join('\n');
         capsDetails += '\n\nOpponent Caps Details:\n';
         capsDetails += opponent_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
-          let cur_health = cap_type?.base_health - cap.dmg_taken;
+          let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
 
             return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
         }).join('\n');
