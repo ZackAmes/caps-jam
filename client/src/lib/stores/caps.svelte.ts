@@ -21,6 +21,12 @@ let current_move = $state<Array<Action>>([])
 
 let initial_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
 let selected_cap = $state<Cap | null>(null)
+let inspected_cap = $state<Cap | null>(null)
+
+// Add state for cap data popup positions
+let selected_cap_render_position = $state<{x: number, y: number} | null>(null)
+let inspected_cap_render_position = $state<{x: number, y: number} | null>(null)
+
 let popup_state = $state<{
     visible: boolean,   
     position: {x: number, y: number} | null,
@@ -147,7 +153,7 @@ let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.position.
 
 let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
-let max_energy = $derived(Number(game_state?.game.turn_count ?? 0) + 2)
+let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
 let energy = max_energy
 
 
@@ -303,12 +309,17 @@ export const caps = {
         current_move = [];
         energy = max_energy;
         selected_cap = null;
-        
+        inspected_cap = null;
+        selected_cap_render_position = null;
+        inspected_cap_render_position = null;
     },
 
     reset_move: () => {
         current_move = []
         selected_cap = null
+        selected_cap_render_position = null
+        inspected_cap = null
+        inspected_cap_render_position = null
         energy = max_energy
         game_state = initial_state
         popup_state.visible = false
@@ -325,6 +336,9 @@ export const caps = {
         // If clicking on selected cap, deselect it
         if (selected_cap && selected_cap.position.x == position.x && selected_cap.position.y == position.y) {
             selected_cap = null
+            selected_cap_render_position = null
+            inspected_cap = null
+            inspected_cap_render_position = null
             return
         }
 
@@ -335,11 +349,31 @@ export const caps = {
         // If no cap selected and clicking on own cap, select it
         if (!selected_cap && cap && cap.owner == account.account?.address) {
             selected_cap = cap
+            selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY}
+            inspected_cap = null
+            inspected_cap_render_position = null
             if (energy === 0) {
                 energy = max_energy
             }
             return
         } 
+        
+        // If clicking on an opponent's cap (regardless of whether we have a selected cap)
+        if (cap && cap.owner != account.account?.address) {
+            // If this is the same cap that's already inspected, close it
+            if (inspected_cap && inspected_cap.id === cap.id) {
+                inspected_cap = null;
+                inspected_cap_render_position = null;
+            } else {
+                // Inspect the new opponent cap
+                inspected_cap = cap;
+                inspected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY};
+            }
+        } else if (!cap) {
+            // Clicking on empty space - clear inspected cap
+            inspected_cap = null;
+            inspected_cap_render_position = null;
+        }
         
         // If cap is selected, check for available actions at clicked position
         if (selected_cap) {
@@ -347,7 +381,6 @@ export const caps = {
             
             if (available_actions.length > 0) {
                 // Show popup with available actions
-
                 popup_state = {
                     visible: true,
                     position: position,
@@ -364,6 +397,11 @@ export const caps = {
         popup_state.visible = false
         popup_state.position = null
         popup_state.available_actions = []
+    },
+
+    close_inspected_cap: () => {
+        inspected_cap = null
+        inspected_cap_render_position = null
     },
 
     get selected_cap() {
@@ -404,6 +442,18 @@ export const caps = {
 
     get popup_state() {
         return popup_state
+    },
+
+    get inspected_cap() {
+        return inspected_cap
+    },
+
+    get selected_cap_render_position() {
+        return selected_cap_render_position
+    },
+
+    get inspected_cap_render_position() {
+        return inspected_cap_render_position
     },
 
 }

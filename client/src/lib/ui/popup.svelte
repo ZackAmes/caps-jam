@@ -130,6 +130,27 @@
         font-size: 12px;
     }
 
+    /* Mobile responsive popup */
+    @media (max-width: 768px) {
+        .action-overlay {
+            /* On mobile, position relative to viewport instead of fixed positioning */
+            position: fixed;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%);
+            cursor: default; /* Disable dragging on mobile */
+        }
+
+        .action-box {
+            width: min(280px, calc(100vw - 2rem));
+            padding: 16px;
+            font-size: 16px; /* Larger text for mobile */
+            border-radius: 8px;
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+    }
+
     .header {
         display: flex;
         justify-content: space-between;
@@ -144,6 +165,12 @@
         font-size: 14px;
     }
 
+    @media (max-width: 768px) {
+        .header strong {
+            font-size: 18px;
+        }
+    }
+
     .close-button {
         background: none;
         border: none;
@@ -153,6 +180,16 @@
         padding: 0;
         width: 16px;
         height: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .close-button {
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            /* Better touch target */
+            padding: 4px;
+        }
     }
 
     .close-button:hover {
@@ -175,10 +212,25 @@
         text-align: center;
     }
 
+    @media (max-width: 768px) {
+        .energy-display {
+            padding: 8px 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+    }
+
     .action-buttons {
         display: flex;
         flex-direction: column;
         gap: 4px;
+    }
+
+    @media (max-width: 768px) {
+        .action-buttons {
+            gap: 8px;
+        }
     }
 
     .action-button {
@@ -190,6 +242,15 @@
         font-weight: 500;
         transition: all 0.2s;
         position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .action-button {
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            min-height: 48px; /* Touch-friendly button height */
+        }
     }
 
     .action-button:hover:not(.disabled) {

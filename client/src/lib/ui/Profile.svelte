@@ -161,6 +161,14 @@
         z-index: 100;
     }
 
+    /* Mobile responsive profile positioning */
+    @media (max-width: 768px) {
+        .profile-container {
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+    }
+
     .profile-toggle {
         background: white;
         border: 2px solid #333;
@@ -173,6 +181,15 @@
         display: flex;
         align-items: center;
         gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .profile-toggle {
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            min-height: 48px; /* Touch-friendly */
+        }
     }
 
     .profile-toggle:hover {
@@ -192,6 +209,14 @@
         font-weight: bold;
     }
 
+    @media (max-width: 768px) {
+        .notification-badge {
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+        }
+    }
+
     .profile-dropdown {
         position: absolute;
         top: 100%;
@@ -199,19 +224,50 @@
         margin-top: 4px;
         background: white;
         border: 2px solid #333;
-        border-radius: 4px;
+        border-radius: 6px;
+        padding: 12px;
         min-width: 280px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        font-family: Arial, sans-serif;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+        .profile-dropdown {
+            /* On mobile, make dropdown full width with some margin */
+            position: fixed;
+            top: 4rem;
+            left: 0.5rem;
+            right: 0.5rem;
+            width: auto;
+            min-width: auto;
+            max-width: none;
+            padding: 16px;
+            font-size: 16px;
+            border-radius: 8px;
+            max-height: calc(100vh - 6rem);
+            overflow-y: auto;
+        }
     }
 
     .profile-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
         border-bottom: 1px solid #ddd;
-        background: #f8f9fa;
+    }
+
+    .profile-header strong {
+        color: #333;
+        font-size: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .profile-header strong {
+            font-size: 18px;
+        }
     }
 
     .close-button {
@@ -220,66 +276,106 @@
         font-size: 18px;
         cursor: pointer;
         color: #666;
-        padding: 0;
-        width: 20px;
-        height: 20px;
+        padding: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 2px;
+    }
+
+    @media (max-width: 768px) {
+        .close-button {
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            padding: 8px;
+        }
     }
 
     .close-button:hover {
+        background: #f5f5f5;
         color: #333;
     }
 
     .section {
-        padding: 12px;
-        border-bottom: 1px solid #eee;
+        margin-bottom: 16px;
     }
 
-    .section:last-child {
-        border-bottom: none;
+    @media (max-width: 768px) {
+        .section {
+            margin-bottom: 20px;
+        }
     }
 
     .section h4 {
         margin: 0 0 8px 0;
         color: #333;
         font-size: 14px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .section h4 {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
     }
 
     .invite-form {
         display: flex;
         gap: 8px;
-        align-items: center;
+        margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .invite-form {
+            flex-direction: column;
+            gap: 12px;
+        }
     }
 
     .invite-input {
         flex: 1;
         padding: 6px 8px;
-        border: 1px solid #ddd;
+        border: 1px solid #ccc;
         border-radius: 3px;
-        font-size: 12px;
+        font-size: 14px;
     }
 
-    .invite-input:focus {
-        outline: none;
-        border-color: #3b82f6;
+    @media (max-width: 768px) {
+        .invite-input {
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            min-height: 48px;
+        }
     }
 
     .invite-btn {
-        background: #8b5cf6;
+        padding: 6px 12px;
+        background: #3b82f6;
         color: white;
         border: none;
         border-radius: 3px;
         cursor: pointer;
-        font-size: 12px;
-        padding: 6px 12px;
+        font-size: 14px;
         font-weight: 500;
     }
 
+    @media (max-width: 768px) {
+        .invite-btn {
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            min-height: 48px;
+        }
+    }
+
     .invite-btn:hover:not(:disabled) {
-        background: #7c3aed;
+        background: #2563eb;
     }
 
     .invite-btn:disabled {
-        background: #d1d5db;
+        background: #9ca3af;
         cursor: not-allowed;
     }
 
@@ -287,8 +383,20 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 6px 0;
+        padding: 8px;
+        margin: 4px 0;
+        background: #f8f9fa;
+        border-radius: 4px;
         font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+        .invite-item, .game-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            font-size: 16px;
+        }
     }
 
     .invite-actions {
@@ -296,22 +404,38 @@
         gap: 4px;
     }
 
+    @media (max-width: 768px) {
+        .invite-actions {
+            gap: 8px;
+        }
+    }
+
     .accept-btn, .decline-btn, .play-btn {
+        padding: 4px 8px;
         border: none;
         border-radius: 3px;
         cursor: pointer;
         font-size: 12px;
-        padding: 4px 8px;
         font-weight: 500;
     }
 
+    @media (max-width: 768px) {
+        .accept-btn, .decline-btn, .play-btn {
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 4px;
+            min-height: 40px;
+            min-width: 40px;
+        }
+    }
+
     .accept-btn {
-        background: #22c55e;
+        background: #10b981;
         color: white;
     }
 
     .accept-btn:hover {
-        background: #16a34a;
+        background: #059669;
     }
 
     .decline-btn {
@@ -333,22 +457,21 @@
     }
 
     .play-btn.pending {
-        background: #6b7280;
-        cursor: not-allowed;
-    }
-
-    .play-btn:disabled {
+        background: #9ca3af;
         cursor: not-allowed;
     }
 
     .empty-state {
-        padding: 12px;
+        padding: 20px;
         text-align: center;
         color: #666;
-        font-size: 13px;
+        font-style: italic;
     }
 
-    .empty-state p {
-        margin: 0;
+    @media (max-width: 768px) {
+        .empty-state {
+            padding: 24px;
+            font-size: 16px;
+        }
     }
 </style> 

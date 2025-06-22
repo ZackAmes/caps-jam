@@ -2,9 +2,28 @@
 	import type { Cap, CapType } from '../dojo/models.gen.ts';
     import { caps } from '../stores/caps.svelte';
 
+    // Props to specify which cap to display
+    let { capType = 'selected' }: { capType?: 'selected' | 'inspected' } = $props();
+
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
-    let position = { x: 20, y: 20 };
+    
+    // Initialize position based on click coordinates, then allow dragging
+    let position = $state({
+        x: capType === 'selected' ? 20 : 260, 
+        y: capType === 'selected' ? 20 : 20
+    });
+
+    // Update position when render position changes (new click)
+    $effect(() => {
+        if (capType === 'selected' && caps.selected_cap_render_position) {
+            position.x = caps.selected_cap_render_position.x;
+            position.y = caps.selected_cap_render_position.y - 150;
+        } else if (capType === 'inspected' && caps.inspected_cap_render_position) {
+            position.x = caps.inspected_cap_render_position.x;
+            position.y = caps.inspected_cap_render_position.y - 150;
+        }
+    });
 
     function handleMouseDown(e: MouseEvent) {
         isDragging = true;
@@ -23,7 +42,11 @@
         isDragging = false;
     }
 
-    let effects = $derived(caps.game_state?.effects.filter(effect => effect.target.variant.value == caps.selected_cap!.id))
+    // Determine which cap to display based on capType prop
+    let display_cap = $derived(capType === 'inspected' ? caps.inspected_cap : caps.selected_cap);
+    let is_opponent = $derived(capType === 'inspected' && caps.inspected_cap && caps.inspected_cap.owner !== caps.selected_cap?.owner);
+
+    let effects = $derived(caps.game_state?.effects.filter(effect => effect.target.variant.value == display_cap?.id) || [])
 
     // Helper function to get effect type name
     function getEffectTypeName(effectType: any): string {
@@ -36,16 +59,24 @@
     $effect(() => {
         console.log(effects)
     })
+
+    // Close function for opponent popup
+    function closeOpponentPopup() {
+        if (capType === 'inspected') {
+            caps.close_inspected_cap();
+        }
+    }
 </script>
 
 <svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
 
-{#if caps.selected_cap}
-    {@const cap_type = caps.cap_types.find(cap_type => cap_type.id == caps.selected_cap!.cap_type)}
+{#if display_cap}
+    {@const cap_type = caps.cap_types.find(cap_type => cap_type.id == display_cap.cap_type)}
     {#if cap_type}
         <div 
             class="cap-overlay" 
-            style="left: {position.x}px; top: {position.y}px;"
+            class:opponent={is_opponent}
+            style="left: {position.x + 50}px; top: {position.y - 100}px;"
             onmousedown={handleMouseDown}
             role="button"
             tabindex="0"
@@ -53,19 +84,27 @@
             <div class="cap-box">
                 <div class="header">
                     <strong>{cap_type.name}</strong>
-                    <span>ID: {caps.selected_cap.id}</span>
+                    <div class="header-info">
+                        <span>ID: {display_cap.id}</span>
+                        {#if is_opponent}
+                            <span class="opponent-label">Opponent</span>
+                        {/if}
+                    </div>
+                    {#if capType === 'inspected'}
+                        <button class="close-button" onclick={closeOpponentPopup}>×</button>
+                    {/if}
                 </div>
                 
                 <div class="content">
                     <div class="health">
-                        Health: {Number(cap_type.base_health) - Number(caps.selected_cap.dmg_taken)}/{Number(cap_type.base_health)}
+                        Health: {Number(cap_type.base_health) - Number(display_cap.dmg_taken)}/{Number(cap_type.base_health)}
                     </div>
                     
                     <div class="stats">
                         <div>Move Cost: {cap_type.move_cost}</div>
                         <div>Attack Cost: {cap_type.attack_cost}</div>
                         <div>Attack Damage: {cap_type.attack_dmg}</div>
-                        <div>Position: ({caps.selected_cap.position.x}, {caps.selected_cap.position.y})</div>
+                        <div>Position: ({display_cap.position.x}, {display_cap.position.y})</div>
                     </div>
 
                     {#if cap_type.ability_description}
@@ -112,6 +151,27 @@
         font-size: 14px;
     }
 
+    /* Mobile responsive cap data */
+    @media (max-width: 768px) {
+        .cap-overlay {
+            /* Adjust positioning for mobile to avoid off-screen issues */
+            max-width: calc(100vw - 1rem);
+            left: 0.5rem !important;
+            right: 0.5rem !important;
+            width: auto !important;
+        }
+
+        .cap-box {
+            width: 100%;
+            max-width: none;
+            padding: 16px;
+            font-size: 16px;
+            border-radius: 8px;
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+    }
+
     .header {
         display: flex;
         justify-content: space-between;
@@ -126,9 +186,79 @@
         font-size: 16px;
     }
 
-    .header span {
+    @media (max-width: 768px) {
+        .header strong {
+            font-size: 18px;
+        }
+    }
+
+    .header-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+    }
+
+    .header-info span {
         color: #666;
         font-size: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .header-info span {
+            font-size: 14px;
+        }
+    }
+
+    .opponent-label {
+        background: #ef4444;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+        .opponent-label {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+    }
+
+    .cap-overlay.opponent {
+        border: 2px solid #ef4444;
+    }
+
+    .cap-overlay.opponent .cap-box {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+
+    .close-button {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 16px;
+        height: 16px;
+        margin-left: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .close-button {
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            padding: 4px;
+        }
+    }
+
+    .close-button:hover {
+        color: #333;
     }
 
     .content {
@@ -141,9 +271,23 @@
         color: #e74c3c;
     }
 
+    @media (max-width: 768px) {
+        .health {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+    }
+
     .stats div {
         margin: 4px 0;
         color: #555;
+    }
+
+    @media (max-width: 768px) {
+        .stats div {
+            margin: 8px 0;
+            font-size: 16px;
+        }
     }
 
     .ability {
@@ -152,11 +296,25 @@
         border-top: 1px solid #eee;
     }
 
+    @media (max-width: 768px) {
+        .ability {
+            margin-top: 16px;
+            padding-top: 12px;
+        }
+    }
+
     .section-title {
         font-weight: bold;
         color: #333;
         margin-bottom: 6px;
         font-size: 15px;
+    }
+
+    @media (max-width: 768px) {
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
     }
 
     .ability-description {

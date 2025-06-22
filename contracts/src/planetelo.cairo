@@ -115,7 +115,10 @@ mod planetelo {
             let mut agent_games: AgentGames = world.read_model(0);
             let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: _caps_world.dns_address(@"actions").unwrap() };
 
-            let agent_team = (get_block_timestamp() % 4).try_into().unwrap();
+            let mut agent_team = (get_block_timestamp() % 4).try_into().unwrap();
+            if agent_team == player.team {
+                agent_team = (agent_team + 1) % 4;
+            }
             let player_team = player.team;
             let id: u128 = dispatcher.create_game(get_caller_address(), agent_games.address, player_team, agent_team).into();
 

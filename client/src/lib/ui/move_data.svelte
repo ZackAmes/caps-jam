@@ -102,6 +102,29 @@
         font-size: 14px;
     }
 
+    /* Mobile responsive move data */
+    @media (max-width: 768px) {
+        .move-overlay {
+            /* Position at bottom of screen on mobile */
+            left: 0.5rem !important;
+            right: 0.5rem !important;
+            bottom: 0.5rem !important;
+            top: auto !important;
+            width: auto !important;
+            cursor: default; /* Disable dragging on mobile */
+        }
+
+        .move-box {
+            width: 100%;
+            max-width: none;
+            padding: 16px;
+            font-size: 16px;
+            border-radius: 8px;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+    }
+
     .header {
         display: flex;
         justify-content: space-between;
@@ -116,6 +139,12 @@
         font-size: 16px;
     }
 
+    @media (max-width: 768px) {
+        .header strong {
+            font-size: 18px;
+        }
+    }
+
     .content {
         color: #444;
     }
@@ -126,6 +155,13 @@
         color: #2980b9;
     }
 
+    @media (max-width: 768px) {
+        .energy {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+    }
+
     .energy-bar {
         width: 100%;
         height: 8px;
@@ -133,6 +169,14 @@
         border-radius: 4px;
         margin-bottom: 12px;
         overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+        .energy-bar {
+            height: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
     }
 
     .energy-fill {
@@ -145,10 +189,23 @@
         margin-bottom: 8px;
     }
 
+    @media (max-width: 768px) {
+        .moves-section {
+            margin-bottom: 12px;
+        }
+    }
+
     .section-title {
         font-weight: bold;
         margin-bottom: 4px;
         color: #333;
+    }
+
+    @media (max-width: 768px) {
+        .section-title {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
     }
 
     .move-item {
@@ -156,6 +213,13 @@
         align-items: center;
         margin: 2px 0;
         font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+        .move-item {
+            margin: 6px 0;
+            font-size: 16px;
+        }
     }
 
     .move-number {
@@ -174,15 +238,35 @@
         font-size: 13px;
     }
 
+    @media (max-width: 768px) {
+        .no-moves {
+            font-size: 16px;
+        }
+    }
+
     .move-stats {
         border-top: 1px solid #ddd;
         padding-top: 8px;
         margin-top: 8px;
     }
 
+    @media (max-width: 768px) {
+        .move-stats {
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+    }
+
     .move-stats div {
         margin: 4px 0;
         color: #555;
         font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+        .move-stats div {
+            margin: 6px 0;
+            font-size: 16px;
+        }
     }
 </style>

@@ -22,7 +22,10 @@
   <Login />
   <Matchmaking />
   {#if caps.selected_cap}
-    <CapData />
+    <CapData capType="selected" />
+  {/if}
+  {#if caps.inspected_cap}
+    <CapData capType="inspected" />
   {/if}
   {#if caps.popup_state.visible}
     <Popup />
@@ -87,5 +90,32 @@
     padding: 1rem;
     margin: 2rem auto;
     border: 1px solid #ccc;
+  }
+
+  /* Mobile responsive game container */
+  @media (max-width: 768px) {
+    .game-container {
+      width: min(95vw, 95vh, 400px);
+      padding: 0.5rem;
+      margin: 1rem auto;
+      border-radius: 8px;
+    }
+  }
+
+  /* Mobile responsive layout adjustments */
+  @media (max-width: 768px) {
+    main {
+      padding: 0.5rem;
+    }
+    
+    /* Stack buttons vertically on mobile */
+    main > button {
+      display: block;
+      width: 100%;
+      margin: 0.5rem 0;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
   }
 </style>
