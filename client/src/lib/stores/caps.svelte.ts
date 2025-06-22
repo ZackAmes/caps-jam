@@ -83,21 +83,33 @@ const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | unde
     let res = [];
     let i = 0;
     while (i < Number(range.x)) {
-        if (position.x + i < 6) {
-            res.push({x: position.x + i, y: position.y})
+        if (position.x + i < 7) {
+            let cap_at = caps.get_cap_at(position.x + i, position.y)
+            if (!cap_at) {
+                res.push({x: position.x + i, y: position.y})
+            }
         }
         if (position.x - i > 0) {
-            res.push({x: position.x - i, y: position.y})
+            let cap_at = caps.get_cap_at(position.x - i, position.y)
+            if (!cap_at) {
+                res.push({x: position.x - i, y: position.y})
+            }
         }
         i++;
     }
     i = 0;
     while (i < Number(range.y)) {
-        if (position.y + i < 6) {
-            res.push({x: position.x, y: position.y + i})
+        if (position.y + i < 7) {
+            let cap_at = caps.get_cap_at(position.x, position.y + i)
+            if (!cap_at) {
+                res.push({x: position.x, y: position.y + i})
+            }
         }
         if (position.y - i > 0) {
-            res.push({x: position.x, y: position.y - i})
+            let cap_at = caps.get_cap_at(position.x, position.y - i)
+            if (!cap_at) {
+                res.push({x: position.x, y: position.y - i})
+            }
         }
         i++;
     }
