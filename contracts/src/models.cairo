@@ -65,6 +65,49 @@ pub impl GameImpl of GameTrait {
         self.caps_ids = new_ids;
     }
 
+    fn remove_effect(ref self: Game, effect: Effect) {
+        let mut i = 0;
+        let mut new_effects: Array<u64> = ArrayTrait::new();
+        match effect.get_timing() {
+            Timing::DamageStep => {
+                while i < self.active_damage_step_effects.len() {
+                    if *self.active_damage_step_effects.at(i) != effect.effect_id {
+                        new_effects.append(*self.active_damage_step_effects.at(i));
+                    }
+                    i += 1;
+                };
+                self.active_damage_step_effects = new_effects;
+            },
+            Timing::StartOfTurn => {
+                while i < self.active_start_of_turn_effects.len() {
+                    if *self.active_start_of_turn_effects.at(i) != effect.effect_id {
+                        new_effects.append(*self.active_start_of_turn_effects.at(i));
+                    }
+                    i += 1;
+                };
+                self.active_start_of_turn_effects = new_effects;
+            },
+            Timing::MoveStep => {
+                while i < self.active_move_step_effects.len() {
+                    if *self.active_move_step_effects.at(i) != effect.effect_id {
+                        new_effects.append(*self.active_move_step_effects.at(i));
+                    }
+                    i += 1;
+                };
+                self.active_move_step_effects = new_effects;
+            },
+            Timing::EndOfTurn => {
+                while i < self.active_end_of_turn_effects.len() {
+                    if *self.active_end_of_turn_effects.at(i) != effect.effect_id {
+                        new_effects.append(*self.active_end_of_turn_effects.at(i));
+                    }
+                    i += 1;
+                };
+                self.active_end_of_turn_effects = new_effects;
+            },
+        };
+    }
+
     fn check_over(self: @Game, world: @WorldStorage) -> (bool, ContractAddress) {
         let mut i = 0;
         let mut one_found = false;
@@ -306,10 +349,7 @@ pub impl CapImpl of CapTrait {
                 },
             4 => {
                 //Deal 5 damage to the target
-                let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
-                cap_at_target.dmg_taken += 5;
-                world.write_model(@cap_at_target);
+                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 5);
             },
             5 => {
                 //Heal 5 damage
@@ -328,7 +368,7 @@ pub impl CapImpl of CapTrait {
                 let mut new_effects: Array<u64> = ArrayTrait::new();
                 let mut found = false;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -396,23 +436,7 @@ pub impl CapImpl of CapTrait {
             },
             9 => {
                 let mut game: Game = world.read_model(game_id);
-                let amt = self.dmg_taken;
-                if amt == 0 {
-                    panic!("No damage taken to heal");
-                }
-                let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
-                let cap_type = get_cap_type(cap_at_target.cap_type);
-                let remaining_health = cap_type.unwrap().base_health - cap_at_target.dmg_taken;
-                if amt > remaining_health {
-                    game.remove_cap(cap_at_target_id);
-                    world.write_model(@game);
-                    world.erase_model(@cap_at_target);
-                }
-                else {
-                    cap_at_target.dmg_taken += amt;
-                    world.write_model(@cap_at_target);
-                }
+                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, self.dmg_taken.into());
                 self.dmg_taken = 0;
                 world.write_model(@self);
             },
@@ -420,7 +444,7 @@ pub impl CapImpl of CapTrait {
                 let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -451,7 +475,7 @@ pub impl CapImpl of CapTrait {
                 let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_start_of_turn_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_start_of_turn_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::ExtraEnergy(x) => {
                             match effect.target {
@@ -520,7 +544,7 @@ pub impl CapImpl of CapTrait {
                 let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -592,7 +616,7 @@ pub impl CapImpl of CapTrait {
                 let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into(   ));
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -640,7 +664,7 @@ pub impl CapImpl of CapTrait {
                 let mut i = 0;
                 let mut active_shield = false;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -681,58 +705,28 @@ pub impl CapImpl of CapTrait {
                 world.write_model(@game);
             },
             20 => {
-                let mut game: Game = world.read_model(game_id);
                 let self_cap_type = get_cap_type(self.cap_type);
-                let target_id = locations.get((target.x * 7 + target.y).into());
-                let mut target_cap: Cap = world.read_model(target_id);
-                let target_cap_type = get_cap_type(target_cap.cap_type);
-                
                 let self_health = self_cap_type.unwrap().base_health - self.dmg_taken;
-                let target_health = target_cap_type.unwrap().base_health - target_cap.dmg_taken;
                 
                 if self_health < 5 {
                     panic!("Not enough health, ability would kill self");
                 }
-                if target_health < 7 {
-                    game.remove_cap(target_id);
-                    self.dmg_taken += 4;
-                    world.write_model(@self);
-                    world.write_model(@game);
-                    world.erase_model(@target_cap);
-                }
-                else {
-                    target_cap.dmg_taken += 7;
-                    self.dmg_taken += 4;
-                    world.write_model(@self);
-                    world.write_model(@target_cap);
-                }
+                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 7);
+                handle_damage(game_id, self.id, ref world, 4);
             },
             21 => {
                 let mut game: Game = world.read_model(game_id);
-                let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                assert!(cap_at_target_id == 0, "No cap at target? :{}", cap_at_target_id);
-                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
-                let cap_at_target_type = get_cap_type(cap_at_target.cap_type);
-                let cap_at_target_health = cap_at_target_type.unwrap().base_health - cap_at_target.dmg_taken;
-                
-                if cap_at_target_health < 9 {
-                    world.erase_model(@cap_at_target);
-                    let effect = Effect {
-                        game_id,
-                        effect_id: game.active_damage_step_effects.len().into(),
-                        effect_type: EffectType::Stun,
-                        target: EffectTarget::Cap(self.id),
-                        remaining_triggers: 1,
-                    };
-                    game.add_effect(effect);
-                    game.remove_cap(cap_at_target_id);
-                    world.write_model(@effect);
-                    world.write_model(@game);
-                }
-                else {
-                    cap_at_target.dmg_taken += 9;
-                    world.write_model(@cap_at_target);
-                }
+                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 9);
+                let stun_effect = Effect {
+                    game_id,
+                    effect_id: game.active_damage_step_effects.len().into(),
+                    effect_type: EffectType::Stun,
+                    target: EffectTarget::Cap(self.id),
+                    remaining_triggers: 1,
+                };
+                game.add_effect(stun_effect);
+                world.write_model(@stun_effect);
+                world.write_model(@game);
             },
             22 => {
                 //none
@@ -744,7 +738,7 @@ pub impl CapImpl of CapTrait {
                 let mut i = 0;
                 let mut ally_shield = 0;
                 while i < game.active_damage_step_effects.len() {
-                    let effect: Effect = world.read_model(*game.active_damage_step_effects.at(i));
+                    let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -818,22 +812,8 @@ pub impl CapImpl of CapTrait {
                     }
                     i += 1;
                 };
+                handle_damage(game_id, self.id, ref world, 2 + extra_energy);
                 
-                let mut i = 0;
-                while i < player_pieces.len() {
-                    let mut piece: Cap = world.read_model(*player_pieces[i]);
-                    if piece.dmg_taken > 2 + extra_energy {
-                        piece.dmg_taken = 0;
-                        world.write_model(@piece);
-                    }
-                    else {
-                        piece.dmg_taken -= 2 + extra_energy;
-                        world.write_model(@piece);
-                    }
-                    
-                    
-                    i += 1;
-                };
             },
             _ => panic!("Not yet implemented"),
         }
@@ -1361,4 +1341,60 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
         _ => Option::None,
     };
     res
+}
+
+pub fn handle_damage(game_id: u64, target_id: u64, ref world: WorldStorage, amount: u64) {
+    let mut game: Game = world.read_model(game_id);
+    let mut target: Cap = world.read_model(target_id);
+    let cap_type = get_cap_type(target.cap_type);
+
+    let remaining_health = cap_type.unwrap().base_health - target.dmg_taken;
+
+    let mut i = 0;
+    let mut shield_amount = 0;
+    while i < game.active_damage_step_effects.len() {
+        let mut effect: Effect = world.read_model((game_id, *game.active_damage_step_effects.at(i)).into());
+        match effect.effect_type {
+            EffectType::Shield(val) => {
+                match effect.target {
+                    EffectTarget::Cap(target_id) => {
+                        if target_id == target_id {
+                            let mut new_val = 0;
+                            shield_amount = val.into();
+                            if val.into() > amount {
+                                new_val = val.into() - amount;
+                                effect.effect_type = EffectType::Shield(new_val.try_into().unwrap());
+                                
+                                world.write_model(@effect);
+                            }
+                            else {
+                                game.remove_effect(effect);
+                                world.erase_model(@effect);
+                                world.write_model(@game);
+                            }
+                        }
+                        
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+        i += 1;
+    };
+
+    if shield_amount > amount {
+
+    }
+    else if amount > shield_amount.into() + remaining_health.into() {
+        game.remove_cap(target_id.try_into().unwrap());
+        world.erase_model(@target);
+        world.write_model(@game);
+
+    }
+    else {
+        target.dmg_taken += (amount - shield_amount.into()).try_into().unwrap();
+        world.write_model(@target);
+    }
+
 }

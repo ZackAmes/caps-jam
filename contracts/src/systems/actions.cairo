@@ -394,7 +394,7 @@ pub mod actions {
                         if stunned {
                             let mut j = 0;
                             while j < stun_effect_ids.len() {
-                                let mut effect: Effect = world.read_model(*stun_effect_ids.at(j));
+                                let mut effect: Effect = world.read_model((game_id, *stun_effect_ids.at(j)).into());
                                 match effect.target {
                                     EffectTarget::Cap(id) => {
                                         if id == cap.id {
@@ -419,7 +419,7 @@ pub mod actions {
                         let mut new_bonus_range_ids: Array<u64> = ArrayTrait::new();
                         
                         for id in move_discount_ids {
-                            let mut effect: Effect = world.read_model(id);
+                            let mut effect: Effect = world.read_model((game_id, id).into());
                             effect.remaining_triggers -= 1;
                             if effect.remaining_triggers == 0 {
                                 world.erase_model(@effect);
@@ -464,7 +464,7 @@ pub mod actions {
                         }
                         let mut k = 0;
                         while k < attack_discount_ids.len() {
-                            let mut attack_discount_effect: Effect = world.read_model(*attack_discount_ids.at(k));
+                            let mut attack_discount_effect: Effect = world.read_model((game_id, *attack_discount_ids.at(k)));
                             attack_discount_effect.remaining_triggers -= 1;
                             if attack_discount_effect.remaining_triggers == 0 {
                                 world.erase_model(@attack_discount_effect);
@@ -482,7 +482,7 @@ pub mod actions {
                         }
                         let mut l = 0;
                         while l < attack_bonus_ids.len() {
-                            let mut attack_bonus_effect: Effect = world.read_model(*attack_bonus_ids.at(l));
+                            let mut attack_bonus_effect: Effect = world.read_model((game_id, *attack_bonus_ids.at(l)));
                             attack_bonus_effect.remaining_triggers -= 1;
                             if attack_bonus_effect.remaining_triggers == 0 {
                                 world.erase_model(@attack_bonus_effect);

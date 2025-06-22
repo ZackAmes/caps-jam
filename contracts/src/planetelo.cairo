@@ -68,7 +68,7 @@ trait IPlanetelo<T> {
     fn select_team(ref self: T, team: u16);
     fn invite(ref self: T, player2: ContractAddress);
     fn get_invites(self: @T) -> Array<u128>;
-    fn get_custom_games(self: @T) -> Array<u128>;
+    fn get_custom_games(self: @T) -> Array<CustomGames>;
     fn accept_invite(ref self: T, invite_id: u128);
     fn decline_invite(ref self: T, invite_id: u128);
     fn settle_custom_game(ref self: T, game_id: u128);
@@ -341,10 +341,17 @@ mod planetelo {
             
         }
 
-        fn get_custom_games(self: @ContractState) -> Array<u128> {
+        fn get_custom_games(self: @ContractState) -> Array<CustomGames> {
             let mut world = self.world(@"planetelo");
             let mut player: Player = world.read_model(get_caller_address());
-            player.custom_game_ids
+            let mut custom_games: Array<CustomGames> = ArrayTrait::new();
+            let mut i = 0;
+            while i < player.custom_game_ids.len() {
+                let custom_game: CustomGames = world.read_model(*player.custom_game_ids.at(i));
+                custom_games.append(custom_game);
+                i += 1;
+            };
+            custom_games
         }
     }
 

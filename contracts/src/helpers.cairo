@@ -49,28 +49,28 @@ pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>,
 
     let mut i = 0;
     while i< game.active_start_of_turn_effects.len() {
-        let effect: Effect = world.read_model(*game.active_start_of_turn_effects[i]);
+        let effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects[i]).into());
         start_of_turn_effects.append(effect);
         i += 1;
     };
 
     i = 0;
     while i< game.active_damage_step_effects.len() {
-        let effect: Effect = world.read_model(*game.active_damage_step_effects[i]);
+        let effect: Effect = world.read_model((game_id, *game.active_damage_step_effects[i]).into());
         damage_step_effects.append(effect);
         i += 1;
     };
 
     i = 0;
     while i< game.active_move_step_effects.len() {
-        let effect: Effect = world.read_model(*game.active_move_step_effects[i]);
+        let effect: Effect = world.read_model((game_id, *game.active_move_step_effects[i]).into());
         move_step_effects.append(effect);
         i += 1;
     };
 
     i = 0;
     while i< game.active_end_of_turn_effects.len() {
-        let effect: Effect = world.read_model(*game.active_end_of_turn_effects[i]);
+        let effect: Effect = world.read_model((game_id, *game.active_end_of_turn_effects[i]).into());
         end_of_turn_effects.append(effect);
         i += 1;
     };

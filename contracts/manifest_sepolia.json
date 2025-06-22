@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x10c2ab05b6a3dfe9860bbd202d0e0de526e53c73a8cfbfbbc35f7680368565",
-    "seed": "casdfsd123a",
+    "address": "0x793f4f2f0a1e5b0c83269f9704bd247635d80e4510b3710b925215daa83e9ba",
+    "seed": "asdfcasdfsd123a",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x59ee20b6acfb00c5981d86e071258cc672f850c9ad871d605c1f4b4a91a53f3",
-      "class_hash": "0x5bbb40bac2ce831ab9cda71683572e9ff34db8e8a6c8951f92b88aebfb4d242",
+      "address": "0x224b5ac6f2a6eddc3d821e4f2069583ad90f5c11f5dd8116051235f8ab0a366",
+      "class_hash": "0x6144fca162686aceaa7418b2601dd9058ab811642f3f8d7baf2814e9d7682e4",
       "abi": [
         {
           "type": "impl",
@@ -1959,8 +1959,8 @@
       ]
     },
     {
-      "address": "0x5b2cd1622bf2ea1aaba41b438a59e53014c2a053f6a46fd9a6d88adda6fab2",
-      "class_hash": "0x3df7d6e0471d015d295e31fdd29b6ace457a0ff8d5aa229bea026f8f9de3e9d",
+      "address": "0x5b3d4ffbe3ba17592edef60d74477493db5fa5b97d1309b9ce5fbaaca319c5e",
+      "class_hash": "0x731759b9d33e5b6c19e98ea312734557b5ce8e19b3bb4f086406970e47fc76c",
       "abi": [
         {
           "type": "impl",
@@ -2040,6 +2040,28 @@
             {
               "name": "True",
               "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::planetelo::CustomGames",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u128"
+            },
+            {
+              "name": "player1",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "player2",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "game_id",
+              "type": "core::integer::u128"
             }
           ]
         },
@@ -2149,7 +2171,7 @@
               "inputs": [],
               "outputs": [
                 {
-                  "type": "core::array::Array::<core::integer::u128>"
+                  "type": "core::array::Array::<caps::planetelo::CustomGames>"
                 }
               ],
               "state_mutability": "view"
