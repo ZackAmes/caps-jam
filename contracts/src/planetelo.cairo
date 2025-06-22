@@ -21,6 +21,7 @@ pub struct GlobalStats {
     #[key]
     id: u8,
     games_played: u64,
+    custom_game_counter: u128,
 }
 
 #[derive(Drop, Serde, Introspect)]
@@ -43,20 +44,39 @@ pub struct Player {
     game_id: u128,
     agent_wins: u8,
     agent_losses: u8,
+    team: u16,
+    custom_game_ids: Array<u128>,
+}
+
+#[derive(Drop, Serde, Introspect)]
+#[dojo::model]
+pub struct CustomGames {
+    #[key]
+    id: u128,
+    player1: ContractAddress,
+    player2: ContractAddress,
+    game_id: u128,
 }
 
 #[starknet::interface]
 trait IPlanetelo<T> {
-    fn get_result(self: @T, session_id: u32) -> (bool, ContractAddress, bool);
+    fn get_result(self: @T, session_id: u32) -> (bool, ContractAddress);
     fn play_agent(ref self: T) -> u128;
     fn settle_agent_game(ref self: T);
     fn get_agent_games(self: @T) -> Array<u128>;
     fn get_player_game_id(self: @T, address: ContractAddress) -> u128;
+    fn select_team(ref self: T, team: u16);
+    fn invite(ref self: T, player2: ContractAddress);
+    fn get_invites(self: @T) -> Array<u128>;
+    fn get_custom_games(self: @T) -> Array<u128>;
+    fn accept_invite(ref self: T, invite_id: u128);
+    fn decline_invite(ref self: T, invite_id: u128);
+    fn settle_custom_game(ref self: T, game_id: u128);
 }
 
 #[dojo::contract]
 mod planetelo {
-    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player, GlobalStats};
+    use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player, GlobalStats, CustomGames};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use dojo::world::{WorldStorage, WorldStorageTrait};    
     use dojo::model::{ModelStorage};
@@ -76,15 +96,14 @@ mod planetelo {
     #[abi(embed_v0)]
     impl PlaneteloInterfaceImpl of IPlanetelo<ContractState> {
 
-        fn get_result(self: @ContractState, session_id: u32) -> (bool, ContractAddress, bool) {
+        fn get_result(self: @ContractState, session_id: u32) -> (bool, ContractAddress) {
             let mut world = self.world(@"caps");
             let game: Game = world.read_model(session_id);
             let (over, winner) = @game.check_over(@world);
-            let is_p2 = game.player2 == get_caller_address();
             if *over {
-                return (*over, *winner, is_p2);
+                return (*over, *winner);
             }
-            return (false, starknet::contract_address_const::<0>(), is_p2);
+            return (false, starknet::contract_address_const::<0>());
         }
 
         fn play_agent(ref self: ContractState) -> u128 {
@@ -95,7 +114,9 @@ mod planetelo {
             let mut agent_games: AgentGames = world.read_model(0);
             let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: _caps_world.dns_address(@"actions").unwrap() };
 
-            let id: u128 = dispatcher.create_game(agent_games.address, get_caller_address()).into();
+            let agent_team = (get_block_timestamp() % 4).try_into().unwrap();
+            let player_team = player.team;
+            let id: u128 = dispatcher.create_game(get_caller_address(), agent_games.address, player_team, agent_team).into();
 
             agent_games.game_ids.append(id);
             world.write_model(@agent_games);
@@ -172,6 +193,159 @@ mod planetelo {
             player.game_id
         }
 
+        fn select_team(ref self: ContractState, team: u16) {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(get_caller_address());
+            player.team = team;
+            world.write_model(@player);
+        }
+
+        fn invite(ref self: ContractState, player2: ContractAddress) {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(get_caller_address());
+            let mut p2: Player = world.read_model(player2);
+            let mut global_stats: GlobalStats = world.read_model(0);
+            let mut i = 0;
+            while i < p2.custom_game_ids.len() {
+                let custom_game: CustomGames = world.read_model(*p2.custom_game_ids.at(i));
+                if custom_game.player1 == player.address || custom_game.player2 == player.address {
+                    panic!("You are already in a custom game with this player");
+                }
+                i += 1;
+            };
+            let invite: CustomGames = CustomGames {
+                id: global_stats.custom_game_counter,
+                player1: player.address,
+                player2: player2,
+                game_id: 0,
+            };
+            global_stats.custom_game_counter += 1;
+            world.write_model(@global_stats);
+            p2.custom_game_ids.append(invite.id);
+            player.custom_game_ids.append(invite.id);
+            world.write_model(@player);
+            world.write_model(@p2);
+            world.write_model(@invite);
+        }
+
+        fn get_invites(self: @ContractState) -> Array<u128> {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(get_caller_address());
+            let mut invites: Array<u128> = ArrayTrait::new();
+            let mut i = 0;
+            while i < player.custom_game_ids.len() {
+                let custom_game: CustomGames = world.read_model(*player.custom_game_ids.at(i));
+                if custom_game.game_id == 0 {
+                    invites.append(custom_game.id);
+                }
+                i += 1;
+            };
+            invites
+        }
+
+        fn accept_invite(ref self: ContractState, invite_id: u128) {
+            let mut world = self.world(@"caps");
+            let mut invite: CustomGames = world.read_model(invite_id);
+            if invite.player2 != get_caller_address() {
+                panic!("You are not the recipient of this invite");
+            }
+            let mut p1: Player = world.read_model(invite.player1);
+            let mut p2: Player = world.read_model(invite.player2);
+            let mut global_stats: GlobalStats = world.read_model(0);
+
+            let mut dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
+            let id: u128 = dispatcher.create_game(p1.address, p2.address, p1.team, p2.team).into();
+            invite.game_id = id;
+            world.write_model(@invite);
+        }
+
+        fn decline_invite(ref self: ContractState, invite_id: u128) {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(get_caller_address());
+            let mut invite: CustomGames = world.read_model(invite_id);
+            if invite.player2 != get_caller_address() {
+                panic!("You are not the recipient of this invite");
+            }
+            assert!(invite.game_id == 0, "Game has already started");
+            let mut p1: Player = world.read_model(invite.player1);
+            let mut p2: Player = world.read_model(invite.player2);
+            let mut global_stats: GlobalStats = world.read_model(0);
+            let mut new_p1_ids: Array<u128> = ArrayTrait::new();
+            let mut new_p2_ids: Array<u128> = ArrayTrait::new();
+            let mut i = 0;
+            while i < p1.custom_game_ids.len() {
+                if *p1.custom_game_ids.at(i) == invite_id {
+                    i += 1;
+                    continue;
+                }
+                new_p1_ids.append(*p1.custom_game_ids.at(i));
+                i += 1;
+            };
+            i = 0;
+            while i < p2.custom_game_ids.len() {
+                if *p2.custom_game_ids.at(i) == invite_id {
+                    i += 1;
+                    continue;
+                }
+                new_p2_ids.append(*p2.custom_game_ids.at(i));
+                i += 1;
+            };
+            p1.custom_game_ids = new_p1_ids;
+            p2.custom_game_ids = new_p2_ids;
+            world.write_model(@p1);
+            world.write_model(@p2);
+        }
+
+        fn settle_custom_game(ref self: ContractState, game_id: u128) {
+            let mut world = self.world(@"caps");
+            let game: Game = world.read_model(game_id);
+            let (over, winner) = @game.check_over(@world);
+            let mut res = Status::Active;
+            if *over {
+                if *winner == game.player1 {
+                    res = Status::Winner(game.player1);
+                }
+                else if *winner == game.player2 {
+                    res = Status::Winner(game.player2);
+                }
+                else {
+                    res = Status::None;
+                }
+            }
+            let mut p1: Player = world.read_model(game.player1);
+            let mut p2: Player = world.read_model(game.player2);
+            let mut i = 0;
+            let mut new_p1_ids: Array<u128> = ArrayTrait::new();
+            let mut new_p2_ids: Array<u128> = ArrayTrait::new();
+            while i < p1.custom_game_ids.len() {
+                if *p1.custom_game_ids.at(i) == game_id {
+                    i += 1;
+                    continue;
+                }
+                new_p1_ids.append(*p1.custom_game_ids.at(i));
+                i += 1;
+            };
+            i = 0;
+            while i < p2.custom_game_ids.len() {
+                if *p2.custom_game_ids.at(i) == game_id {
+                    i += 1;
+                    continue;
+                }
+                new_p2_ids.append(*p2.custom_game_ids.at(i));
+                i += 1;
+            };
+            p1.custom_game_ids = new_p1_ids;
+            p2.custom_game_ids = new_p2_ids;
+            world.write_model(@p1);
+            world.write_model(@p2);
+            
+        }
+
+        fn get_custom_games(self: @ContractState) -> Array<u128> {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(get_caller_address());
+            player.custom_game_ids
+        }
     }
 
     #[abi(embed_v0)]
@@ -181,7 +355,9 @@ mod planetelo {
             let mut world = self.world(@"caps");
             let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
 
-            let id: u128 = dispatcher.create_game(p1, p2).into();
+            let p1: Player = world.read_model(p1);
+            let p2: Player = world.read_model(p2);
+            let id: u128 = dispatcher.create_game(p1.address, p2.address, p1.team, p2.team).into();
             id
         }
 

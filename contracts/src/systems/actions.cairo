@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
 pub trait IActions<T> {
-    fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress) -> u64;
+    fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress, p1_team: u16, p2_team: u16) -> u64;
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
     fn get_cap_data(self: @T, cap_type: u16) -> Option<CapType>;
@@ -36,7 +36,7 @@ pub mod actions {
 
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
-        fn create_game(ref self: ContractState, p1: ContractAddress, p2: ContractAddress) -> u64 {
+        fn create_game(ref self: ContractState, p1: ContractAddress, p2: ContractAddress, p1_team: u16, p2_team: u16) -> u64 {
             // Get the default world.
             let mut world = self.world_default();
 
@@ -59,18 +59,21 @@ pub mod actions {
                 active_end_of_turn_effects: ArrayTrait::new(),
             };
 
+            let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
+            let p2_types = array![0 + p2_team, 4 + p2_team, 8 + p2_team, 12 + p2_team, 16 + p2_team, 20 + p2_team];
+
             let p1_cap1 = Cap {
                 id: global.cap_counter + 1,
                 owner: p1,
                 position: Vec2 { x: 2, y: 0 },
-                cap_type: 0,
+                cap_type: *p1_types[0],
                 dmg_taken: 0,
             };
             let p1_cap2 = Cap {
                 id: global.cap_counter + 2,
                 owner: p1,
                 position: Vec2 { x: 4, y: 0 },
-                cap_type: 4,
+                cap_type: *p1_types[1],
                 dmg_taken: 0,
             };
 
@@ -78,7 +81,7 @@ pub mod actions {
                 id: global.cap_counter + 3,
                 owner: p1,
                 position: Vec2 { x: 3, y: 0 },
-                cap_type: 8,
+                cap_type: *p1_types[2],
                 dmg_taken: 0,
             };
 
@@ -86,14 +89,14 @@ pub mod actions {
                 id: global.cap_counter + 4,
                 owner: p1,
                 position: Vec2 { x: 1, y: 0 },
-                cap_type: 12,
+                cap_type: *p1_types[3],
                 dmg_taken: 0,
             };
             let p1_cap5 = Cap {
                 id: global.cap_counter + 5,
                 owner: p1,
                 position: Vec2 { x: 5, y: 0 },
-                cap_type: 16,
+                cap_type: *p1_types[4],
                 dmg_taken: 0,
             };
 
@@ -101,7 +104,7 @@ pub mod actions {
                 id: global.cap_counter + 6,
                 owner: p1,
                 position: Vec2 { x: 3, y: 1 },
-                cap_type: 20,
+                cap_type: *p1_types[5],
                 dmg_taken: 0,
             };
 
@@ -110,7 +113,7 @@ pub mod actions {
                 id: global.cap_counter + 7,
                 owner: p2,
                 position: Vec2 { x: 2, y: 6 },
-                cap_type: 1,
+                cap_type: *p2_types[0],
                 dmg_taken: 0,
             };
 
@@ -118,7 +121,7 @@ pub mod actions {
                 id: global.cap_counter + 8,
                 owner: p2,
                 position: Vec2 { x: 4, y: 6 },
-                cap_type: 5,
+                cap_type: *p2_types[1],
                 dmg_taken: 0,
             };
 
@@ -128,7 +131,7 @@ pub mod actions {
                 id: global.cap_counter + 9,
                 owner: p2,
                 position: Vec2 { x: 3, y: 6 },
-                cap_type: 9,
+                cap_type: *p2_types[2],
                 dmg_taken: 0,
             };
 
@@ -136,7 +139,7 @@ pub mod actions {
                 id: global.cap_counter + 10,
                 owner: p2,
                 position: Vec2 { x: 1, y: 6 },
-                cap_type: 13,
+                cap_type: *p2_types[3],
                 dmg_taken: 0,
             };
 
@@ -144,17 +147,15 @@ pub mod actions {
                 id: global.cap_counter + 11,
                 owner: p2,
                 position: Vec2 { x: 5, y: 6 },
-                cap_type: 17,
+                cap_type: *p2_types[4],
                 dmg_taken: 0,
             };
-
-            
 
             let p2_cap6 = Cap {
                 id: global.cap_counter + 12,
                 owner: p2,
                 position: Vec2 { x: 3, y: 5 },
-                cap_type: 21,
+                cap_type: *p2_types[5],
                 dmg_taken: 0,
             };
 

@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x59ee20b6acfb00c5981d86e071258cc672f850c9ad871d605c1f4b4a91a53f3",
-      "class_hash": "0x749cadfb3cb28fb0e346dd52d2a9f31a21588b54e649b6c84d75fc05ff2c723",
+      "class_hash": "0x5bbb40bac2ce831ab9cda71683572e9ff34db8e8a6c8951f92b88aebfb4d242",
       "abi": [
         {
           "type": "impl",
@@ -1767,6 +1767,14 @@
                 {
                   "name": "p2",
                   "type": "core::starknet::contract_address::ContractAddress"
+                },
+                {
+                  "name": "p1_team",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "p2_team",
+                  "type": "core::integer::u16"
                 }
               ],
               "outputs": [
@@ -1952,7 +1960,7 @@
     },
     {
       "address": "0x5b2cd1622bf2ea1aaba41b438a59e53014c2a053f6a46fd9a6d88adda6fab2",
-      "class_hash": "0x6b7b29f015696af4c344b5914186770f16f5f2f07784704776a6a991dd1d3ab",
+      "class_hash": "0x3df7d6e0471d015d295e31fdd29b6ace457a0ff8d5aa229bea026f8f9de3e9d",
       "abi": [
         {
           "type": "impl",
@@ -2050,7 +2058,7 @@
               ],
               "outputs": [
                 {
-                  "type": "(core::bool, core::starknet::contract_address::ContractAddress, core::bool)"
+                  "type": "(core::bool, core::starknet::contract_address::ContractAddress)"
                 }
               ],
               "state_mutability": "view"
@@ -2099,6 +2107,88 @@
                 }
               ],
               "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "select_team",
+              "inputs": [
+                {
+                  "name": "team",
+                  "type": "core::integer::u16"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "invite",
+              "inputs": [
+                {
+                  "name": "player2",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_invites",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::array::Array::<core::integer::u128>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_custom_games",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::array::Array::<core::integer::u128>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "accept_invite",
+              "inputs": [
+                {
+                  "name": "invite_id",
+                  "type": "core::integer::u128"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "decline_invite",
+              "inputs": [
+                {
+                  "name": "invite_id",
+                  "type": "core::integer::u128"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "settle_custom_game",
+              "inputs": [
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u128"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
             }
           ]
         },
@@ -2292,6 +2382,11 @@
         "dojo_init",
         "play_agent",
         "settle_agent_game",
+        "select_team",
+        "invite",
+        "accept_invite",
+        "decline_invite",
+        "settle_custom_game",
         "create_match",
         "settle_match",
         "upgrade"
@@ -2314,6 +2409,12 @@
     },
     {
       "members": [],
+      "class_hash": "0x6bd07e2a1c83c8146d16c4b2639f6791c72dc10c6bae4b15c94506dac75a1fc",
+      "tag": "caps-CustomGames",
+      "selector": "0x5b55b346728a90a269448c6578e32c1e3c7109ce0364df3e952fb66e4985120"
+    },
+    {
+      "members": [],
       "class_hash": "0x160fcd8bd403f0a7876aa589241e50f728cc35ea61283b8a858d8c667a93ab8",
       "tag": "caps-Effect",
       "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
@@ -2332,7 +2433,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x605a27ff77d7d34d9fa2763253e38401e3e74ad660ad5e6258a1ebf73d27b73",
+      "class_hash": "0x455454215abf56a70e18cc927d971ab41c538f171d36011d64a7ad5ea466ef8",
       "tag": "caps-GlobalStats",
       "selector": "0x773bde9b14ec210e2d80fbd561c5715411c7d1b640bec35a7cd357b35ae510f"
     },
@@ -2350,7 +2451,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x6bcdd7613d015817b45daa318853495ab00fdf251ddb2f742d028f2fb49b141",
+      "class_hash": "0x6e613abbc4b6de9521aa25c1f70de014c70164b2b3b671fb5f659f29796b7ff",
       "tag": "planetelo-Player",
       "selector": "0x54015881ce1a0053b8c9e3c5fe475c73734ecf4897aa47c9751ee98134b1dc8"
     }

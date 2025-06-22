@@ -710,6 +710,7 @@ pub impl CapImpl of CapTrait {
             21 => {
                 let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+                assert!(cap_at_target_id == 0, "No cap at target? :{}", cap_at_target_id);
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
                 let cap_at_target_type = get_cap_type(cap_at_target.cap_type);
                 let cap_at_target_health = cap_at_target_type.unwrap().base_health - cap_at_target.dmg_taken;
