@@ -53,7 +53,7 @@
     }
     
     // Default checkerboard pattern (black and grey instead of red and blue)
-    return (position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "black" : "grey";
+    return (position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "darkgrey" : "lightgrey";
   }
 
   for (let i = 0; i < 7; i++) {

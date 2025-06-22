@@ -18,21 +18,16 @@
     } else if (color_id == 1) {
       return "darkblue";
     } else if (color_id == 2) {
-      return "darkgreen";
-    } else if (color_id == 3) {
       return "darkyellow";
+    } else if (color_id == 3) {
+      return "darkgreen";
     }
   };
 
   // Get border color based on player
-  let borderColor = $derived(cap.owner === caps.game_state?.game.player1 ? "white" : "black");
-  // Get shape type (tower vs basic)
-  const isTower = (capTypeId: number) => {
-    return capTypeId === 0 || capTypeId === 1;
-  };
+  let accentColor = $derived(cap.owner === caps.game_state?.game.player1 ? "white" : "black");
 
   let baseColor = $derived(getBaseColor(Number(cap.cap_type)));
-  let isCapTower = $derived(isTower(Number(cap.cap_type)));
 </script>
 
 <!-- Match the original cap positioning exactly -->

@@ -51,7 +51,7 @@
       caps.get_game(planetelo.planetelo_game_id!);
     }}>Get Game</button>
   </div>
-  {:else if planetelo.current_game_id == planetelo.agent_game_id && !caps.game_state}
+  {:else if account.account && planetelo.current_game_id == planetelo.agent_game_id && !caps.game_state}
   <div class="card">
     <button onclick={() => {
       caps.get_game(planetelo.agent_game_id!);
