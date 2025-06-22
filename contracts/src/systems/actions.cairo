@@ -15,7 +15,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget };
     use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
@@ -141,6 +141,11 @@ pub mod actions {
 
             let (start_of_turn_effects, damage_step_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
 
+            let mut new_start_of_turn_effect_ids: Array<u64> = ArrayTrait::new();
+            let mut new_damage_step_effect_ids: Array<u64> = ArrayTrait::new();
+            let mut new_move_step_effect_ids: Array<u64> = ArrayTrait::new();
+            let mut new_end_of_turn_effect_ids: Array<u64> = ArrayTrait::new();
+
             let mut extra_energy: u8 = 0;
             let mut i = 0;
             while i < start_of_turn_effects.len() {
@@ -164,13 +169,23 @@ pub mod actions {
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
-                let mut move_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
-                let mut attack_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
-                let mut ability_discount: (u8, Array<u64>) = (0, ArrayTrait::new());
                 let mut stun: (bool, Array<u64>) = (false, ArrayTrait::new());
                 let mut double: (bool, Array<u64>) = (false, ArrayTrait::new());
-                let mut attack_bonus: (u8, Array<u64>) = (0, ArrayTrait::new());
-                let mut bonus_range: (u8, Array<u64>) = (0, ArrayTrait::new());
+
+                let mut attack_bonus_amount: u8 = 0;
+                let mut attack_bonus_ids: Array<u64> = ArrayTrait::new();
+
+                let mut move_discount_amount: u8 = 0;
+                let mut move_discount_ids: Array<u64> = ArrayTrait::new();
+
+                let mut attack_discount_amount: u8 = 0;
+                let mut attack_discount_ids: Array<u64> = ArrayTrait::new();
+
+                let mut ability_discount_amount: u8 = 0;
+                let mut ability_discount_ids: Array<u64> = ArrayTrait::new();
+                
+                let mut bonus_range_amount: u8 = 0;
+                let mut bonus_range_ids: Array<u64> = ArrayTrait::new();
 
                 let mut index = 0;
                 while index < move_step_effects.len() {
@@ -181,53 +196,200 @@ pub mod actions {
                             double = (true, array![effect.effect_id]);
                         },
                         EffectType::MoveDiscount(x) => {
-                            let (discount, mut ids) = move_discount;
-                            ids.append(effect.effect_id);
-                            move_discount = (discount + x, ids);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        move_discount_ids.append(effect.effect_id);
+                                        move_discount_amount += x;
+                                    }
+                                    else {
+                                        new_move_step_effect_ids.append(effect.effect_id);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },
                         EffectType::AttackDiscount(x) => {
-                            let (discount, mut ids) = attack_discount;
-                            ids.append(effect.effect_id);
-                            attack_discount = (discount + x, ids);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        attack_discount_ids.append(effect.effect_id);
+                                        attack_discount_amount += x;
+                                    }
+                                    else {
+                                        new_move_step_effect_ids.append(effect.effect_id);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },
                         EffectType::AbilityDiscount(x) => {
-                            let (discount, mut ids) = ability_discount;
-                            ids.append(effect.effect_id);
-                            ability_discount = (discount + x, ids);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        ability_discount_ids.append(effect.effect_id);
+                                        ability_discount_amount += x;
+                                    }
+                                    else {
+                                        new_move_step_effect_ids.append(effect.effect_id);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },   
                         EffectType::Stun => {
-                            stun = (true, array![effect.effect_id]);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        stun = (true, array![effect.effect_id]);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },
                         EffectType::AttackBonus(x) => {
-                            let (bonus, mut ids) = attack_bonus;
-                            ids.append(effect.effect_id);
-                            attack_bonus = (bonus + x, ids);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        attack_bonus_ids.append(effect.effect_id);
+                                        attack_bonus_amount += x;
+                                    }
+                                    else {
+                                        new_move_step_effect_ids.append(effect.effect_id);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },
                         EffectType::BonusRange(x) => {
-                            let (range, mut ids) = bonus_range;
-                            ids.append(effect.effect_id);
-                            bonus_range = (range + x, ids);
+                            match effect.target {
+                                EffectTarget::Cap(id) => {
+                                    if id == cap.id {
+                                        bonus_range_ids.append(effect.effect_id);
+                                        bonus_range_amount += x;
+                                    }
+                                    else {
+                                        new_move_step_effect_ids.append(effect.effect_id);
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
                         },
                         _ => {
                             continue;
                         }
                     }
+
+
                     index += 1;
                 };
 
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
-                        energy -= cap_type.move_cost;
+                        let mut move_cost = cap_type.move_cost;
+                        if move_discount_amount > move_cost {
+                            move_cost = 0;
+                        }
+                        else {
+                            move_cost -= move_discount_amount;
+                        }
+                        energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
-                        cap.move(cap_type, *dir.x, *dir.y);
+                        cap.move(cap_type, *dir.x, *dir.y, bonus_range_amount);
                         world.write_model(@cap);
+                        let mut new_move_discount_ids: Array<u64> = ArrayTrait::new();
+                        let mut new_bonus_range_ids: Array<u64> = ArrayTrait::new();
+                        
+                        for id in move_discount_ids {
+                            let mut effect: Effect = world.read_model(id);
+                            effect.remaining_triggers -= 1;
+                            if effect.remaining_triggers == 0 {
+                                world.erase_model(@effect);
+                            }
+                            else {
+                                new_move_discount_ids.append(id);
+                                world.write_model(@effect);
+                            }
+                        };
+                        for id in bonus_range_ids {
+                            let mut effect: Effect = world.read_model(id);
+                            effect.remaining_triggers -= 1;
+                            if effect.remaining_triggers == 0 {
+                                world.erase_model(@effect);
+                            }
+                            else {
+                                new_bonus_range_ids.append(id);
+                                world.write_model(@effect);
+                            }
+                        };
+                        if new_move_discount_ids.len() > 0 {
+                            move_discount_amount = move_discount_amount;
+                        }
+                        else {
+                            move_discount_amount = 0;
+                        }
+                        if new_bonus_range_ids.len() > 0 {
+                            bonus_range_amount = bonus_range_amount;
+                        }
+                        else {
+                            bonus_range_amount = 0;
+                        }
                     },
                     ActionType::Attack(target) => {
                         assert!(energy >= cap_type.attack_cost, "Not enough energy");
-                        energy -= cap_type.attack_cost;
+                        let mut attack_cost = cap_type.attack_cost;
+                        if attack_discount_amount > attack_cost {
+                            attack_cost = 0;
+                        }
+                        else {
+                            attack_cost -= attack_discount_amount;
+                        }
+                        let mut i = 0;
+                        while i < attack_discount_ids.len() {
+                            let mut attack_discount_effect: Effect = world.read_model(*attack_discount_ids.at(i));
+                            attack_discount_effect.remaining_triggers -= 1;
+                            if attack_discount_effect.remaining_triggers == 0 {
+                                world.erase_model(@attack_discount_effect);
+                            }
+                            else {
+                                new_move_step_effect_ids.append(attack_discount_effect.effect_id);
+                                world.write_model(@attack_discount_effect);
+                            }
+                            i += 1;
+                        };
+                        energy -= attack_cost;
+                        let mut attack_dmg = cap_type.attack_dmg;
+                        if attack_bonus_amount > 0 {
+                            attack_dmg += attack_bonus_amount.into();
+                        }
+                        while i < attack_bonus_ids.len() {
+                            let mut attack_bonus_effect: Effect = world.read_model(*attack_bonus_ids.at(i));
+                            attack_bonus_effect.remaining_triggers -= 1;
+                            if attack_bonus_effect.remaining_triggers == 0 {
+                                world.erase_model(@attack_bonus_effect);
+                            }
+                            else {
+                                new_move_step_effect_ids.append(attack_bonus_effect.effect_id);
+                                world.write_model(@attack_bonus_effect);
+                            }
+                            i += 1;
+                        };
+                        
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
                         let piece_at_location_type = self.get_cap_data(piece_at_location.cap_type).unwrap();
@@ -236,7 +398,78 @@ pub mod actions {
                         if(!cap.check_in_range(*target, cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        piece_at_location.dmg_taken += cap_type.attack_dmg;
+                        let mut i = 0;
+                        let mut shield: Effect = Effect {
+                            game_id: game_id,
+                            effect_id: 0,
+                            effect_type: EffectType::Shield(0),
+                            target: EffectTarget::Cap(0),
+                            remaining_triggers: 0,
+                        };
+                        while i < damage_step_effects.len() {
+                            let effect: Effect = *damage_step_effects.at(i);
+                            match effect.effect_type {
+                                EffectType::Shield(_) => {
+                                    match effect.target {
+                                        EffectTarget::Cap(id) => {
+                                            if id == piece_at_location.id {
+                                                shield = effect;
+                                            }
+                                            else {
+                                                new_damage_step_effect_ids.append(effect.effect_id);
+                                                continue;
+                                            }
+                                        },
+                                        _ => {
+                                            continue;
+                                        }
+                                    }
+                                },
+                                EffectType::AttackBonus(x) => {
+                                    match effect.target {
+                                        EffectTarget::Cap(id) => {
+                                            if id == cap.id {
+                                                attack_dmg += x.try_into().unwrap();
+                                            }
+                                            else {
+                                                new_damage_step_effect_ids.append(effect.effect_id);
+                                                continue;
+                                            }
+                                        },
+                                        _ => {
+                                            continue;
+                                        }
+                                    }
+                                },
+                                _ => {
+                                    continue;
+                                }
+                            }
+                            i += 1;
+                        };
+                        match shield.effect_type {
+                            EffectType::Shield(x) => {
+                                if x.into() > attack_dmg {
+                                    let new_shield = Effect {
+                                        game_id: game_id,
+                                        effect_id: shield.effect_id,
+                                        effect_type: EffectType::Shield(x.try_into().unwrap() - attack_dmg.try_into().unwrap()),
+                                        target: EffectTarget::Cap(piece_at_location.id),
+                                        remaining_triggers: shield.remaining_triggers,
+                                    };
+                                    new_move_step_effect_ids.append(shield.effect_id);
+                                    world.write_model(@new_shield);
+                                }
+                                else {
+                                    attack_dmg -= x.into();
+                                    world.erase_model(@shield);
+                                }
+                            },
+                            _ => {
+                                continue;
+                            }
+                        }
+                        piece_at_location.dmg_taken += attack_dmg;
                         if piece_at_location.dmg_taken >= piece_at_location_type.base_health {
                             game.remove_cap(piece_at_location.id);
                             world.erase_model(@piece_at_location);

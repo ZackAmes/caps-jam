@@ -169,14 +169,14 @@ pub impl CapImpl of CapTrait {
         (new_position.x * 7 + new_position.y).into()
     }
 
-    fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8){
+    fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8, bonus_range: u8){
         let mut new_position = self.position;
         match direction {
             0 => {
                 if new_position.x + amount > 6 {
                     panic!("Move out of bounds");
                 }
-                if amount > cap_type.move_range.x {
+                if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
                 }
                 new_position.x += amount;
@@ -185,7 +185,7 @@ pub impl CapImpl of CapTrait {
                 if amount > new_position.x {
                     panic!("Move out of bounds");
                 }
-                if amount > cap_type.move_range.x {
+                if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
                 }
                 new_position.x -= amount;
@@ -194,7 +194,7 @@ pub impl CapImpl of CapTrait {
                 if new_position.y + amount > 6 {
                     panic!("Move out of bounds");
                 }
-                if amount > cap_type.move_range.y {
+                if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");
                 }
                 new_position.y += amount;
@@ -203,7 +203,7 @@ pub impl CapImpl of CapTrait {
                 if amount > new_position.y {
                     panic!("Move out of bounds");
                 }
-                if amount > cap_type.move_range.y {
+                if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");
                 }
                 new_position.y -= amount;
