@@ -3,17 +3,15 @@
   import { planetelo } from "./stores/planetelo.svelte";
   import Game from "./Game.svelte";
   import { caps } from "./stores/caps.svelte";
+  import Profile from "./ui/Profile.svelte";
   
 </script>
 
 {#if !account.account}
   <button onclick={account.connect}>Connect</button>
 {:else}
-  <button onclick={account.disconnect}>Disconnect</button>
+  <Profile />
   <p>Connected as {account.username} elo: {planetelo.elo}</p>
-{/if}
-{#if account.account}
-  <button onclick={() => planetelo.update_status()}>Update Status</button>
 {/if}
 {#if account.account && planetelo.queue_status == 2 && planetelo.current_game_id}
   <button onclick={() => caps.get_game(planetelo.current_game_id!)}>Refresh Game</button>

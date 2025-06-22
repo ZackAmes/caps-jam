@@ -32,6 +32,7 @@ let planetelo_game_id = $state<number | null>(null)
 let invites = $state<Array<number>>([])
 let custom_games = $state<Array<CustomGames>>([])
 let elo = $state<number | null>(null)
+let queue_length = $state<number | null>(null)
 
 export const planetelo = {
     address: planetelo_manifest.contracts[0].address,
@@ -42,7 +43,7 @@ export const planetelo = {
         let elo_res = parseInt(await plantelo_contract.get_elo(account.account!.address, game_id, "0x0"));
         elo = elo_res;
         let queue_length = parseInt(await plantelo_contract.get_queue_length(game_id, "0"));
-
+        queue_length = queue_length;
         queue_status = status;
 
         let res = {status, elo, queue_length, game_id, winner: null};
@@ -266,6 +267,10 @@ export const planetelo = {
 
     get custom_games() {
         return custom_games;
+    },
+
+    get queue_length() {
+        return queue_length;
     }
 
 }

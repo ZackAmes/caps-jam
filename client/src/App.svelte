@@ -17,10 +17,10 @@
 <main>
   <h1>Caps</h1>
 
-  <Profile />
-
   <Login />
-  <Matchmaking />
+  {#if account.account}
+    <Matchmaking />
+  {/if}
   {#if caps.selected_cap}
     <CapData capType="selected" />
   {/if}

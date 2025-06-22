@@ -86,7 +86,10 @@
             <div class="profile-dropdown">
                 <div class="profile-header">
                     <strong>{account.username || 'User'}</strong>
-                    <button class="close-button" onclick={toggleProfile}>×</button>
+                    <div class="header-buttons">
+                        <button class="disconnect-btn" onclick={account.disconnect}>Disconnect</button>
+                        <button class="close-button" onclick={toggleProfile}>×</button>
+                    </div>
                 </div>
 
                 <!-- Invite Section -->
@@ -155,64 +158,69 @@
 
 <style>
     .profile-container {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 100;
+        margin: 1rem auto;
+        max-width: 600px;
+        position: relative;
+        text-align: center;
     }
 
     /* Mobile responsive profile positioning */
     @media (max-width: 768px) {
         .profile-container {
-            top: 0.5rem;
-            right: 0.5rem;
+            margin: 0.5rem auto;
         }
     }
 
     .profile-toggle {
-        background: white;
+        background: #f8f9fa;
         border: 2px solid #333;
-        border-radius: 4px;
-        padding: 8px 12px;
+        border-radius: 8px;
+        padding: 12px 20px;
         cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 16px;
+        font-weight: 600;
         position: relative;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
+        color: #333;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
     }
 
     @media (max-width: 768px) {
         .profile-toggle {
-            padding: 12px 16px;
-            font-size: 16px;
-            border-radius: 6px;
-            min-height: 48px; /* Touch-friendly */
+            padding: 16px 24px;
+            font-size: 18px;
+            border-radius: 8px;
+            min-height: 56px; /* Touch-friendly */
         }
     }
 
     .profile-toggle:hover {
-        background: #f5f5f5;
+        background: #e9ecef;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
 
     .notification-badge {
         background: #ef4444;
         color: white;
         border-radius: 50%;
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 12px;
         font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
     @media (max-width: 768px) {
         .notification-badge {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             font-size: 14px;
         }
     }
@@ -220,33 +228,33 @@
     .profile-dropdown {
         position: absolute;
         top: 100%;
-        right: 0;
-        margin-top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 8px;
         background: white;
         border: 2px solid #333;
-        border-radius: 6px;
-        padding: 12px;
-        min-width: 280px;
-        max-width: 400px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        padding: 0;
+        min-width: 320px;
+        max-width: 450px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         font-size: 14px;
+        z-index: 100;
     }
 
     @media (max-width: 768px) {
         .profile-dropdown {
-            /* On mobile, make dropdown full width with some margin */
-            position: fixed;
-            top: 4rem;
-            left: 0.5rem;
-            right: 0.5rem;
-            width: auto;
+            position: static;
+            transform: none;
+            margin-top: 12px;
+            width: 100%;
             min-width: auto;
             max-width: none;
-            padding: 16px;
+            padding: 0;
             font-size: 16px;
             border-radius: 8px;
-            max-height: calc(100vh - 6rem);
-            overflow-y: auto;
+            max-height: none;
+            overflow-y: visible;
         }
     }
 
@@ -254,19 +262,49 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ddd;
+        padding: 16px;
+        border-bottom: 2px solid #e9ecef;
+        background: #f8f9fa;
+        border-radius: 6px 6px 0 0;
     }
 
     .profile-header strong {
-        color: #333;
-        font-size: 16px;
+        color: #212529;
+        font-size: 18px;
+        font-weight: 700;
     }
 
     @media (max-width: 768px) {
         .profile-header strong {
-            font-size: 18px;
+            font-size: 20px;
+        }
+    }
+
+    .header-buttons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .disconnect-btn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .disconnect-btn:hover {
+        background: #dc2626;
+    }
+
+    @media (max-width: 768px) {
+        .disconnect-btn {
+            padding: 8px 16px;
+            font-size: 14px;
         }
     }
 
@@ -298,25 +336,33 @@
 
     .section {
         margin-bottom: 16px;
+        padding: 16px;
+        background: #ffffff;
+    }
+
+    .section:last-child {
+        margin-bottom: 0;
     }
 
     @media (max-width: 768px) {
         .section {
             margin-bottom: 20px;
+            padding: 20px;
         }
     }
 
     .section h4 {
-        margin: 0 0 8px 0;
-        color: #333;
-        font-size: 14px;
-        font-weight: 600;
+        margin: 0 0 12px 0;
+        color: #212529;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.025em;
     }
 
     @media (max-width: 768px) {
         .section h4 {
-            font-size: 16px;
-            margin-bottom: 12px;
+            font-size: 18px;
+            margin-bottom: 16px;
         }
     }
 
