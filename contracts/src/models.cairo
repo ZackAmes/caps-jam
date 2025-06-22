@@ -414,6 +414,14 @@ pub enum EffectType {
     Heal,
     DOT,
     MoveBonus,
+    AttackBonus,
+    BonusRange,
+    MoveDiscount,
+    AttackDiscount,
+    AbilityDiscount,
+    ExtraEnergy,
+    Stun,
+    Double,
 }
 
 #[derive(Copy, Drop, Serde, Introspect)]
@@ -427,10 +435,18 @@ pub impl EffectImpl of EffectTrait {
     fn get_timing(self: @Effect) -> Timing {
         match self.effect_type {
             EffectType::DamageBuff => Timing::DamageStep,
-            EffectType::Shield => Timing::StartOfTurn,
+            EffectType::Shield => Timing::DamageStep,
             EffectType::Heal => Timing::StartOfTurn,
             EffectType::DOT => Timing::EndOfTurn,
             EffectType::MoveBonus => Timing::MoveStep,
+            EffectType::AttackBonus => Timing::DamageStep,
+            EffectType::BonusRange => Timing::DamageStep,
+            EffectType::MoveDiscount => Timing::MoveStep,
+            EffectType::AttackDiscount => Timing::MoveStep,
+            EffectType::AbilityDiscount => Timing::MoveStep,
+            EffectType::ExtraEnergy => Timing::StartOfTurn,
+            EffectType::Stun => Timing::MoveStep,
+            EffectType::Double => Timing::DamageStep,
         }
     }
 }
