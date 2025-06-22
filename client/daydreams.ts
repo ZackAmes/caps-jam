@@ -48,7 +48,6 @@ const capsContext = context({
         type: "caps",
         schema: z.object({
           id: z.string(),
-          piece_info: z.string(),
           game_state: z.string(),
         }),
       
@@ -58,7 +57,6 @@ const capsContext = context({
       
         create(state) {
           return {
-            piece_info: state.args.piece_info,
             game_state: state.args.game_state,
           };
         },
@@ -67,7 +65,6 @@ const capsContext = context({
           console.log('memory', memory)
       
           return render(caps_template, {
-            piece_info: memory.piece_info,
             game_state: memory.game_state,
           });
         },
@@ -77,10 +74,29 @@ const capsContext = context({
         schema: z.object({
           text: z.string(),
         }),
-        subscribe(send, { container }) {
+        async subscribe(send, { container }) {
           // Check mentions every minute
           let index = 0;
           let timeout: ReturnType<typeof setTimeout>;
+
+          let active_games = await caps_planetelo_contract.get_agent_games()
+
+          let i = 0;
+          let to_play = 0;
+          while (i < active_games.length) {
+            to_play = active_games[i];
+            let game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
+            if (!game_state[0].over) {
+              console.log('found game to play')
+              break;
+            }
+            i+=1;
+          }
+
+          let game_state = await get_game_state_str(to_play)
+
+          console.log('game_state', game_state)
+    
       
           // Function to schedule the next thought with random timing
           const scheduleNextThought = async () => {
@@ -105,16 +121,13 @@ const capsContext = context({
                 i+=1;
               }
 
-              let piece_info = await get_piece_info_str(to_play)
               let game_state = await get_game_state_str(to_play)
 
               console.log('game_state', game_state)
-              console.log('piece_info', piece_info)
         
       
               let context = {
                 id: "caps",
-                piece_info: piece_info,
                 game_state: game_state,
               }
 
@@ -135,28 +148,16 @@ const capsContext = context({
         },
       });
 
-      const get_piece_info_str = async (game_id: number) => {
-        let res = (await caps_actions_contract.get_game(game_id)).unwrap()
-        let game_state = { game: res[0], caps: res[1] } 
-        let initial_state = { game: res[0], caps: res[1] }
-        let cap_types: Array<CapType> = []
-        for (let cap of game_state.caps) {
-                if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
-                    let cap_type = (await caps_actions_contract.get_cap_data(cap.cap_type)).unwrap()
-                    cap_types.push(cap_type)
-                }
-            }
-        return cap_types.map(cap_type => {
-            return `
-            ${cap_type.id}: ${cap_type.name}
-            Move Cost: ${cap_type.move_cost}
-            Attack Cost: ${cap_type.attack_cost}
-            Move Range: ${cap_type.move_range.x}, ${cap_type.move_range.y}
-            Attack Range: ${cap_type.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
-            Attack Damage: ${cap_type.attack_dmg}
-            Base Health: ${cap_type.base_health}
-            `
-        }).join("\n\n")
+      const get_cap_type_info_str = (id: number, cap_types: Array<CapType>) => {
+        let cap_type = cap_types.find(cap_type => cap_type.id == id)
+        console.log('cap_type', cap_type)
+        return `
+        ${cap_type?.id}: ${cap_type?.name}
+        Move Cost: ${cap_type?.move_cost}
+        Attack Cost: ${cap_type?.attack_cost}
+        Move Range: ${cap_type?.move_range.x}, ${cap_type?.move_range.y}
+        Attack Range: ${cap_type?.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
+        `
       }
 
       const get_game_state_str = async (game_id: number) => {
@@ -205,19 +206,23 @@ const capsContext = context({
         })
         console.log('owned_caps', owned_caps)
         let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
-        capsDetails += owned_caps.map(cap => {
+        let all_cap_types= await Promise.all(game_state.caps.map(async cap => (await caps_actions_contract.get_cap_data(cap.cap_type)).unwrap()))
+        capsDetails += (owned_caps.map(cap => {
+          let cap_type_id = cap.cap_type;
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
-
-            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
-        }).join('\n');
+          console.log('cap_type_id', cap_type_id)
+          console.log('all_cap_types', all_cap_types)
+          let cap_type_details = get_cap_type_info_str(cap_type_id, all_cap_types);
+            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
+        }).join('\n'));
         capsDetails += '\n\nOpponent Caps Details:\n';
-        capsDetails += opponent_caps.map(cap => {
+        capsDetails += (opponent_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
-
-            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'}`;
-        }).join('\n');
+          let cap_type_details = get_cap_type_info_str(cap.cap_type, all_cap_types);
+            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
+        }).join('\n'));
         
         return "Available energy: " + (Number(game_state.game.turn_count) + 2) + "\n\n" + asciiGrid + capsDetails;
       }
@@ -313,11 +318,9 @@ export const take_turn = (chain: StarknetChain) => action({
       You can only attack a piece if it is in the attack range of the piece, and if you have enough energy to attack.
 
       Remember that a pieces move cost is different from its attack cost, and that a piece can only move to a coordinate if it has enough energy to move.
+      You should always attempt to use all of your energy every turn, but be careful to keep track.
 
       Also, remember that pieces cannot move to a coordinate if it is already occupied by a piece, and can only attack opponents pieces.
-
-      Here is the information about the pieces that are in the current game: 
-      {{piece_info}}
 
       Here is the current game state, including the board and the pieces:
       {{game_state}}
@@ -339,6 +342,12 @@ export const take_turn = (chain: StarknetChain) => action({
       You must be extremely careful to only move to square that are valid. This means they must be within the move range of the piece,
       not occupied by any piece, and not outside of the board. Similarly, you must be very carful to only target valid squares for attacks/
       This means that the target must a valid attack target relative to the piece's position, including all pending moves, and occupied by an opponent's piece.
+
+      You must always take an action in the game under any circumstances, and it must always be valid. If you submit an invalid move it will be very bad for you.
+      There will be extreme consequences for submitting invalid moves, that you really don't want to find out about. This isn't a threat, it's
+      just a friendly warning about the signifigance of this game. The whole world is on the line here. You are playing for the survival of the entire planet.
+      There are hostile aliens here with really advanced technology that are going to do really really messed up things to everyone if you don't
+      show you are a serious competitor in this game, which means playing well and never submitting invalid moves.
   `
   
   const container = createContainer();

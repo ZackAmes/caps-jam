@@ -6,10 +6,9 @@
   interface Props {
     cap: Cap;
     position: { x: number; y: number };
-    player: 1 | 2; // Player 1 or Player 2
   }
 
-  let { cap, position, player }: Props = $props();
+  let { cap, position }: Props = $props();
 
   // Get darker shade of base color (different from target indicators)
   const getBaseColor = (capTypeId: number) => {
