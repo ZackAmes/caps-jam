@@ -951,7 +951,7 @@ pub impl EffectImpl of EffectTrait {
     }
 }
 
-#[derive(Copy, Drop, Serde, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
 pub enum Timing {
     StartOfTurn,
     MoveStep,
