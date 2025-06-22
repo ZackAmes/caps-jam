@@ -5,11 +5,13 @@
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
     
-    let position = $state(popup.position)
+    $effect(() => {
+        console.log(popup.render_position)
+    })
     // Calculate position based on grid coordinates (assuming ~50px per cell)
-    let render_position = $derived(popup.position ? {
-        x: popup.position.x, // offset from board edge
-        y: popup.position.y - 150
+    let render_position = $derived(popup.render_position ? {
+        x: popup.render_position.x, // offset from board edge
+        y: popup.render_position.y - 150
     } : { x: 300, y: 100 });
     
     function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string}) {
@@ -20,14 +22,14 @@
     
     function handleMouseDown(e: MouseEvent) {
         isDragging = true;
-        dragOffset.x = e.clientX - position.x;
-        dragOffset.y = e.clientY - position.y;
+        dragOffset.x = e.clientX - render_position.x;
+        dragOffset.y = e.clientY - render_position.y;
     }
 
     function handleMouseMove(e: MouseEvent) {
         if (isDragging) {
-            position.x = e.clientX - dragOffset.x;
-            position.y = e.clientY - dragOffset.y;
+            render_position.x = e.clientX - dragOffset.x;
+            render_position.y = e.clientY - dragOffset.y;
         }
     }
 
@@ -38,10 +40,10 @@
 
 <svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
 
-{#if popup.visible && popup.position}
+{#if popup.visible && popup.render_position}
     <div 
         class="action-overlay" 
-        style="left: {position.x}px; top: {position.y}px;"
+        style="left: {render_position.x}px; top: {render_position.y}px;"
         onmousedown={handleMouseDown}
         role="button"
         tabindex="0"
