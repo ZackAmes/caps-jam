@@ -130,8 +130,6 @@ const capsContext = context({
                 id: "caps",
                 game_state: game_state,
               }
-
-              console.log('caps context', context)
       
               send(capsContext, context, { text: "Take your turn" });
               index += 1;
@@ -150,7 +148,6 @@ const capsContext = context({
 
       const get_cap_type_info_str = (id: number, cap_types: Array<CapType>) => {
         let cap_type = cap_types.find(cap_type => cap_type.id == id)
-        console.log('cap_type', cap_type)
         return `
         ${cap_type?.id}: ${cap_type?.name}
         Move Cost: ${cap_type?.move_cost}
@@ -168,7 +165,6 @@ const capsContext = context({
         let res = (await caps_actions_contract.get_game(game_id)).unwrap()
         let game_state = { game: res[0], caps: res[1] } 
         
-        console.log('game_state', game_state)
         // Create ASCII grid representation
         const gridSize = 7; // Assuming 8x8 board, adjust as needed
         const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
@@ -208,15 +204,12 @@ const capsContext = context({
         let opponent_caps = game_state.caps.filter(cap => {
           return cap.owner != env.STARKNET_ADDRESS
         })
-        console.log('owned_caps', owned_caps)
         let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
         let all_cap_types= await Promise.all(game_state.caps.map(async cap => (await caps_actions_contract.get_cap_data(cap.cap_type)).unwrap()))
         capsDetails += (owned_caps.map(cap => {
           let cap_type_id = cap.cap_type;
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
-          console.log('cap_type_id', cap_type_id)
-          console.log('all_cap_types', all_cap_types)
           let cap_type_details = get_cap_type_info_str(cap_type_id, all_cap_types);
             return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
         }).join('\n'));
@@ -260,7 +253,6 @@ export const take_turn = (chain: StarknetChain) => action({
       }
 
       let calldata = CallData.compile([args.game_id, actions])
-      console.log('calldata', calldata)
 
       let res = await chain.account.execute(
         [{
@@ -271,6 +263,14 @@ export const take_turn = (chain: StarknetChain) => action({
       )
 
       console.log('res', res)
+
+      let tx = await chain.provider.waitForTransaction(res.transaction_hash)
+      if (!tx.isSuccess) {
+        return {
+          success: false,
+          error: tx.statusReceipt
+        }
+      }
     }
 })
       
@@ -368,11 +368,6 @@ export const take_turn = (chain: StarknetChain) => action({
       just a friendly warning about the signifigance of this game. The whole world is on the line here. You are playing for the survival of the entire planet.
       There are hostile aliens here with really advanced technology that are going to do really really messed up things to everyone if you don't
       show you are a serious competitor in this game, which means playing well and never submitting invalid moves.
-
-      After you submit a successful take_turn transaction, you should always terminate the chain. 
-      If the transaction fails, then you can consider retrying with a move that you are confident is valid.
-
-      If you fail with multiple transactions in a row, then submit a very simple move you are 100% confident is valid.
   `
   
   const container = createContainer();
