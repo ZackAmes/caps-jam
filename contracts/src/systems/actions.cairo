@@ -15,7 +15,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait};
     use caps::helpers::{get_player_pieces, get_piece_locations};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
@@ -159,7 +159,9 @@ pub mod actions {
                         world.write_model(@game);
                     },
                     ActionType::Ability(target) => {
-                        assert!(cap.check_ability(*target, game_id, @world), "Ability is not valid");
+                        let cap_type = self.get_cap_data(cap.cap_type).unwrap();
+                        assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
+                        assert!(cap_type.ability_target.is_valid(@cap, cap_type, *target, game_id, @world), "Ability is not valid");
                         panic!("Ability is not implemented");
                     }
                 }

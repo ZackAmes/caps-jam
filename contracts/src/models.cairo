@@ -249,7 +249,7 @@ pub impl CapImpl of CapTrait {
                 }
             }
             else if target.x <= *self.position.x && target.y >= *self.position.y {
-                if to_check.x > *self.position.x {
+                if to_check.x > *self.position.x  {
                     i+=1;
                     continue;
                 }
@@ -289,14 +289,9 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn check_ability(self: @Cap, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
-        let mut locations = get_piece_locations(game_id, world);
-        let cap_type: CapType = world.read_model(*self.cap_type);
-        cap_type.ability_target.is_valid(self, target, game_id, world)
-    }
 }
 
-#[derive(Copy, Drop, Serde, Clone, Debug,Introspect)]
+#[derive(Copy, Drop, Serde, Clone, Debug, PartialEq, Introspect)]
 pub enum TargetType {
     None,
     SelfCap,
@@ -308,14 +303,13 @@ pub enum TargetType {
 
 #[generate_trait]
 pub impl TargetTypeImpl of TargetTypeTrait {
-    fn is_valid(self: @TargetType, cap: @Cap, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
+    fn is_valid(self: @TargetType, cap: @Cap, cap_type: CapType, target: Vec2, game_id: u64, world: @WorldStorage) -> bool {
         match *self {
             TargetType::None => false,
             TargetType::SelfCap => {
                 true
             },
             TargetType::TeamCap => {
-                let cap_type: CapType = world.read_model(*cap.cap_type);
                 let in_range = cap.check_in_range(target, cap_type.ability_range);
                 let mut locations = get_piece_locations(game_id, world);
                 let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
@@ -327,7 +321,6 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 false
             },
             TargetType::OpponentCap => {
-                let cap_type: CapType = world.read_model(*cap.cap_type);
                 let in_range = cap.check_in_range(target, cap_type.ability_range);
                 let mut locations = get_piece_locations(game_id, world);
                 let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
@@ -339,7 +332,6 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 false
             },
             TargetType::AnyCap => {
-                let cap_type: CapType = world.read_model(*cap.cap_type);
                 let in_range = cap.check_in_range(target, cap_type.ability_range);
                 let mut locations = get_piece_locations(game_id, world);
                 let at_location_index = locations.get((*cap.position.x * 7 + *cap.position.y).into());
@@ -349,7 +341,6 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 false
             },
             TargetType::AnySquare => {
-                let cap_type: CapType = world.read_model(*cap.cap_type);
                 cap.check_in_range(target, cap_type.ability_range)
                 
             },
