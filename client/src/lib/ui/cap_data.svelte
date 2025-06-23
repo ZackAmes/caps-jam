@@ -135,7 +135,7 @@
             class="cap-overlay" 
             class:opponent={is_opponent}
             class:mobile={window.innerWidth <= 768}
-            style="{window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''} width: {size.width}px; height: {size.height}px;"
+            style={window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px; width: ${size.width}px; height: ${size.height}px;` : ''}
             onmousedown={handleMouseDown}
             ontouchstart={handleTouchStart}
             role="button"
