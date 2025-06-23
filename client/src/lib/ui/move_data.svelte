@@ -7,12 +7,14 @@
     let position = { x: 260, y: 20 }; // Position it next to the cap_data overlay
 
     function handleMouseDown(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
         isDragging = true;
         dragOffset.x = e.clientX - position.x;
         dragOffset.y = e.clientY - position.y;
     }
 
     function handleMouseMove(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
         if (isDragging) {
             position.x = e.clientX - dragOffset.x;
             position.y = e.clientY - dragOffset.y;
@@ -20,6 +22,7 @@
     }
 
     function handleMouseUp() {
+        if (window.innerWidth <= 768) return;
         isDragging = false;
     }
 

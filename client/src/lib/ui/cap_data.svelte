@@ -23,6 +23,7 @@
 
     // Update position when render position changes (new click)
     $effect(() => {
+        if (window.innerWidth <= 768) return;
         if (capType === 'selected' && caps.selected_cap_render_position) {
             position.x = caps.selected_cap_render_position.x;
             position.y = caps.selected_cap_render_position.y - 150;
@@ -33,6 +34,7 @@
     });
 
     function handleMouseDown(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
         if ((e.target as HTMLElement).classList.contains('resize-handle')) {
             isResizing = true;
         } else {
@@ -44,6 +46,7 @@
     }
 
     function handleMouseMove(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
         if (isDragging) {
             position.x = e.clientX - dragOffset.x;
             position.y = e.clientY - dragOffset.y;
@@ -55,11 +58,13 @@
     }
 
     function handleMouseUp() {
+        if (window.innerWidth <= 768) return;
         isDragging = false;
         isResizing = false;
     }
 
     function handleTouchStart(e: TouchEvent) {
+        if (window.innerWidth <= 768) return;
         const touch = e.touches[0];
         if ((e.target as HTMLElement).classList.contains('resize-handle')) {
             isResizing = true;
@@ -72,6 +77,7 @@
     }
 
     function handleTouchMove(e: TouchEvent) {
+        if (window.innerWidth <= 768) return;
         const touch = e.touches[0];
         if (isDragging) {
             position.x = touch.clientX - dragOffset.x;
@@ -84,6 +90,7 @@
     }
 
     function handleTouchEnd() {
+        if (window.innerWidth <= 768) return;
         isDragging = false;
         isResizing = false;
     }
@@ -128,7 +135,7 @@
             class="cap-overlay" 
             class:opponent={is_opponent}
             class:mobile={window.innerWidth <= 768}
-            style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
+            style="{window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''} width: {size.width}px; height: {size.height}px;"
             onmousedown={handleMouseDown}
             ontouchstart={handleTouchStart}
             role="button"
@@ -213,6 +220,15 @@
         min-height: 120px;
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        left: 0.5rem !important;
+        right: 0.5rem !important;
+        top: 0.5rem !important;
+        width: auto !important;
+        height: auto !important;
+        max-height: 45vh;
+        overflow-y: auto;
+        cursor: default;
+        resize: none;
     }
 
     .cap-overlay:active {
@@ -451,9 +467,7 @@
     }
 
     .cap-overlay.mobile .resize-handle {
-        width: 24px;
-        height: 24px;
-        background: linear-gradient(135deg, transparent 50%, #666 50%);
+        display: none;
     }
 
     .resize-handle:hover {
