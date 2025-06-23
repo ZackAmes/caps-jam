@@ -25,11 +25,11 @@
     $effect(() => {
         if (window.innerWidth <= 768) return;
         if (capType === 'selected' && caps.selected_cap_render_position) {
-            position.x = caps.selected_cap_render_position.x+100;
+            position.x = caps.selected_cap_render_position.x + 100;
             position.y = caps.selected_cap_render_position.y - 100;
         } else if (capType === 'inspected' && caps.inspected_cap_render_position) {
-            position.x = caps.inspected_cap_render_position.x - 600;
-            position.y = caps.inspected_cap_render_position.y - 400;
+            position.x = caps.inspected_cap_render_position.x +500;
+            position.y = caps.inspected_cap_render_position.y + 100;
         }
     });
 
@@ -98,7 +98,26 @@
     let display_cap = $derived(capType === 'inspected' ? caps.inspected_cap : caps.selected_cap);
     let is_opponent = $derived(capType === 'inspected' && caps.inspected_cap && caps.inspected_cap.owner !== caps.selected_cap?.owner);
 
-    let effects = $derived(caps.game_state?.effects.filter(effect => effect.target.variant.value == display_cap?.id) || [])
+    let effects = $derived(
+        caps.game_state?.effects.filter(effect => {
+            if (!display_cap) return false;
+
+            const target = effect.target.variant;
+
+            if (target.variant === 'Cap') {
+                return Number(target.value) === Number(display_cap.id);
+            }
+
+            if (target.variant === 'Square') {
+                return (
+                    Number(target.value.x) === Number(display_cap.position.x) &&
+                    Number(target.value.y) === Number(display_cap.position.y)
+                );
+            }
+
+            return false;
+        }) || []
+    );
 
     // Helper function to get effect type name
     function getEffectTypeName(effectType: any): string {

@@ -57,12 +57,38 @@ use super::{IActions};
                 active_start_of_turn_effects: ArrayTrait::new(),
                 active_move_step_effects: ArrayTrait::new(),
                 active_end_of_turn_effects: ArrayTrait::new(),
-                effect_counter: 0,
+                effect_ids: ArrayTrait::new(),
                 last_action_timestamp: get_block_timestamp(),
             };
 
-            let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
-            let p2_types = array![0 + p2_team, 4 + p2_team, 8 + p2_team, 12 + p2_team, 16 + p2_team, 20 + p2_team];
+            let mut p1_types: Array<u16> = ArrayTrait::new();
+            let mut p2_types: Array<u16> = ArrayTrait::new();
+
+            if p1_team == 1 {
+                p1_types = array![0, 4, 8, 12, 16, 20];
+            }
+            else if p1_team == 2 {
+                p1_types = array![1, 5, 9, 13, 17, 21];
+            }
+            else if p1_team == 3 {
+                p1_types = array![2, 6, 10, 14, 18, 22];
+            }
+            else if p1_team == 4 {
+                p1_types = array![3, 7, 11, 15, 19, 23];
+            }
+
+            if p2_team == 1 {
+                p2_types = array![0, 4, 8, 12, 16, 20];
+            }
+            else if p2_team == 2 {
+                p2_types = array![1, 5, 9, 13, 17, 21];
+            }
+            else if p2_team == 3 {
+                p2_types = array![2, 6, 10, 14, 18, 22];
+            }
+            else if p2_team == 4 {
+                p2_types = array![3, 7, 11, 15, 19, 23];
+            }
 
             let p1_cap1 = Cap {
                 id: global.cap_counter + 1,
@@ -204,20 +230,28 @@ use super::{IActions};
                 panic!("Game is over");
             }
 
-            let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
+            if game.turn_count % 2 == 0 {
+                assert!(get_caller_address() == game.player1, "You are not the turn player, 1s turn");
+            }
+            else {
+                assert!(get_caller_address() == game.player2, "You are not the turn player, 2s turn");
+            }
+
+            let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(ref game, @world);
 
             let mut stunned: bool = false;
             let mut stun_effect_ids: Array<u64> = ArrayTrait::new();
 
             let mut extra_energy: u8 = 0;
             let mut i = 0;
-            while i < start_of_turn_effects.len() {
-                let effect: Effect = *start_of_turn_effects.at(i);
+            while i < game.effect_ids.len() {
+                let effect: Effect = world.read_model((game_id, i).into());
                 match effect.effect_type {
                     EffectType::ExtraEnergy(x) => {
                         extra_energy += x;
                     },
                     _ => {
+                        i+=1;
                         continue;
                     }
                 }
@@ -226,11 +260,12 @@ use super::{IActions};
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
+            let mut i = 0;
             while i < turn.len() {
-                let (_, move_step_effects, _) = get_active_effects(game_id, @world);
+                let (_, move_step_effects, _) = get_active_effects(ref game, @world);
 
                 let action = turn.at(i);
-                let mut locations = get_piece_locations(game_id, @world);
+                let mut locations = get_piece_locations(ref game, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
@@ -261,8 +296,8 @@ use super::{IActions};
                 let mut new_move_step_effects: Array<u64> = ArrayTrait::new();
 
                 let mut index = 0;
-                while index < move_step_effects.len() {
-                    let effect: Effect = *move_step_effects.at(index);
+                while index < game.effect_ids.len() {
+                    let effect: Effect = world.read_model((game_id, index).into());
 
                     match effect.effect_type {
                         EffectType::Double => {
@@ -281,6 +316,7 @@ use super::{IActions};
                                     }
                                 },
                                 _ => {
+                                    index += 1;
                                     continue;
                                 }
                             }
@@ -297,6 +333,7 @@ use super::{IActions};
                                     }
                                 },
                                 _ => {
+                                    index += 1;
                                     continue;
                                 }
                             }
@@ -313,6 +350,7 @@ use super::{IActions};
                                     }
                                 },
                                 _ => {
+                                    index += 1;
                                     continue;
                                 }
                             }
@@ -329,6 +367,7 @@ use super::{IActions};
                                     }
                                 },
                                 _ => {
+                                    index += 1;
                                     continue;
                                 }
                             }
@@ -345,11 +384,13 @@ use super::{IActions};
                                     }
                                 },
                                 _ => {
+                                    index += 1;
                                     continue;
                                 }
                             }
                         },
                         _ => {
+                            index += 1;
                             continue;
                         }
                     }
@@ -358,15 +399,17 @@ use super::{IActions};
                     index += 1;
                 };
 
+
                 let mut j = 0;
-                while j < end_of_turn_effects.len() {
-                    let effect: Effect = *end_of_turn_effects.at(i);
+                while j < game.effect_ids.len() {
+                    let effect: Effect = world.read_model((game_id, j).into());
                     match effect.effect_type {
                         EffectType::Stun => {
                             stunned = true;
                             stun_effect_ids.append(effect.effect_id);
                         },
                         _ => {
+                            j += 1;
                             continue;
                         }
                     }
@@ -484,9 +527,11 @@ use super::{IActions};
                         let mut cap_type_2 = self.get_cap_data(cap.cap_type).unwrap();
                         let mut cap_type_3 = self.get_cap_data(cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        assert!(cap_type.ability_target.is_valid(@cap, ref cap_type_2, *target, game_id, @world), "Ability is not valid");
+                        let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type_2, *target, ref game, @world);
+                        game = new_game;
+                        assert!(valid, "Ability is not valid");
                         let mut ability_cost = cap_type.ability_cost;
-                        if ability_discount_amount > ability_cost {
+                        if ability_discount_amount > ability_cost { 
                             ability_cost = 0;
                         }
                         else {
@@ -521,31 +566,19 @@ use super::{IActions};
                         for attack_bonus_id in attack_bonus_ids {
                             new_move_step_effects.append(attack_bonus_id);
                         };
+
                         game = cap.use_ability(cap_type, *target, ref game, ref world);
-
-                        if double && cap_type_3.ability_target.is_valid(@cap, ref cap_type_3, *target, game_id, @world) {
-                            game = cap.use_ability(cap_type_3, *target, ref game, ref world);
-                        }
-
-                        for double_id in double_ids {
-                            let mut double_effect: Effect = world.read_model((game_id, double_id));
-                            double_effect.remaining_triggers -= 1;
-                            if double_effect.remaining_triggers == 0 {
-                                world.erase_model(@double_effect);
-                            }
-                            else {
-                                new_move_step_effects.append(double_effect.effect_id);
-                                world.write_model(@double_effect);
-                            }
-                        };
+                        
                     }
                 };
                 game = update_move_step_effects(ref game, ref world, new_move_step_effects);
+                
                 i+=1;
             };
 
+
             let mut i = 0;
-            while i < game.effect_counter {
+            while i < game.effect_ids.len() {
                 let mut effect: Effect = world.read_model((game_id, i).into());
                 if effect.get_timing() == Timing::EndOfTurn {
                     if effect.remaining_triggers > 1 {
@@ -560,16 +593,7 @@ use super::{IActions};
                 i += 1;
             };
 
-            let mut new_piece_ids: Array<u64> = ArrayTrait::new();
-            let mut j = 0;
-            while j < game.caps_ids.len() {
-                let cap: Cap = world.read_model(*game.caps_ids[j]);
-                if cap.owner != starknet::contract_address_const::<0x0>() {
-                    new_piece_ids.append(cap.id);
-                }
-                j += 1;
-            };
-            game.caps_ids = new_piece_ids;
+            game = update_end_of_turn_effects(ref game, ref world);
 
             game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;
@@ -596,7 +620,7 @@ use super::{IActions};
 
             let mut i: u64 = 0;
             let mut effects: Array<Effect> = ArrayTrait::new();
-            while i < game.effect_counter {
+            while i < game.effect_ids.len().into() {
                 let effect: Effect = world.read_model((game_id, i).into());
                 if effect.remaining_triggers > 0 {
                     effects.append(effect);

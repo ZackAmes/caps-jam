@@ -7,8 +7,19 @@
   let statusInterval: NodeJS.Timeout;
   let queueInterval: NodeJS.Timeout;
 
-  let is_planetelo_turn = $derived(Number(caps.planetelo_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.planetelo_game_state?.game.player1!) == BigInt(account.account?.address || 0))
-    let is_agent_turn = $derived(Number(caps.agent_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.agent_game_state?.game.player1!) == BigInt(account.account?.address || 0))
+  let is_planetelo_turn = $derived(
+    (Number(caps.planetelo_game_state?.game?.turn_count) % 2 == 0 &&
+      BigInt(caps.planetelo_game_state?.game?.player1 || 0) == BigInt(account.account?.address || 0)) 
+  );
+  let is_agent_turn = $derived(
+    (Number(caps.agent_game_state?.game?.turn_count) % 2 == 0 &&
+      BigInt(caps.agent_game_state?.game?.player1 || 0) == BigInt(account.account?.address || 0)) 
+  );
+
+  $effect(() => {
+    console.log(is_planetelo_turn);
+    console.log(is_agent_turn);
+  });
 
   onMount(() => {
     // Check status immediately when component mounts
@@ -27,7 +38,7 @@
       if (account.account && planetelo.queue_status == 1) {
         planetelo.refresh_status();
       }
-    }, 40000);
+    }, 600000);
   });
 
   onDestroy(() => {
@@ -40,7 +51,7 @@
 
 <div class="matchmaking-container">
   <!-- Planetelo Matchmaking -->
-  <div 
+  <div
     class="game-section matchmaking-item"
     class:is-my-turn={is_planetelo_turn}
   >
@@ -72,7 +83,7 @@
   </div>
 
   <!-- Agent Game -->
-  <div 
+  <div
     class="game-section matchmaking-item"
     class:is-my-turn={is_agent_turn}
   >
@@ -122,6 +133,7 @@
     background: #f0f0f0;
     cursor: pointer;
     font-size: 1rem;
+    color: black;
   }
 
   button:hover:not(:disabled) {
@@ -141,6 +153,11 @@
 
   .match-found:hover {
     background: #059669 !important;
+  }
+
+  .game-section.is-my-turn {
+    border-color: #10b981;
+    border-width: 2px;
   }
 
   @media (max-width: 768px) {

@@ -134,8 +134,72 @@ const capsContext = context({
         },
       });
 
+      const generate_pattern_grid = (
+        pattern: {x: number, y: number} | Array<{x: number, y: number}>, 
+        isMove: boolean
+    ) => {
+        let max_dim = 0;
+        if (isMove && 'x' in pattern && 'y' in pattern) {
+            max_dim = Math.max(pattern.x, pattern.y);
+        } else if (Array.isArray(pattern)) {
+            for (const p of pattern) {
+                max_dim = Math.max(max_dim, Math.abs(p.x), Math.abs(p.y));
+            }
+        }
+    
+        if (max_dim === 0 && Array.isArray(pattern) && pattern.length === 0) return "No pattern.\n";
+        if (max_dim === 0 && !isMove) return "No pattern.\n";
+    
+        const gridSize = max_dim * 2 + 3; 
+        const center = Math.floor(gridSize / 2);
+        const grid: string[][] = Array(gridSize).fill(null).map(() => Array(gridSize).fill('.'));
+    
+        grid[center][center] = 'P';
+    
+        if (isMove && 'x' in pattern && 'y' in pattern) {
+            for (let i = 1; i <= pattern.x; i++) {
+                if (center + i < gridSize) grid[center][center + i] = 'X';
+                if (center - i >= 0) grid[center][center - i] = 'X';
+            }
+            for (let i = 1; i <= pattern.y; i++) {
+                if (center + i < gridSize) grid[center + i][center] = 'X';
+                if (center - i >= 0) grid[center - i][center] = 'X';
+            }
+        } else if (!isMove && Array.isArray(pattern)) {
+            for (const r of pattern) {
+                const points = [
+                    {x: r.x, y: r.y}, {x: -r.x, y: r.y},
+                    {x: r.x, y: -r.y}, {x: -r.x, y: -r.y},
+                ];
+                
+                const unique_points = points.filter((p, i, self) => 
+                    i === self.findIndex((t) => (t.x === p.x && t.y === p.y))
+                );
+    
+                for(const p of unique_points) {
+                    const y_idx = center + p.y;
+                    const x_idx = center + p.x;
+                    if (y_idx >= 0 && y_idx < gridSize && x_idx >=0 && x_idx < gridSize) {
+                        grid[y_idx][x_idx] = 'X';
+                    }
+                }
+            }
+        }
+    
+        let asciiGrid = '\n';
+        for (let y = 0; y < gridSize; y++) {
+            asciiGrid += grid[y].join(' ') + '\n';
+        }
+        return asciiGrid;
+    }
+
       const get_cap_type_info_str = (id: number, cap_types: Array<CapType>) => {
         let cap_type = cap_types.find(cap_type => cap_type.id == id)
+        if (!cap_type) return `Cap type with id ${id} not found.`
+        
+        let attack_pattern_grid = generate_pattern_grid(cap_type.attack_range.map(range => ({x: Number(range.x), y: Number(range.y)})), false);
+        let ability_pattern_grid = generate_pattern_grid(cap_type.ability_range.map(range => ({x: Number(range.x), y: Number(range.y)})), false);
+
         return `
         ${cap_type?.id}: ${cap_type?.name}
         Move Cost: ${cap_type?.move_cost}
@@ -144,15 +208,17 @@ const capsContext = context({
         Attack Damage: ${cap_type?.attack_dmg}
         Move Range: x: ${cap_type?.move_range.x}, y: ${cap_type?.move_range.y}
         Attack Pattern: ${cap_type?.attack_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
+        Attack Pattern (P is piece, X is valid square): ${attack_pattern_grid}
         Ability Pattern: ${cap_type?.ability_range.map(range => `(${range.x}, ${range.y})`).join(", ")}
-        Ability Target: ${cap_type?.ability_target.activeVariant()}
+        Ability Pattern (P is piece, X is valid square): ${ability_pattern_grid}
+        Ability Target: ${Object.keys(cap_type?.ability_target.activeVariant())[0]}
         Ability Description: ${cap_type?.ability_description}
         `
       }
 
       const get_game_state_str = async (game_id: number) => {
         let res = (await caps_actions_contract.get_game(game_id)).unwrap()
-        let game_state = { game: res[0], caps: res[1] } 
+        let game_state = { game: res[0], caps: res[1], effects: res[2] || [] } 
         
         // Create ASCII grid representation
         const gridSize = 7; // Assuming 8x8 board, adjust as needed
@@ -210,7 +276,40 @@ const capsContext = context({
             return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
         }).join('\n'));
         
-        return "Available energy: " + (Number(game_state.game.turn_count) + 2) + "\n\n" + asciiGrid + capsDetails;
+        let effectsDetails = '\n\nActive Effects:\n';
+        if (game_state.effects.length === 0) {
+            effectsDetails += 'None\n';
+        } else {
+            effectsDetails += game_state.effects.map(effect => {
+                const props = Object.entries(effect)
+                    .map(([key, value]) => {
+                        let displayValue;
+                        if (typeof value === 'object' && value !== null) {
+                            // This is likely a CairoCustomEnum
+                            if ('activeVariant' in value && typeof value.activeVariant === 'function') {
+                                const variant = value.activeVariant();
+                                const variantKey = Object.keys(variant)[0];
+                                const variantValue = variant[variantKey];
+
+                                if (typeof variantValue === 'object' && variantValue !== null && Object.keys(variantValue).length > 0) {
+                                    displayValue = `${variantKey}: ${JSON.stringify(variantValue)}`;
+                                } else {
+                                    displayValue = variantKey;
+                                }
+                            } else {
+                                displayValue = JSON.stringify(value);
+                            }
+                        } else {
+                            displayValue = value.toString();
+                        }
+                        return `${key}: ${displayValue}`;
+                    })
+                    .join(', ');
+                return `- { ${props} }`;
+            }).join('\n');
+        }
+
+        return "Available energy: " + (Number(game_state.game.turn_count) + 2) + "\n\n" + asciiGrid + capsDetails + effectsDetails;
       }
 
       
@@ -220,10 +319,10 @@ export const take_turn = (chain: StarknetChain) => action({
     schema: z.object({
         game_id: z.number().describe("should be the id of the game to take a turn in"),
         actions: z.array(z.object({
-            type: z.string().describe("should be Move or Attack"),
-            id: z.number().describe("should be the id of the cap to move or attack"),
-            arg1: z.number().describe("should be the direction for (0: +x, 1: -x, 2: +y, 3: -y) Move, or the x coord of the target for Attack"),
-            arg2: z.number().describe("should be the distance for Move, or the y coord of the target for Attack")
+            type: z.string().describe("should be Move or Attack or Ability"),
+            id: z.number().describe("should be the id of the cap to move , attack, or use ability"),
+            arg1: z.number().describe("should be the direction for (0: +x, 1: -x, 2: +y, 3: -y) Move, or the x coord of the target for Attack or Ability"),
+            arg2: z.number().describe("should be the distance for Move, or the y coord of the target for Attack or Ability")
             
     }))}),
     async handler(args: { game_id: number, actions: { type: string, id: number, arg1: number, arg2: number }[] }, ctx: any, agent: Agent) {
@@ -237,6 +336,10 @@ export const take_turn = (chain: StarknetChain) => action({
         }
         else if (action.type == "Attack") {
           let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: action.arg1, y: BigInt(action.arg2)}})
+          actions.push({cap_id: action.id, action_type: action_type})
+        }
+        else if (action.type == "Ability") {
+          let action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: action.arg1, y: BigInt(action.arg2)}})
           actions.push({cap_id: action.id, action_type: action_type})
         }
       }

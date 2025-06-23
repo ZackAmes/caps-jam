@@ -24,8 +24,7 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     pieces
 }
 
-pub fn get_piece_locations(game_id: u64, world: @WorldStorage) -> Felt252Dict<u64> {
-    let mut game: Game = world.read_model(game_id);
+pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<u64> {
     let mut locations: Felt252Dict<u64> = Default::default();
 
     let mut i = 0;
@@ -40,39 +39,37 @@ pub fn get_piece_locations(game_id: u64, world: @WorldStorage) -> Felt252Dict<u6
     locations
 }
 
-pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
-    let mut game: Game = world.read_model(game_id);
+pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
     let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
     let mut move_step_effects: Array<Effect> = ArrayTrait::new();
     let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
 
     let mut i = 0;
-    while i< game.active_start_of_turn_effects.len() {
-        let effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects[i]).into());
-        start_of_turn_effects.append(effect);
+    while i < game.effect_ids.len() {
+        let effect: Effect = world.read_model((game.id, i).into());
+        match effect.get_timing() {
+            Timing::StartOfTurn => {
+                start_of_turn_effects.append(effect);
+            },
+            Timing::MoveStep => {
+                move_step_effects.append(effect);
+            },
+            Timing::EndOfTurn => {
+                end_of_turn_effects.append(effect);
+            },
+            _ => {}
+        }
         i += 1;
     };
-
-    i = 0;
-    while i< game.active_move_step_effects.len() {
-        let effect: Effect = world.read_model((game_id, *game.active_move_step_effects[i]).into());
-        move_step_effects.append(effect);
-        i += 1;
-    };
-
-    i = 0;
-    while i< game.active_end_of_turn_effects.len() {
-        let effect: Effect = world.read_model((game_id, *game.active_end_of_turn_effects[i]).into());
-        end_of_turn_effects.append(effect);
-        i += 1;
-    };
+    
+    
 
     (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
 pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
-    while i < game.effect_counter {
+    while i < game.effect_ids.len() {
         let mut effect: Effect = world.read_model((game.id, i).into());
         effect.remaining_triggers -= 1;
         if effect.remaining_triggers == 0 {
@@ -90,12 +87,13 @@ pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> 
 pub fn update_move_step_effects(ref game: Game, ref world: WorldStorage, untriggered_effects: Array<u64>) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.effect_counter {
+    while i < game.effect_ids.len().into() {
         let effect_id = i;
         let mut j = 0;
         let mut untriggered = false;
         let mut effect: Effect = world.read_model((game.id, effect_id).into());
         if effect.get_timing() != Timing::MoveStep {
+            i+=1;
             continue;
         }
         while j < untriggered_effects.len() {
@@ -126,7 +124,7 @@ pub fn update_move_step_effects(ref game: Game, ref world: WorldStorage, untrigg
 pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.effect_counter {
+    while i < game.effect_ids.len().into() {
         let effect_id = i;
         let mut effect: Effect = world.read_model((game.id, effect_id).into());
         if effect.remaining_triggers == 0 {
@@ -135,6 +133,7 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
         effect.remaining_triggers -= 1;
         match effect.effect_type {
             EffectType::DOT(dmg) => {
+                panic!("got dot");
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
                         let cap: Cap = world.read_model(cap_id);
