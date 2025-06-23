@@ -192,6 +192,7 @@ use super::{IActions};
             world.write_model(@p2_cap4);
             world.write_model(@p2_cap5);
             world.write_model(@p2_cap6);
+            world.write_model(@global);
 
             game_id
         }
