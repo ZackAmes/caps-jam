@@ -67,6 +67,16 @@ h1 {
     width: 100%;
     box-sizing: border-box;
   }
+
+  /*
+    Add this class to the container that wraps your game board.
+    It will ensure the board fits nicely on mobile screens.
+  */
+  .game-board-container {
+    width: 95vw;
+    height: 95vw;
+    margin: 0 auto;
+  }
 }
 
 button {
@@ -114,6 +124,17 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* 
+  These styles are for the actions pop-up.
+  Apply .actions-popup-list to the element that wraps the action buttons
+  to make the list scrollable.
+*/
+.actions-popup-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 4px;
 }
 
 /* Mobile-specific utilities */
