@@ -9,8 +9,8 @@
     
     // Size state for resizing
     let size = $state({
-        width: 200,
-        height: 150
+        width: 300,
+        height: 250
     });
 
     // Position state

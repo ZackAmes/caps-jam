@@ -18,7 +18,7 @@
     } else if (color_id == 1) {
       return "darkblue";
     } else if (color_id == 2) {
-      return "darkyellow";
+      return "yellow";
     } else if (color_id == 3) {
       return "darkgreen";
     }
@@ -32,31 +32,82 @@
 
 <!-- Match the original cap positioning exactly -->
 <T.Group position={[position.x, position.y, 0]}>
-  {#if cap.cap_type == 0 || cap.cap_type == 1}
+  {#if Math.floor(Number(cap.cap_type) / 4) == 0}
     <!-- Main body -->
-    <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
       <T.BoxGeometry />
       <T.MeshBasicMaterial color={baseColor} />
     </T.Mesh>
-
-  {:else if cap.cap_type == 2}
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.BoxGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+  {:else if Math.floor(Number(cap.cap_type) / 4) == 1}
     <!-- Main body -->
-    <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
       <T.SphereGeometry />
       <T.MeshBasicMaterial color={baseColor} />
     </T.Mesh>
-  {:else if cap.cap_type == 3}
-
-    <!-- Main body -->
-    <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
       <T.SphereGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+  {:else if Math.floor(Number(cap.cap_type) / 4) == 2}
+    <!-- Main body -->
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+      <T.ConeGeometry />
       <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.ConeGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+  {:else if Math.floor(Number(cap.cap_type) / 4) == 3}
+    <!-- Main body -->
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+      <T.CylinderGeometry />
+      <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.CylinderGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+  {:else if Math.floor(Number(cap.cap_type) / 4) == 4}
+    <!-- Main body -->
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+      <T.TorusGeometry />
+      <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.TorusGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+  {:else if Math.floor(Number(cap.cap_type) / 4) == 5}
+    <!-- Main body -->
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+      <T.DodecahedronGeometry />
+      <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.DodecahedronGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
     </T.Mesh>
   {:else}
     <!-- Main body -->
-    <T.Mesh position={[0, 0, 0.000001]} scale={.2}>
-      <T.SphereGeometry />
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+      <T.OctahedronGeometry />
       <T.MeshBasicMaterial color={baseColor} />
+    </T.Mesh>
+    <!-- Accent -->
+    <T.Mesh scale={0.205}>
+      <T.OctahedronGeometry />
+      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
     </T.Mesh>
   {/if}
 </T.Group>
