@@ -1,45 +1,10 @@
 <script lang="ts">
 	import type { Action, Moved } from '../dojo/models.gen.ts';
     import { caps } from '../stores/caps.svelte';
-
-    let isDragging = false;
-    let dragOffset = { x: 0, y: 0 };
-    let position = { x: 260, y: 20 }; // Position it next to the cap_data overlay
-
-    function handleMouseDown(e: MouseEvent) {
-        if (window.innerWidth <= 768) return;
-        isDragging = true;
-        dragOffset.x = e.clientX - position.x;
-        dragOffset.y = e.clientY - position.y;
-    }
-
-    function handleMouseMove(e: MouseEvent) {
-        if (window.innerWidth <= 768) return;
-        if (isDragging) {
-            position.x = e.clientX - dragOffset.x;
-            position.y = e.clientY - dragOffset.y;
-        }
-    }
-
-    function handleMouseUp() {
-        if (window.innerWidth <= 768) return;
-        isDragging = false;
-    }
-
-    // Assuming these exist in the caps store - adjust as neede
 </script>
 
-<svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
-
 {#if caps.selected_cap}
-    <div 
-        class="move-overlay"
-        class:mobile={window.innerWidth <= 768}
-        style={window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''}
-        on:mousedown={handleMouseDown}
-        role="button"
-        tabindex="0"
-    >
+    <div class="move-container">
         <div class="move-box">
             <div class="header">
                 <strong>Move Data</strong>
@@ -56,7 +21,7 @@
                 
                 <div class="moves-section">
                     <div class="section-title">Current Moves:</div>
-                    {#if caps.current_move}
+                    {#if caps.current_move.length > 0}
                         {#each caps.current_move as move, index}
                             <div class="move-item">
                                 <span class="move-number">{index + 1}.</span>
@@ -88,42 +53,20 @@
 {/if}
 
 <style>
-    .move-overlay {
-        position: fixed;
-        z-index: 1000;
-        cursor: move;
-        user-select: none;
-    }
-
-    .move-overlay.mobile {
-        /* Position at bottom of screen on mobile */
-        left: 0.5rem !important;
-        right: 0.5rem !important;
-        bottom: 0.5rem !important;
-        top: auto !important;
-        width: auto !important;
-        cursor: default; /* Disable dragging on mobile */
+    .move-container {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 1rem 0;
     }
 
     .move-box {
         background: white;
         border: 2px solid #333;
-        border-radius: 6px;
-        padding: 12px;
-        width: 220px;
+        border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         font-family: Arial, sans-serif;
         font-size: 14px;
-    }
-
-    .move-overlay.mobile .move-box {
-        width: 100%;
-        max-width: none;
-        padding: 16px;
-        font-size: 16px;
-        border-radius: 8px;
-        max-height: 40vh;
-        overflow-y: auto;
+        padding: 12px;
     }
 
     .header {
@@ -140,17 +83,8 @@
         font-size: 16px;
     }
 
-    .move-overlay.mobile .header strong {
-        font-size: 18px;
-    }
-
     .content {
         color: #444;
-    }
-
-    .move-overlay.mobile .energy {
-        font-size: 18px;
-        margin-bottom: 8px;
     }
 
     .energy {
@@ -168,12 +102,6 @@
         overflow: hidden;
     }
 
-    .move-overlay.mobile .energy-bar {
-        height: 12px;
-        border-radius: 6px;
-        margin-bottom: 16px;
-    }
-
     .energy-fill {
         height: 100%;
         background: linear-gradient(90deg, #3498db, #2980b9);
@@ -184,19 +112,10 @@
         margin-bottom: 8px;
     }
 
-    .move-overlay.mobile .moves-section {
-        margin-bottom: 12px;
-    }
-
     .section-title {
         font-weight: bold;
         margin-bottom: 4px;
         color: #333;
-    }
-
-    .move-overlay.mobile .section-title {
-        font-size: 16px;
-        margin-bottom: 8px;
     }
 
     .move-item {
@@ -204,11 +123,6 @@
         align-items: center;
         margin: 2px 0;
         font-size: 13px;
-    }
-
-    .move-overlay.mobile .move-item {
-        margin: 6px 0;
-        font-size: 16px;
     }
 
     .move-number {
@@ -227,19 +141,10 @@
         font-size: 13px;
     }
 
-    .move-overlay.mobile .no-moves {
-        font-size: 16px;
-    }
-
     .move-stats {
         border-top: 1px solid #ddd;
         padding-top: 8px;
         margin-top: 8px;
-    }
-
-    .move-overlay.mobile .move-stats {
-        padding-top: 12px;
-        margin-top: 12px;
     }
 
     .move-stats div {
@@ -248,8 +153,14 @@
         font-size: 13px;
     }
 
-    .move-overlay.mobile .move-stats div {
-        margin: 6px 0;
-        font-size: 16px;
+    @media (max-width: 768px) {
+        .move-box {
+            padding: 16px;
+            font-size: 1rem;
+        }
+
+        .move-stats div, .move-item, .no-moves {
+            font-size: 1rem;
+        }
     }
 </style>
