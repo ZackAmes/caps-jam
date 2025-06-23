@@ -64,31 +64,8 @@ use super::{IActions};
             let mut p1_types: Array<u16> = ArrayTrait::new();
             let mut p2_types: Array<u16> = ArrayTrait::new();
 
-            if p1_team == 1 {
-                p1_types = array![0, 4, 8, 12, 16, 20];
-            }
-            else if p1_team == 2 {
-                p1_types = array![1, 5, 9, 13, 17, 21];
-            }
-            else if p1_team == 3 {
-                p1_types = array![2, 6, 10, 14, 18, 22];
-            }
-            else if p1_team == 4 {
-                p1_types = array![3, 7, 11, 15, 19, 23];
-            }
-
-            if p2_team == 1 {
-                p2_types = array![0, 4, 8, 12, 16, 20];
-            }
-            else if p2_team == 2 {
-                p2_types = array![1, 5, 9, 13, 17, 21];
-            }
-            else if p2_team == 3 {
-                p2_types = array![2, 6, 10, 14, 18, 22];
-            }
-            else if p2_team == 4 {
-                p2_types = array![3, 7, 11, 15, 19, 23];
-            }
+            let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
+            let p2_types = array![0 + p2_team, 4 + p2_team, 8 + p2_team, 12 + p2_team, 16 + p2_team, 20 + p2_team];
 
             let p1_cap1 = Cap {
                 id: global.cap_counter + 1,
@@ -472,16 +449,19 @@ use super::{IActions};
                         let mut k = 0;
                         while k < attack_discount_ids.len() {
                             let mut attack_discount_effect: Effect = world.read_model((game_id, *attack_discount_ids.at(k)));
-                            attack_discount_effect.remaining_triggers -= 1;
                             if attack_discount_effect.remaining_triggers == 0 {
                                 world.erase_model(@attack_discount_effect);
                             }
                             else {
+                                attack_discount_effect.remaining_triggers -= 1;
                                 new_move_step_effects.append(attack_discount_effect.effect_id);
                                 world.write_model(@attack_discount_effect);
                             }
                             k += 1;
                         };
+                        if attack_cost > energy {
+                            panic!("Not enough energy");
+                        }
                         energy -= attack_cost;
                         let mut attack_dmg = cap_type.attack_dmg;
                         if attack_bonus_amount > 0 {
@@ -490,11 +470,11 @@ use super::{IActions};
                         let mut l = 0;
                         while l < attack_bonus_ids.len() {
                             let mut attack_bonus_effect: Effect = world.read_model((game_id, *attack_bonus_ids.at(l)));
-                            attack_bonus_effect.remaining_triggers -= 1;
-                            if attack_bonus_effect.remaining_triggers == 0 {
+                            if attack_bonus_effect.remaining_triggers == 1 {
                                 world.erase_model(@attack_bonus_effect);
                             }
                             else {
+                                attack_bonus_effect.remaining_triggers = 1;
                                 new_move_step_effects.append(attack_bonus_effect.effect_id);
                                 world.write_model(@attack_bonus_effect);
                             }

@@ -159,7 +159,7 @@ pub struct Cap {
 }
 
 //This is never getting stored. It's just a model to generate the bindings
-#[derive(Drop, Serde, Debug, Introspect)]
+#[derive(Drop, Serde, Debug, Clone, Introspect)]
 #[dojo::model]
 pub struct CapType {
     #[key]
@@ -529,6 +529,7 @@ pub impl CapImpl of CapTrait {
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
                 let target_cap_type = get_cap_type(cap_at_target.cap_type);
+
                 if target_cap_type.unwrap().base_health - cap_at_target.dmg_taken == 1 {
                     game.remove_cap(cap_at_target_id);
                     world.erase_model(@cap_at_target);
@@ -683,8 +684,13 @@ pub impl CapImpl of CapTrait {
                 };
             },
             20 => {
-                let self_cap_type = get_cap_type(self.cap_type);
-                let self_health = self_cap_type.unwrap().base_health - self.dmg_taken;
+                let self_cap_type = get_cap_type(self.cap_type).unwrap();
+                let clone = self_cap_type.clone();
+                let self_health = if clone.base_health > self.dmg_taken {
+                    clone.base_health - self.dmg_taken
+                } else {
+                    0
+                };
                 
                 if self_health < 5 {
                     panic!("Not enough health, ability would kill self");
@@ -796,7 +802,7 @@ pub impl CapImpl of CapTrait {
 
 }
 
-#[derive(Copy, Drop, Serde, Clone, Debug, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
 pub enum TargetType {
     None,
     SelfCap,
@@ -1332,6 +1338,7 @@ pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, am
     let cap_type = get_cap_type(target.cap_type);
 
     let remaining_health = cap_type.unwrap().base_health - target.dmg_taken;
+
 
     let mut i = 0;
     let mut shield_amount = 0;

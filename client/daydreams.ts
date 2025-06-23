@@ -89,7 +89,7 @@ const capsContext = context({
           // Function to schedule the next thought with random timing
           const scheduleNextThought = async () => {
             // Random delay between 3 and 10 minutes (180000-600000 ms)
-            const delay = 100000;
+            const delay = 500000;
       
             console.log(`Scheduling next queue purge in ${delay / 60000} minutes`);
 
@@ -98,8 +98,8 @@ const capsContext = context({
               let res = await chain.account.execute(
                 [{
                   contractAddress: planetelo_contract.address,
-                  entrypoint: 'purge_queue',
-                  calldata: []
+                  entrypoint: 'purge_expired_games',
+                  calldata: ["caps", 0]
                 }]
               )
 
@@ -141,9 +141,10 @@ const capsContext = context({
               let to_play = 0;
               let found = false;
               while (i < active_games.length) {
+                console.log('checking game', active_games[i])
                 to_play = active_games[i];
                 game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
-                if (!game_state[0].over && game_state[0].turn_count % 2 == 1) {
+                if (!game_state[0].over && Number(game_state[0].turn_count) % 2 == 1) {
                   console.log('found game to play')
                   let game_state_str = await get_game_state_str(to_play)
 
@@ -156,6 +157,9 @@ const capsContext = context({
           
                   send(capsContext, context, { text: "Take your turn" });
                   break;
+                }
+                else {
+                  console.log('no game to play')
                 }
                 i+=1;
               }
@@ -373,7 +377,7 @@ export const take_turn = (chain: StarknetChain) => action({
           actions.push({cap_id: action.id, action_type: action_type})
         }
         else if (action.type == "Attack") {
-          let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: action.arg1, y: BigInt(action.arg2)}})
+          let action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: action.arg1, y: BigInt(action.arg2), }})
           actions.push({cap_id: action.id, action_type: action_type})
         }
         else if (action.type == "Ability") {
@@ -401,6 +405,12 @@ export const take_turn = (chain: StarknetChain) => action({
         return {
           success: false,
           error: tx.statusReceipt
+        }
+      }
+      else{
+        return {
+          success: true,
+          error: null
         }
       }
     }
@@ -525,6 +535,7 @@ export const take_turn = (chain: StarknetChain) => action({
     extensions: [],
     inputs: {
       caps_check: caps_check(chain),
+      purge_queue: purge_queue(chain),
     },
     streaming: false,
     actions: [
