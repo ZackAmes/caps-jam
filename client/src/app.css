@@ -73,8 +73,8 @@ h1 {
     It will ensure the board fits nicely on mobile screens.
   */
   .game-board-container {
-    width: 95vw;
-    height: 95vw;
+    width: 100%;
+    aspect-ratio: 1 / 1;
     margin: 0 auto;
   }
 }
@@ -137,6 +137,22 @@ button:focus-visible {
     padding: 4px;
 }
 
+.actions-popup {
+    min-width: 180px;
+}
+
+.actions-popup button {
+    font-size: 1.1em;
+    padding: 0.8em 1.2em;
+    width: 100%;
+    margin-bottom: 5px;
+    box-sizing: border-box;
+}
+
+.actions-popup button:last-child {
+    margin-bottom: 0;
+}
+
 /* Mobile-specific utilities */
 @media (max-width: 768px) {
   /* Prevent horizontal scroll */
@@ -149,4 +165,8 @@ button:focus-visible {
     max-width: calc(100vw - 2rem);
     max-height: calc(100vh - 2rem);
   }
+}
+
+.matchmaking-item.is-my-turn {
+  border: 2px solid #4ade80; /* A nice green color */
 }

@@ -6,6 +6,10 @@
 
   let statusInterval: NodeJS.Timeout;
 
+
+  let is_planetelo_turn = $derived(Number(caps.planetelo_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.planetelo_game_state?.game.player1!) == BigInt(account.account?.address || 0))
+    let is_agent_turn = $derived(Number(caps.agent_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.agent_game_state?.game.player1!) == BigInt(account.account?.address || 0))
+
   onMount(() => {
     // Check status immediately when component mounts
     if (account.account) {
@@ -30,7 +34,10 @@
 
 <div class="matchmaking-container">
   <!-- Planetelo Matchmaking -->
-  <div class="game-section">
+  <div 
+    class="game-section matchmaking-item"
+    class:is-my-turn={is_planetelo_turn}
+  >
     <h3>Planetelo Matchmaking</h3>
     {#if account.account && !planetelo.planetelo_game_id}
       {#if planetelo.queue_status == 0 || planetelo.queue_status == null}
@@ -59,7 +66,10 @@
   </div>
 
   <!-- Agent Game -->
-  <div class="game-section">
+  <div 
+    class="game-section matchmaking-item"
+    class:is-my-turn={is_agent_turn}
+  >
     <h3>Agent Game</h3>
     {#if account.account && !planetelo.agent_game_id}
       <button onclick={planetelo.play_agent}>Play Agent</button>

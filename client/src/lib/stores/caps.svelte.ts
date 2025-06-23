@@ -23,6 +23,9 @@ let initial_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>
 let selected_cap = $state<Cap | null>(null)
 let inspected_cap = $state<Cap | null>(null)
 
+let planetelo_game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
+let agent_game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
+
 // Add state for cap data popup positions
 let selected_cap_render_position = $state<{x: number, y: number} | null>(null)
 let inspected_cap_render_position = $state<{x: number, y: number} | null>(null)
@@ -279,6 +282,16 @@ export const caps = {
                 game_state = initial_state
             }
 
+            if (id == planetelo.planetelo_game_id) {
+                planetelo_game_state = game_state
+            }
+            
+            if (planetelo.agent_game_id) {
+                let agent_game_state = await caps_contract.get_game(planetelo.agent_game_id)
+                agent_game_state = agent_game_state.unwrap()
+                agent_game_state = { game: agent_game_state[0], caps: agent_game_state[1], effects: agent_game_state[2] }
+            }
+
             planetelo.set_current_game_id(id);
             console.log(game_state)
             for (let cap of game_state?.caps || []) {
@@ -471,6 +484,14 @@ export const caps = {
 
     get inspected_cap_render_position() {
         return inspected_cap_render_position
+    },
+
+    get planetelo_game_state() {
+        return planetelo_game_state
+    },
+
+    get agent_game_state() {
+        return agent_game_state
     },
 
 }
