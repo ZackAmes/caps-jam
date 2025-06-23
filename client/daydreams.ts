@@ -97,7 +97,7 @@ const capsContext = context({
               while (i < active_games.length) {
                 to_play = active_games[i];
                 game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
-                if (!game_state[0].over) {
+                if (!game_state[0].over && game_state[0].turn_count % 2 == 1) {
                   console.log('found game to play')
                   found = true;
                   break;
