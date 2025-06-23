@@ -348,7 +348,7 @@ pub impl CapImpl of CapTrait {
                 },
             4 => {
                 //Deal 5 damage to the target
-                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 5);
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 4);
             },
             5 => {
                 //Heal 5 damage
@@ -464,22 +464,41 @@ pub impl CapImpl of CapTrait {
                 };
             },
             11 => {
+                
                 //none
+                let mut energy_effect = Effect {
+                    game_id: game.id,
+                    effect_id: game.effect_ids.len().into(),
+                    effect_type: EffectType::ExtraEnergy(2),
+                    target: EffectTarget::Cap(self.id),
+                    remaining_triggers: 2,
+                };
+                game.add_new_effect(energy_effect);
+                let stun_effect = Effect {
+                    game_id: game.id,
+                    effect_id: game.effect_ids.len().into(),
+                    effect_type: EffectType::Stun,
+                    target: EffectTarget::Cap(self.id),
+                    remaining_triggers: 2,
+                };
+                game.add_new_effect(stun_effect);
                 let mut i = 0;
+                let mut active_shield = false;
                 while i < game.effect_ids.len() {
                     let effect: Effect = world.read_model((game.id, i).into());
                     match effect.effect_type {
-                        EffectType::ExtraEnergy(x) => {
+                        EffectType::Shield(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
                                             game_id: game.id,
                                             effect_id: game.effect_ids.len().into(),
-                                            effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
+                                            effect_type: EffectType::Shield(x + 2),
                                             target: effect.target,
                                             remaining_triggers: 2,
                                         };
+                                        active_shield = true;
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
                                         break;
@@ -492,6 +511,18 @@ pub impl CapImpl of CapTrait {
                     }
                     i += 1;
                 };
+                if !active_shield {
+                    let new_effect = Effect {
+                        game_id: game.id,
+                        effect_id: game.effect_ids.len().into(),
+                        effect_type: EffectType::Shield(2),
+                        target: EffectTarget::Cap(self.id),
+                        remaining_triggers: 2,
+                    };
+                    game.add_new_effect(new_effect);
+                    world.write_model(@new_effect);
+                }
+                world.write_model(@energy_effect); 
             },
             12 => {
                 //none
@@ -622,40 +653,22 @@ pub impl CapImpl of CapTrait {
                 };
             },
             19 => {
-                //none
-                let mut energy_effect = Effect {
-                    game_id: game.id,
-                    effect_id: game.effect_ids.len().into(),
-                    effect_type: EffectType::ExtraEnergy(2),
-                    target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 2,
-                };
-                game.add_new_effect(energy_effect);
-                let stun_effect = Effect {
-                    game_id: game.id,
-                    effect_id: game.effect_ids.len().into(),
-                    effect_type: EffectType::Stun,
-                    target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 2,
-                };
-                game.add_new_effect(stun_effect);
+                 //none
                 let mut i = 0;
-                let mut active_shield = false;
                 while i < game.effect_ids.len() {
                     let effect: Effect = world.read_model((game.id, i).into());
                     match effect.effect_type {
-                        EffectType::Shield(x) => {
+                        EffectType::ExtraEnergy(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
                                             game_id: game.id,
                                             effect_id: game.effect_ids.len().into(),
-                                            effect_type: EffectType::Shield(x + 2),
+                                            effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
                                             target: effect.target,
                                             remaining_triggers: 2,
                                         };
-                                        active_shield = true;
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
                                         break;
@@ -668,18 +681,6 @@ pub impl CapImpl of CapTrait {
                     }
                     i += 1;
                 };
-                if !active_shield {
-                    let new_effect = Effect {
-                        game_id: game.id,
-                        effect_id: game.effect_ids.len().into(),
-                        effect_type: EffectType::Shield(2),
-                        target: EffectTarget::Cap(self.id),
-                        remaining_triggers: 2,
-                    };
-                    game.add_new_effect(new_effect);
-                    world.write_model(@new_effect);
-                }
-                world.write_model(@energy_effect);  
             },
             20 => {
                 let self_cap_type = get_cap_type(self.cap_type);
@@ -1025,15 +1026,15 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             name: "Red Basic",
             description: "Cap 3",
             move_cost: 1,
-            attack_cost: 2,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
-            ability_description: "Deal 5 damage to an enemy",
-            move_range: Vec2 { x: 2, y: 2 },
-            attack_dmg: 4,
-            base_health: 5,
+            attack_cost: 1,
+            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 1 } , Vec2 { x: 1, y: 0 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 1 }],
+            ability_description: "Deal 4 damage to an enemy",
+            move_range: Vec2 { x: 1, y: 2 },
+            attack_dmg: 2,
+            base_health: 8,
             ability_target: TargetType::OpponentCap,
-            ability_cost: 3,
+            ability_cost: 2,
         }),
         5 => Option::Some(CapType {
             id: 5,
@@ -1044,11 +1045,11 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Heal 5 damage from an ally",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
-            base_health: 6,
+            base_health: 7,
             ability_target: TargetType::TeamCap,
-            ability_cost: 2,
+            ability_cost: 3,
         }),
         6 => Option::Some(CapType {
             id: 6,
@@ -1056,14 +1057,14 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             description: "Cap 5",
             move_cost: 1,
             attack_cost: 3,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
+            attack_range: array![Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 2 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Shield an ally for 5",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
-            base_health: 6,
+            base_health: 9,
             ability_target: TargetType::TeamCap,
-            ability_cost: 2,
+            ability_cost: 3,
         }),
         7 => Option::Some(CapType {
             id: 7,
@@ -1071,10 +1072,10 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             description: "Cap 6",
             move_cost: 1,
             attack_cost: 3,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
+            attack_range: array![Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
             ability_description: "Target unit's next ability use costs 1 less energy",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
             base_health: 6,
             ability_target: TargetType::TeamCap,
@@ -1085,16 +1086,16 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             id: 8,
             name: "Red Elite",
             description: "Cap 8",
-            move_cost: 1,
-            attack_cost: 2,
+            move_cost: 2,
+            attack_cost: 3,
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
+            ability_range: array![],
             ability_description: "Next attack deals 1 more damage for each damage this unit has taken",
             move_range: Vec2 { x: 2, y: 2 },
-            attack_dmg: 4,
-            base_health: 5,
-            ability_target: TargetType::OpponentCap,
-            ability_cost: 3,
+            attack_dmg: 5,
+            base_health: 14,
+            ability_target: TargetType::SelfCap,
+            ability_cost: 4,
         }),
         9 => Option::Some(CapType {
             id: 9,
@@ -1105,9 +1106,9 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Fully heal this unit, then damage an enemy unit equal to the amount healed",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
-            base_health: 6,
+            base_health: 11,
             ability_target: TargetType::TeamCap,
             ability_cost: 2,
         }),
@@ -1116,45 +1117,45 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             name: "Yellow Elite",
             description: "Cap 10",
             move_cost: 1,
-            attack_cost: 3,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
+            attack_cost: 1,
+            attack_range: array![Vec2 {x: 1, y: 2}, Vec2 {x: 2, y: 1}],
+            ability_range: array![],
             ability_description: "Gain free attacks equal to the strength of this cards shield",
-            move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
+            move_range: Vec2 { x: 2, y: 2 },
+            attack_dmg: 2,
+            base_health: 13,
             ability_target: TargetType::SelfCap,
-            ability_cost: 2,
+            ability_cost: 5,
         }),
         11 => Option::Some(CapType {
             id: 11,
             name: "Green Elite",
             description: "Cap 11",
-            move_cost: 1,
-            attack_cost: 3,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
-            ability_description: "Next attack deals 1 more damage for each extra energy you started this turn with",
-            move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
+            move_cost: 3,
+            attack_cost: 5,
+            attack_range: array![Vec2 { x: 1, y: 0}, Vec2 {x: 2, y: 0}, Vec2 {x: 1, y: 1}],
+            ability_range: array![],
+            ability_description: "Next turn gain 2 energy. This card becomes stunned next turn and recieves a 2 health shield",
+            move_range: Vec2 { x: 2, y: 2 },
+            attack_dmg: 8,
+            base_health: 16,
             ability_target: TargetType::SelfCap,
-            ability_cost: 2,
+            ability_cost: 3,
         }),
         12 => Option::Some(CapType {
             id: 12,
             name: "Red Mage",
             description: "Red Mage",
-            move_cost: 1,
+            move_cost: 2,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 {x:3, y:3}, Vec2 {x: 2, y: 2}],
             ability_description: "Deal 1 damage to an ally to make its next attack deal 3 more damage",
-            move_range: Vec2 { x: 1, y: 1 },
+            move_range: Vec2 { x: 3, y: 2 },
             attack_dmg: 1,
-            base_health: 10,
+            base_health: 12,
             ability_target: TargetType::TeamCap,
-            ability_cost: 0,
+            ability_cost: 1,
         }),
         13 => Option::Some(CapType {
             id: 13,
@@ -1163,13 +1164,13 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 {x: 2, y: 0}],
             ability_description: "Stun a target enemy unit",
-            move_range: Vec2 { x: 1, y: 1 },
+            move_range: Vec2 { x: 2, y: 1 },
             attack_dmg: 1,
-            base_health: 10,
+            base_health: 13,
             ability_target: TargetType::OpponentCap,
-            ability_cost: 0,
+            ability_cost: 3,
         }),
         14 => Option::Some(CapType {
             id: 14,
@@ -1178,13 +1179,13 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 {x: 2, y: 0},  Vec2 {x: 0, y: 2}],
             ability_description: "Target unit gains move range equal to its shield health",
-            move_range: Vec2 { x: 1, y: 1 },
+            move_range: Vec2 { x: 3, y: 2 },
             attack_dmg: 1,
             base_health: 10,
                 ability_target: TargetType::TeamCap,
-            ability_cost: 0,
+            ability_cost: 2,
         }),
         15 => Option::Some(CapType {
             id: 15,
@@ -1193,56 +1194,56 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_cost: 1,
             attack_cost: 1,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }],
             ability_description: "Repeat the effect of the ally's next ability (if possible)",
-            move_range: Vec2 { x: 1, y: 1 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 1,
             base_health: 10,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::SelfCap,
             ability_cost: 0,
         }),
         16 => Option::Some(CapType {
             id: 16,
-            name: "Red Basic",
+            name: "Red Dragon",
             description: "Cap 3",
-            move_cost: 1,
-            attack_cost: 2,
-            attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
+            move_cost: 5,
+            attack_cost: 6,
+            attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 {x: 1, y: 1}, Vec2 {x: 2, y: 2}, Vec2 {x: 2, y: 0}],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
-            ability_description: "Inflict target with burn that deals 1 damage each turn for 3 turns",
+            ability_description: "Inflict target with burn that deals 3 damage each turn for 3 turns",
             move_range: Vec2 { x: 2, y: 2 },
-            attack_dmg: 4,
-            base_health: 5,
+            attack_dmg: 9,
+            base_health: 20,
             ability_target: TargetType::OpponentCap,
-            ability_cost: 3,
+            ability_cost: 5,
         }),
         17 => Option::Some(CapType {
             id: 17,
-            name: "Blue Basic",
-            description: "Cap 4",
-            move_cost: 1,
-            attack_cost: 2,
-            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
-            ability_description: "Target unit heals 2 health per turn at the end of the next 3 turns",
-            move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
-            ability_target: TargetType::TeamCap,
-            ability_cost: 2,
-        }),
-        18 => Option::Some(CapType {
-            id: 18,
-            name: "Yellow Basic",
-            description: "Cap 5",
-            move_cost: 1,
+            name: "Blue Mermaid",
+            description: "Blue Mermaid",
+            move_cost: 3,
             attack_cost: 3,
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
+            ability_description: "Target unit heals 2 health per turn at the end of the next 3 turns",
+            move_range: Vec2 { x: 2, y: 1 },
+            attack_dmg: 6,
+            base_health: 15,
+            ability_target: TargetType::TeamCap,
+            ability_cost: 3,
+        }),
+        18 => Option::Some(CapType {
+            id: 18,
+            name: "Yellow Trickster",
+            description: "Yellow Trickster",
+            move_cost: 2,
+            attack_cost: 2,
+            attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
+            ability_range: array![],
             ability_description: "Double the strength of this unit's shield",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
-            base_health: 6,
+            base_health: 12,
             ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
@@ -1250,31 +1251,31 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             id: 19,
             name: "Green Tank",
             description: "Green Tank",
-            move_cost: 1,
-            attack_cost: 3,
+            move_cost: 6,
+            attack_cost: 7,
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
-            ability_description: "Next turn gain 2 energy. This card becomes stunned next turn and recieves a 2 health shield",
-            move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
+            ability_description: "Next attack deals 1 more damage for each extra energy you started this turn with",
+            move_range: Vec2 { x: 2, y: 2 },
+            attack_dmg: 13,
+            base_health: 25,
             ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),
         20 => Option::Some(CapType {
             id: 20,
-            name: "Red Elite",
-            description: "Cap 8",
-            move_cost: 1,
+            name: "Red Knight",
+            description: "Red Knight",
+            move_cost: 2,
             attack_cost: 2,
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
-            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
+            ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 {x: 1, y: 1}],
             ability_description: "Deal 4 damage to self and 7 damage to an enemy",
             move_range: Vec2 { x: 2, y: 2 },
-            attack_dmg: 4,
-            base_health: 5,
+            attack_dmg: 6,
+            base_health: 16,
             ability_target: TargetType::OpponentCap,
-            ability_cost: 3,
+            ability_cost: 4,
         }),
         21 => Option::Some(CapType {
             id: 21,
@@ -1285,9 +1286,9 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Deal 8 damage to an enemy, but stun this unit next turn",
-            move_range: Vec2 { x: 3, y: 3 },
+            move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
-            base_health: 6,
+            base_health: 11,
             ability_target: TargetType::OpponentCap,
             ability_cost: 2,
         }),
@@ -1295,29 +1296,29 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             id: 22,
             name: "Yellow Elite",
             description: "Cap 10",
-            move_cost: 1,
-            attack_cost: 3,
+            move_cost: 3,
+            attack_cost: 5,
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Gain shield equal to target unit's shield",
             move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
+            attack_dmg: 8,
+            base_health: 26,
             ability_target: TargetType::TeamCap,
-            ability_cost: 2,
+            ability_cost: 4,
         }),
         23 => Option::Some(CapType {
             id: 23,
             name: "Green Elite",
             description: "Cap 11",
-            move_cost: 1,
-            attack_cost: 3,
+            move_cost: 3,
+            attack_cost: 5,
             attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }],
             ability_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
             ability_description: "Heal all allies for 2 health, plus 1 health per extra energy you started this turn with",
             move_range: Vec2 { x: 3, y: 3 },
-            attack_dmg: 3,
-            base_health: 6,
+            attack_dmg: 10,
+            base_health: 26,
             ability_target: TargetType::SelfCap,
             ability_cost: 2,
         }),

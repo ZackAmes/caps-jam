@@ -11,7 +11,6 @@
   <button onclick={account.connect}>Connect</button>
 {:else}
   <Profile />
-  <p>Connected as {account.username} elo: {planetelo.elo}</p>
 {/if}
 {#if account.account && planetelo.queue_status == 2 && planetelo.current_game_id}
   <button onclick={() => caps.get_game(planetelo.current_game_id!)}>Refresh Game</button>

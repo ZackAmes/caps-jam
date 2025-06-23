@@ -6,92 +6,38 @@
     let { capType = 'selected' }: { capType?: 'selected' | 'inspected' } = $props();
 
     let isDragging = false;
-    let isResizing = false;
     let dragOffset = { x: 0, y: 0 };
-    
-    // Initialize position based on click coordinates, then allow dragging
-    let position = $state({
-        x: capType === 'selected' ? 20 : 260, 
-        y: capType === 'selected' ? 20 : 20
-    });
+    let position = $state({ x: 0, y: 0 });
 
-    // Size state for resizing
-    let size = $state({
-        width: 420,
-        height: 250
-    });
-
-    // Update position when render position changes (new click)
     $effect(() => {
-        if (window.innerWidth <= 768) return;
-        if (capType === 'selected' && caps.selected_cap_render_position) {
-            position.x = caps.selected_cap_render_position.x + 100;
-            position.y = caps.selected_cap_render_position.y - 100;
-        } else if (capType === 'inspected' && caps.inspected_cap_render_position) {
-            position.x = caps.inspected_cap_render_position.x +500;
-            position.y = caps.inspected_cap_render_position.y + 100;
+        if (typeof window !== 'undefined' && window.innerWidth > 768) {
+            if (capType === 'selected') {
+                position.x = window.innerWidth / 2 - 190; // 380px width / 2
+                position.y = 20;
+            } else { // inspected
+                position.x = window.innerWidth - 380 - 20;
+                position.y = 60;
+            }
         }
     });
 
     function handleMouseDown(e: MouseEvent) {
-        if (window.innerWidth <= 768) return;
-        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
-            isResizing = true;
-        } else {
-            isDragging = true;
-            dragOffset.x = e.clientX - position.x;
-            dragOffset.y = e.clientY - position.y;
-        }
+        if (typeof window !== 'undefined' && window.innerWidth <= 768) return;
+        isDragging = true;
+        dragOffset.x = e.clientX - position.x;
+        dragOffset.y = e.clientY - position.y;
         e.preventDefault();
     }
 
     function handleMouseMove(e: MouseEvent) {
-        if (window.innerWidth <= 768) return;
         if (isDragging) {
             position.x = e.clientX - dragOffset.x;
             position.y = e.clientY - dragOffset.y;
-        } else if (isResizing) {
-            size.width = Math.max(200, e.clientX - position.x);
-            size.height = Math.max(150, e.clientY - position.y);
         }
     }
 
     function handleMouseUp() {
-        if (window.innerWidth <= 768) return;
         isDragging = false;
-        isResizing = false;
-    }
-
-    function handleTouchStart(e: TouchEvent) {
-        if (window.innerWidth <= 768) return;
-        const touch = e.touches[0];
-        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
-            isResizing = true;
-        } else {
-            isDragging = true;
-            dragOffset.x = touch.clientX - position.x;
-            dragOffset.y = touch.clientY - position.y;
-        }
-        e.preventDefault();
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-        if (window.innerWidth <= 768) return;
-        const touch = e.touches[0];
-        if (isDragging) {
-            position.x = touch.clientX - dragOffset.x;
-            position.y = touch.clientY - dragOffset.y;
-        } else if (isResizing) {
-            size.width = Math.max(180, touch.clientX - position.x);
-            size.height = Math.max(120, touch.clientY - position.y);
-        }
-        e.preventDefault();
-    }
-
-    function handleTouchEnd() {
-        if (window.innerWidth <= 768) return;
-        isDragging = false;
-        isResizing = false;
     }
 
     // Determine which cap to display based on capType prop
@@ -157,8 +103,6 @@
 <svelte:window 
     on:mousemove={handleMouseMove} 
     on:mouseup={handleMouseUp}
-    on:touchmove={handleTouchMove}
-    on:touchend={handleTouchEnd}
 />
 
 {#if display_cap}
@@ -171,9 +115,10 @@
             class:opponent={is_opponent}
             class:desktop-popup={typeof window !== 'undefined' && window.innerWidth > 768}
             class:mobile-static={typeof window !== 'undefined' && window.innerWidth <= 768}
-            style={typeof window !== 'undefined' && window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px; width: ${size.width}px; height: ${size.height}px;` : ''}
+            class:selected-view={capType === 'selected'}
+            class:inspected-view={capType === 'inspected'}
+            style={typeof window !== 'undefined' && window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''}
             onmousedown={handleMouseDown}
-            ontouchstart={handleTouchStart}
         >
             <div class="cap-box">
                 <div class="header">
@@ -270,9 +215,6 @@
                 </div>
             </div>
 
-            {#if typeof window !== 'undefined' && window.innerWidth > 768}
-                <div class="resize-handle"></div>
-            {/if}
         </div>
     {/if}
 {/if}
@@ -289,14 +231,17 @@
     .desktop-popup {
         position: fixed;
         z-index: 1000;
-        min-width: 200px;
-        min-height: 150px;
-        max-width: 90vw;
+        width: 380px;
         max-height: 90vh;
-        cursor: move;
         user-select: none;
         font-size: 13px;
-        resize: both;
+        cursor: move;
+    }
+
+    .selected-view.desktop-popup {
+    }
+
+    .inspected-view.desktop-popup {
     }
 
     .mobile-static {
@@ -468,21 +413,6 @@
 
     .cell.highlight {
         background-color: #fca5a5;
-    }
-
-    .resize-handle {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 16px;
-        height: 16px;
-        background: linear-gradient(135deg, transparent 50%, #999 50%);
-        cursor: se-resize;
-        border-top-left-radius: 4px;
-    }
-
-    .resize-handle:hover {
-        background: linear-gradient(135deg, transparent 50%, #666 50%);
     }
 
     @media (max-width: 768px) {
