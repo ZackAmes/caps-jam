@@ -154,6 +154,19 @@ export const planetelo = {
         }
     },
 
+    refresh_status: async () => {
+        if (account.account) {
+            let res = await account.account?.execute(
+                [{
+                    contractAddress: planetelo.address,
+                    entrypoint: 'refresh_status',
+                    calldata: [game_id, "0"]
+                }]
+            );
+            console.log(res);
+        }
+    },
+
     reset: async () => {
 
         current_game_id = null;

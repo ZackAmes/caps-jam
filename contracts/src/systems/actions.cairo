@@ -15,7 +15,7 @@ pub trait IActions<T> {
 pub mod actions {
     use super::super::super::models::EffectTrait;
 use super::{IActions};
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use caps::models::{Vec2, Game, Cap, Global, GameTrait, Timing, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
     use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_move_step_effects, update_end_of_turn_effects, update_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
@@ -58,6 +58,7 @@ use super::{IActions};
                 active_move_step_effects: ArrayTrait::new(),
                 active_end_of_turn_effects: ArrayTrait::new(),
                 effect_counter: 0,
+                last_action_timestamp: get_block_timestamp(),
             };
 
             let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
@@ -572,6 +573,7 @@ use super::{IActions};
             game.caps_ids = new_piece_ids;
             world.write_model(@game);
 
+            game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;
             let (over, _) = @game.check_over(@world);
             game.over = *over;

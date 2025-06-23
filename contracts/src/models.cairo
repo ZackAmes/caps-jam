@@ -39,12 +39,13 @@ pub struct Game {
     pub active_move_step_effects: Array<u64>,
     pub active_end_of_turn_effects: Array<u64>,
     pub effect_counter: u64,
+    pub last_action_timestamp: u64,
 }
 
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     fn new(id: u64, player1: ContractAddress, player2: ContractAddress) -> Game {
-        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, active_start_of_turn_effects: ArrayTrait::new(), active_move_step_effects: ArrayTrait::new(), active_end_of_turn_effects: ArrayTrait::new(), effect_counter: 0 }
+        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, active_start_of_turn_effects: ArrayTrait::new(), active_move_step_effects: ArrayTrait::new(), active_end_of_turn_effects: ArrayTrait::new(), effect_counter: 0, last_action_timestamp: 0 }
     }
 
     fn add_cap(ref self: Game, cap_id: u64) {
@@ -388,7 +389,7 @@ pub impl CapImpl of CapTrait {
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(5),
                         target: EffectTarget::Cap(cap_at_target_id),
-                        remaining_triggers: 1,
+                        remaining_triggers: 2,
                     };
                     world.write_model(@new_effect);
                     game.add_new_effect(new_effect);
@@ -403,7 +404,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::AbilityDiscount(1),
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 world.write_model(@effect);
                 game.add_new_effect(effect);
@@ -416,7 +417,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::AttackBonus(self.dmg_taken.try_into().unwrap()),
                     target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 world.write_model(@effect);
                 game.add_new_effect(effect);
@@ -431,6 +432,7 @@ pub impl CapImpl of CapTrait {
             10 => {
                 let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
+                let mut found = false;
                 while i < game.active_move_step_effects.len() {
                     let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
@@ -444,10 +446,11 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::AttackDiscount(cap_type.unwrap().attack_dmg.try_into().unwrap()),
                                             target: effect.target,
-                                            remaining_triggers: x,
+                                            remaining_triggers: x + 1,
                                         };
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
+                                        break;
                                     }
                                 },
                                 _ => (),
@@ -474,7 +477,7 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
                                             target: effect.target,
-                                            remaining_triggers: 1,
+                                            remaining_triggers: 2,
                                         };
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
@@ -506,7 +509,7 @@ pub impl CapImpl of CapTrait {
                         effect_id: game.effect_counter,
                         effect_type: EffectType::DamageBuff(3),
                         target: EffectTarget::Cap(cap_at_target_id),
-                        remaining_triggers: 1,
+                        remaining_triggers: 2,
                     };
                     game.add_new_effect(effect);
                     world.write_model(@effect);
@@ -522,7 +525,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };  
                 game.add_new_effect(effect);
                 world.write_model(@effect);
@@ -543,7 +546,7 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::MoveDiscount(x.try_into().unwrap()),
                                             target: effect.target,
-                                            remaining_triggers: x,
+                                            remaining_triggers: x + 1,
                                         };
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
@@ -565,7 +568,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Double,
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 game.add_new_effect(effect);
                 world.write_model(@effect);
@@ -580,7 +583,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::DOT(1),
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 3,
+                    remaining_triggers: 4,
                 };  
                 game.add_new_effect(effect);
                 world.write_model(@effect);
@@ -594,7 +597,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Heal(2),
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 3,
+                    remaining_triggers: 4,
                 };
                 game.add_new_effect(effect);
                 world.write_model(@effect);
@@ -615,7 +618,7 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x * 2),
                                             target: effect.target,
-                                            remaining_triggers: 1,
+                                            remaining_triggers: 2,
                                         };
                                         game.add_new_effect(new_effect);
                                         world.write_model(@game);
@@ -638,7 +641,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::ExtraEnergy(2),
                     target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 game.add_new_effect(energy_effect);
                 let stun_effect = Effect {
@@ -646,7 +649,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 game.add_new_effect(stun_effect);
                 let mut i = 0;
@@ -663,7 +666,7 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x + 2),
                                             target: effect.target,
-                                            remaining_triggers: 1,
+                                            remaining_triggers: 2,
                                         };
                                         active_shield = true;
                                         game.add_new_effect(new_effect);
@@ -684,7 +687,7 @@ pub impl CapImpl of CapTrait {
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(2),
                         target: EffectTarget::Cap(self.id),
-                        remaining_triggers: 1,
+                        remaining_triggers: 2,
                     };
                     game.add_new_effect(new_effect);
                     world.write_model(@new_effect);
@@ -710,7 +713,7 @@ pub impl CapImpl of CapTrait {
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 1,
+                    remaining_triggers: 2,
                 };
                 game.add_new_effect(stun_effect);
                 world.write_model(@stun_effect);
@@ -756,7 +759,7 @@ pub impl CapImpl of CapTrait {
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x + ally_shield),
                                             target: effect.target,
-                                            remaining_triggers: 1,
+                                            remaining_triggers: 2,
                                         };
                                         found_shield = true;
                                         world.write_model(@new_effect);
@@ -776,7 +779,7 @@ pub impl CapImpl of CapTrait {
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(ally_shield),
                         target: EffectTarget::Cap(cap_at_target_id),
-                        remaining_triggers: 1,
+                        remaining_triggers: 2,
                     };
                     game.add_new_effect(new_effect);
                     world.write_model(@new_effect);

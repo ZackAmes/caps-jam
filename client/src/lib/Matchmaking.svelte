@@ -5,7 +5,7 @@
   import { onMount, onDestroy } from "svelte";
 
   let statusInterval: NodeJS.Timeout;
-
+  let queueInterval: NodeJS.Timeout;
 
   let is_planetelo_turn = $derived(Number(caps.planetelo_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.planetelo_game_state?.game.player1!) == BigInt(account.account?.address || 0))
     let is_agent_turn = $derived(Number(caps.agent_game_state?.game.turn_count) % 2 == 0 && BigInt(caps.agent_game_state?.game.player1!) == BigInt(account.account?.address || 0))
@@ -22,6 +22,12 @@
         planetelo.update_status();
       }
     }, 15000);
+
+    queueInterval = setInterval(() => {
+      if (account.account && planetelo.queue_status == 1) {
+        planetelo.refresh_status();
+      }
+    }, 40000);
   });
 
   onDestroy(() => {
