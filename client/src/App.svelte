@@ -12,6 +12,8 @@
     import MoveData from './lib/ui/move_data.svelte';
     import Popup from './lib/ui/popup.svelte';
     import Profile from './lib/ui/Profile.svelte';
+
+    
 </script>
 
 <main>
@@ -32,18 +34,19 @@
   {/if}
   {#if (planetelo.queue_status == 2 || planetelo.current_game_id == planetelo.agent_game_id) && caps.game_state && !caps.game_state.game.over}
 
-    <button onclick={() => {
-      caps.reset_move();
-    }}>Reset Move</button>
-    <button onclick={() => {
-      caps.take_turn();
-    }}>Take Turn</button>
+    
     <MoveData />
     <div class="game-container">
       <Canvas>
         <Game />
       </Canvas>
     </div>
+    <button onclick={() => {
+      caps.reset_move();
+    }}>Reset Move</button>
+    <button onclick={() => {
+      caps.take_turn();
+    }}>Take Turn</button>
     {:else if planetelo.agent_game_id && !caps.game_state}
     <div class="card">
       <button onclick={() => {

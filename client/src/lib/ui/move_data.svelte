@@ -1,10 +1,42 @@
 <script lang="ts">
 	import type { Action, Moved } from '../dojo/models.gen.ts';
     import { caps } from '../stores/caps.svelte';
+
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    let position = $state({ x: 260, y: 20 }); 
+
+    function handleMouseDown(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
+        isDragging = true;
+        dragOffset.x = e.clientX - position.x;
+        dragOffset.y = e.clientY - position.y;
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+        if (window.innerWidth <= 768) return;
+        if (isDragging) {
+            position.x = e.clientX - dragOffset.x;
+            position.y = e.clientY - dragOffset.y;
+        }
+    }
+
+    function handleMouseUp() {
+        if (window.innerWidth <= 768) return;
+        isDragging = false;
+    }
 </script>
 
+<svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
+
 {#if caps.selected_cap}
-    <div class="move-container">
+    <div 
+        class="move-data-container"
+        class:desktop-popup={typeof window !== 'undefined' && window.innerWidth > 768}
+        class:mobile-static={typeof window !== 'undefined' && window.innerWidth <= 768}
+        style={typeof window !== 'undefined' && window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''}
+        on:mousedown={handleMouseDown}
+    >
         <div class="move-box">
             <div class="header">
                 <strong>Move Data</strong>
@@ -53,7 +85,15 @@
 {/if}
 
 <style>
-    .move-container {
+    .move-data-container.desktop-popup {
+        position: fixed;
+        z-index: 1000;
+        cursor: move;
+        user-select: none;
+        width: 240px;
+    }
+
+    .move-data-container.mobile-static {
         width: 100%;
         box-sizing: border-box;
         margin: 1rem 0;
