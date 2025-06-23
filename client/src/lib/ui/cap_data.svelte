@@ -6,12 +6,19 @@
     let { capType = 'selected' }: { capType?: 'selected' | 'inspected' } = $props();
 
     let isDragging = false;
+    let isResizing = false;
     let dragOffset = { x: 0, y: 0 };
     
     // Initialize position based on click coordinates, then allow dragging
     let position = $state({
         x: capType === 'selected' ? 20 : 260, 
         y: capType === 'selected' ? 20 : 20
+    });
+
+    // Size state for resizing
+    let size = $state({
+        width: 240,
+        height: 200
     });
 
     // Update position when render position changes (new click)
@@ -26,20 +33,59 @@
     });
 
     function handleMouseDown(e: MouseEvent) {
-        isDragging = true;
-        dragOffset.x = e.clientX - position.x;
-        dragOffset.y = e.clientY - position.y;
+        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
+            isResizing = true;
+        } else {
+            isDragging = true;
+            dragOffset.x = e.clientX - position.x;
+            dragOffset.y = e.clientY - position.y;
+        }
+        e.preventDefault();
     }
 
     function handleMouseMove(e: MouseEvent) {
         if (isDragging) {
             position.x = e.clientX - dragOffset.x;
             position.y = e.clientY - dragOffset.y;
+        } else if (isResizing) {
+            const rect = e.currentTarget as HTMLElement;
+            size.width = Math.max(200, e.clientX - position.x);
+            size.height = Math.max(150, e.clientY - position.y);
         }
     }
 
     function handleMouseUp() {
         isDragging = false;
+        isResizing = false;
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+        const touch = e.touches[0];
+        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
+            isResizing = true;
+        } else {
+            isDragging = true;
+            dragOffset.x = touch.clientX - position.x;
+            dragOffset.y = touch.clientY - position.y;
+        }
+        e.preventDefault();
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+        const touch = e.touches[0];
+        if (isDragging) {
+            position.x = touch.clientX - dragOffset.x;
+            position.y = touch.clientY - dragOffset.y;
+        } else if (isResizing) {
+            size.width = Math.max(180, touch.clientX - position.x);
+            size.height = Math.max(120, touch.clientY - position.y);
+        }
+        e.preventDefault();
+    }
+
+    function handleTouchEnd() {
+        isDragging = false;
+        isResizing = false;
     }
 
     // Determine which cap to display based on capType prop
@@ -68,7 +114,12 @@
     }
 </script>
 
-<svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
+<svelte:window 
+    on:mousemove={handleMouseMove} 
+    on:mouseup={handleMouseUp}
+    on:touchmove={handleTouchMove}
+    on:touchend={handleTouchEnd}
+/>
 
 {#if display_cap}
     {@const cap_type = caps.cap_types.find(cap_type => cap_type.id == display_cap.cap_type)}
@@ -76,8 +127,10 @@
         <div 
             class="cap-overlay" 
             class:opponent={is_opponent}
-            style="left: {position.x + 50}px; top: {position.y - 100}px;"
+            class:mobile={window.innerWidth <= 768}
+            style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
             onmousedown={handleMouseDown}
+            ontouchstart={handleTouchStart}
             role="button"
             tabindex="0"
         >
@@ -121,13 +174,16 @@
                             {#each effects as effect}
                                 <div class="effect-item">
                                     <span class="effect-type">{getEffectTypeName(effect.effect_type)}</span>
-                                    <span class="effect-id">ID: {effect.effect_id}</span>
+                                    <span class="effect-duration">({effect.remaining_triggers} turns)</span>
                                 </div>
                             {/each}
                         </div>
                     {/if}
                 </div>
             </div>
+            
+            <!-- Resize handle -->
+            <div class="resize-handle"></div>
         </div>
     {/if}
 {/if}
@@ -136,60 +192,64 @@
     .cap-overlay {
         position: fixed;
         z-index: 1000;
+        background: white;
+        border: 2px solid #333;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        min-width: 200px;
+        min-height: 150px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
         cursor: move;
         user-select: none;
+        font-size: 13px;
+        resize: both;
+    }
+
+    .cap-overlay.mobile {
+        font-size: 16px;
+        min-width: 180px;
+        min-height: 120px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .cap-overlay:active {
+        cursor: grabbing;
     }
 
     .cap-box {
-        background: white;
-        border: 2px solid #333;
-        border-radius: 6px;
-        padding: 12px;
-        width: 220px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-    }
-
-    /* Mobile responsive cap data */
-    @media (max-width: 768px) {
-        .cap-overlay {
-            /* Adjust positioning for mobile to avoid off-screen issues */
-            max-width: calc(100vw - 1rem);
-            left: 0.5rem !important;
-            right: 0.5rem !important;
-            width: auto !important;
-        }
-
-        .cap-box {
-            width: 100%;
-            max-width: none;
-            padding: 16px;
-            font-size: 16px;
-            border-radius: 8px;
-            max-height: calc(100vh - 4rem);
-            overflow-y: auto;
-        }
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
     .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
-        padding-bottom: 6px;
+        padding: 8px 12px;
+        background: #f5f5f5;
         border-bottom: 1px solid #ddd;
+        cursor: move;
+        flex-shrink: 0;
+    }
+
+    .cap-overlay.mobile .header {
+        padding: 12px 16px;
+        touch-action: none;
     }
 
     .header strong {
         color: #333;
-        font-size: 16px;
+        font-size: 14px;
+        margin: 0;
     }
 
-    @media (max-width: 768px) {
-        .header strong {
-            font-size: 18px;
-        }
+    .cap-overlay.mobile .header strong {
+        font-size: 18px;
     }
 
     .header-info {
@@ -201,13 +261,11 @@
 
     .header-info span {
         color: #666;
-        font-size: 12px;
+        font-size: 11px;
     }
 
-    @media (max-width: 768px) {
-        .header-info span {
-            font-size: 14px;
-        }
+    .cap-overlay.mobile .header-info span {
+        font-size: 14px;
     }
 
     .opponent-label {
@@ -219,12 +277,10 @@
         font-weight: bold;
     }
 
-    @media (max-width: 768px) {
-        .opponent-label {
-            padding: 4px 8px;
-            font-size: 12px;
-            border-radius: 4px;
-        }
+    .cap-overlay.mobile .opponent-label {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
     }
 
     .cap-overlay.opponent {
@@ -248,13 +304,16 @@
         margin-left: 8px;
     }
 
-    @media (max-width: 768px) {
-        .close-button {
-            font-size: 24px;
-            width: 32px;
-            height: 32px;
-            padding: 4px;
-        }
+    .cap-overlay.mobile .close-button {
+        font-size: 24px;
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .close-button:hover {
@@ -263,31 +322,36 @@
 
     .content {
         color: #444;
+        padding: 8px 12px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .cap-overlay.mobile .content {
+        padding: 12px 16px;
     }
 
     .health {
         margin-bottom: 8px;
         font-weight: bold;
         color: #e74c3c;
+        font-size: 12px;
     }
 
-    @media (max-width: 768px) {
-        .health {
-            font-size: 18px;
-            margin-bottom: 12px;
-        }
+    .cap-overlay.mobile .health {
+        font-size: 16px;
+        margin-bottom: 12px;
     }
 
     .stats div {
         margin: 4px 0;
         color: #555;
+        font-size: 11px;
     }
 
-    @media (max-width: 768px) {
-        .stats div {
-            margin: 8px 0;
-            font-size: 16px;
-        }
+    .cap-overlay.mobile .stats div {
+        margin: 8px 0;
+        font-size: 14px;
     }
 
     .ability {
@@ -296,37 +360,44 @@
         border-top: 1px solid #eee;
     }
 
-    @media (max-width: 768px) {
-        .ability {
-            margin-top: 16px;
-            padding-top: 12px;
-        }
+    .cap-overlay.mobile .ability {
+        margin-top: 16px;
+        padding-top: 12px;
     }
 
     .section-title {
         font-weight: bold;
+        margin-bottom: 4px;
         color: #333;
-        margin-bottom: 6px;
-        font-size: 15px;
+        font-size: 12px;
     }
 
-    @media (max-width: 768px) {
-        .section-title {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
+    .cap-overlay.mobile .section-title {
+        font-size: 16px;
+        margin-bottom: 8px;
     }
 
     .ability-description {
-        color: #444;
-        font-style: italic;
         margin-bottom: 4px;
+        color: #666;
+        font-size: 11px;
         line-height: 1.3;
     }
 
+    .cap-overlay.mobile .ability-description {
+        font-size: 14px;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
     .ability-cost {
-        color: #666;
-        font-size: 12px;
+        font-weight: bold;
+        color: #8b5cf6;
+        font-size: 11px;
+    }
+
+    .cap-overlay.mobile .ability-cost {
+        font-size: 14px;
     }
 
     .effects {
@@ -335,23 +406,73 @@
         border-top: 1px solid #eee;
     }
 
+    .cap-overlay.mobile .effects {
+        margin-top: 16px;
+        padding-top: 12px;
+    }
+
     .effect-item {
         display: flex;
         justify-content: space-between;
-        align-items: center;
         margin: 4px 0;
-        padding: 4px 6px;
-        background: #f8f9fa;
-        border-radius: 3px;
+        padding: 2px 0;
+        font-size: 11px;
+    }
+
+    .cap-overlay.mobile .effect-item {
+        margin: 8px 0;
+        padding: 4px 0;
+        font-size: 14px;
     }
 
     .effect-type {
-        color: #2c3e50;
-        font-weight: 500;
+        font-weight: bold;
+        color: #7c3aed;
     }
 
-    .effect-id {
+    .effect-duration {
         color: #666;
+        font-size: 10px;
+    }
+
+    .cap-overlay.mobile .effect-duration {
         font-size: 12px;
+    }
+
+    .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, transparent 50%, #999 50%);
+        cursor: se-resize;
+        border-top-left-radius: 4px;
+    }
+
+    .cap-overlay.mobile .resize-handle {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, transparent 50%, #666 50%);
+    }
+
+    .resize-handle:hover {
+        background: linear-gradient(135deg, transparent 50%, #666 50%);
+    }
+
+    /* Touch optimization */
+    @media (pointer: coarse) {
+        .cap-overlay {
+            touch-action: none;
+        }
+        
+        .header {
+            min-height: 44px;
+        }
+        
+        .close-button {
+            min-height: 44px;
+            min-width: 44px;
+        }
     }
 </style>

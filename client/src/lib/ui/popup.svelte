@@ -1,18 +1,84 @@
 <script lang="ts">
     import { caps } from '../stores/caps.svelte';
     import type { Cap } from '../dojo/models.gen';
+    
     let popup = caps.popup_state;
     let isDragging = false;
+    let isResizing = false;
     let dragOffset = { x: 0, y: 0 };
+    
+    // Size state for resizing
+    let size = $state({
+        width: 200,
+        height: 150
+    });
+
+    // Position state
+    let position = $state({ x: 300, y: 100 });
     
     $effect(() => {
         console.log(popup.render_position)
+        if (popup.render_position) {
+            position.x = popup.render_position.x;
+            position.y = popup.render_position.y - 150;
+        }
     })
-    // Calculate position based on grid coordinates (assuming ~50px per cell)
-    let render_position = $derived(popup.render_position ? {
-        x: popup.render_position.x, // offset from board edge
-        y: popup.render_position.y - 150
-    } : { x: 300, y: 100 });
+
+    function handleMouseDown(e: MouseEvent) {
+        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
+            isResizing = true;
+        } else {
+            isDragging = true;
+            dragOffset.x = e.clientX - position.x;
+            dragOffset.y = e.clientY - position.y;
+        }
+        e.preventDefault();
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+        if (isDragging) {
+            position.x = e.clientX - dragOffset.x;
+            position.y = e.clientY - dragOffset.y;
+        } else if (isResizing) {
+            size.width = Math.max(180, e.clientX - position.x);
+            size.height = Math.max(120, e.clientY - position.y);
+        }
+    }
+
+    function handleMouseUp() {
+        isDragging = false;
+        isResizing = false;
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+        const touch = e.touches[0];
+        if ((e.target as HTMLElement).classList.contains('resize-handle')) {
+            isResizing = true;
+        } else {
+            isDragging = true;
+            dragOffset.x = touch.clientX - position.x;
+            dragOffset.y = touch.clientY - position.y;
+        }
+        e.preventDefault();
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+        const touch = e.touches[0];
+        if (isDragging) {
+            position.x = touch.clientX - dragOffset.x;
+            position.y = touch.clientY - dragOffset.y;
+        } else if (isResizing) {
+            size.width = Math.max(160, touch.clientX - position.x);
+            size.height = Math.max(100, touch.clientY - position.y);
+        }
+        e.preventDefault();
+    }
+
+    function handleTouchEnd() {
+        isDragging = false;
+        isResizing = false;
+    }
+
     let get_action_details = (cap: Cap) => {
         if (!cap || !caps.cap_types) return [];
         
@@ -54,121 +120,112 @@
         }
     }
     
-    function handleMouseDown(e: MouseEvent) {
-        isDragging = true;
-        dragOffset.x = e.clientX - render_position.x;
-        dragOffset.y = e.clientY - render_position.y;
-    }
-
-    function handleMouseMove(e: MouseEvent) {
-        if (isDragging) {
-            render_position.x = e.clientX - dragOffset.x;
-            render_position.y = e.clientY - dragOffset.y;
-        }
-    }
-
-    function handleMouseUp() {
-        isDragging = false;
+    function handleClose() {
+        caps.close_popup();
     }
 </script>
 
-<svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
+<svelte:window 
+    on:mousemove={handleMouseMove} 
+    on:mouseup={handleMouseUp}
+    on:touchmove={handleTouchMove}
+    on:touchend={handleTouchEnd}
+/>
 
-{#if popup.visible && popup.render_position}
+{#if popup.visible && popup.position}
     <div 
-        class="action-overlay" 
-        style="left: {render_position.x}px; top: {render_position.y}px;"
+        class="action-popup"
+        class:mobile={window.innerWidth <= 768}
+        style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
         onmousedown={handleMouseDown}
-        role="button"
-        tabindex="0"
+        ontouchstart={handleTouchStart}
+        role="dialog"
+        aria-label="Action Selection"
     >
-        <div class="action-box">
-            <div class="header">
-                <strong>Actions</strong>
-                <button class="close-button" onclick={() => caps.close_popup()}>×</button>
+        <div class="popup-header">
+            <span class="popup-title">Select Action</span>
+            <button class="close-button" onclick={handleClose}>×</button>
+        </div>
+        
+        <div class="popup-content">
+            <div class="energy-display">
+                Energy: {caps.energy}/{caps.max_energy}
             </div>
             
-            <div class="content">
-                <div class="energy-display">
-                    Energy: {caps.energy}/{caps.max_energy}
-                </div>
-                
-                <div class="action-buttons">
-                    {#each actionDetails as action}
-                        <button 
-                            class="action-button action-{action.type}"
-                            class:disabled={!action.canAfford}
-                            onclick={() => handleActionClick(action)}
-                            disabled={!action.canAfford}
-                            title={action.canAfford ? '' : `Need ${action.cost} energy (have ${caps.energy})`}
-                        >
-                            {action.label}
-                        </button>
-                    {/each}
-                </div>
+            <div class="action-buttons">
+                {#each actionDetails as action}
+                    <button 
+                        class="action-button action-{action.type}"
+                        class:disabled={!action.canAfford}
+                        onclick={() => handleActionClick(action)}
+                        disabled={!action.canAfford}
+                    >
+                        {action.label}
+                    </button>
+                {/each}
             </div>
         </div>
+        
+        <!-- Resize handle -->
+        <div class="resize-handle"></div>
     </div>
 {/if}
 
 <style>
-    .action-overlay {
+    .action-popup {
         position: fixed;
         z-index: 1000;
-        cursor: move;
-        user-select: none;
-    }
-
-    .action-box {
         background: white;
         border: 2px solid #333;
-        border-radius: 4px;
-        padding: 8px;
-        width: 140px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        font-family: Arial, sans-serif;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        min-width: 180px;
+        min-height: 120px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
+        cursor: move;
+        user-select: none;
         font-size: 12px;
     }
 
-    /* Mobile responsive popup */
-    @media (max-width: 768px) {
-        .action-overlay {
-            /* On mobile, position relative to viewport instead of fixed positioning */
-            position: fixed;
-            left: 50% !important;
-            top: 50% !important;
-            transform: translate(-50%, -50%);
-            cursor: default; /* Disable dragging on mobile */
-        }
-
-        .action-box {
-            width: min(280px, calc(100vw - 2rem));
-            padding: 16px;
-            font-size: 16px; /* Larger text for mobile */
-            border-radius: 8px;
-            max-height: calc(100vh - 4rem);
-            overflow-y: auto;
-        }
+    .action-popup.mobile {
+        font-size: 16px;
+        min-width: 160px;
+        min-height: 100px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
-    .header {
+    .action-popup:active {
+        cursor: grabbing;
+    }
+
+    .popup-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 6px;
-        padding-bottom: 4px;
+        padding: 8px 12px;
+        background: #f5f5f5;
         border-bottom: 1px solid #ddd;
+        cursor: move;
+        flex-shrink: 0;
     }
 
-    .header strong {
+    .action-popup.mobile .popup-header {
+        padding: 12px 16px;
+        touch-action: none;
+    }
+
+    .popup-title {
         color: #333;
         font-size: 14px;
+        font-weight: bold;
+        margin: 0;
     }
 
-    @media (max-width: 768px) {
-        .header strong {
-            font-size: 18px;
-        }
+    .action-popup.mobile .popup-title {
+        font-size: 18px;
     }
 
     .close-button {
@@ -180,24 +237,34 @@
         padding: 0;
         width: 16px;
         height: 16px;
+        margin-left: 8px;
     }
 
-    @media (max-width: 768px) {
-        .close-button {
-            font-size: 24px;
-            width: 32px;
-            height: 32px;
-            /* Better touch target */
-            padding: 4px;
-        }
+    .action-popup.mobile .close-button {
+        font-size: 24px;
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .close-button:hover {
         color: #333;
     }
 
-    .content {
+    .popup-content {
         color: #444;
+        padding: 8px 12px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .action-popup.mobile .popup-content {
+        padding: 12px 16px;
     }
 
     .energy-display {
@@ -212,13 +279,11 @@
         text-align: center;
     }
 
-    @media (max-width: 768px) {
-        .energy-display {
-            padding: 8px 12px;
-            font-size: 16px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
+    .action-popup.mobile .energy-display {
+        padding: 8px 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        margin-bottom: 12px;
     }
 
     .action-buttons {
@@ -227,10 +292,8 @@
         gap: 4px;
     }
 
-    @media (max-width: 768px) {
-        .action-buttons {
-            gap: 8px;
-        }
+    .action-popup.mobile .action-buttons {
+        gap: 8px;
     }
 
     .action-button {
@@ -244,13 +307,11 @@
         position: relative;
     }
 
-    @media (max-width: 768px) {
-        .action-button {
-            padding: 12px 16px;
-            font-size: 16px;
-            border-radius: 6px;
-            min-height: 48px; /* Touch-friendly button height */
-        }
+    .action-popup.mobile .action-button {
+        padding: 12px 16px;
+        font-size: 16px;
+        border-radius: 6px;
+        min-height: 48px;
     }
 
     .action-button:hover:not(.disabled) {
@@ -293,5 +354,53 @@
 
     .action-ability:hover:not(.disabled) {
         background-color: #7c3aed;
+    }
+
+    .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, transparent 50%, #999 50%);
+        cursor: se-resize;
+        border-top-left-radius: 4px;
+    }
+
+    .action-popup.mobile .resize-handle {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, transparent 50%, #666 50%);
+    }
+
+    .resize-handle:hover {
+        background: linear-gradient(135deg, transparent 50%, #666 50%);
+    }
+
+    /* Touch optimization */
+    @media (pointer: coarse) {
+        .action-popup {
+            touch-action: none;
+        }
+        
+        .popup-header {
+            min-height: 44px;
+        }
+        
+        .close-button {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    }
+
+    /* Mobile responsive positioning override */
+    @media (max-width: 768px) {
+        .action-popup.mobile {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            cursor: default;
+        }
     }
 </style>
