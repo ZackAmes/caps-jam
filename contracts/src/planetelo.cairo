@@ -73,6 +73,7 @@ trait IPlanetelo<T> {
     fn decline_invite(ref self: T, invite_id: u128);
     fn settle_custom_game(ref self: T, game_id: u128);
     fn get_player_stats(self: @T, address: ContractAddress) -> (u8, u8);
+    fn get_player_team(self: @T, address: ContractAddress) -> u16;
 }
 
 #[dojo::contract]
@@ -362,6 +363,12 @@ mod planetelo {
             let mut world = self.world(@"planetelo");
             let mut player: Player = world.read_model(address);
             (player.agent_wins, player.agent_losses)
+        }
+
+        fn get_player_team(self: @ContractState, address: ContractAddress) -> u16 {
+            let mut world = self.world(@"planetelo");
+            let mut player: Player = world.read_model(address);
+            player.team
         }
     }
 

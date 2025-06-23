@@ -19,8 +19,8 @@
     $effect(() => {
         console.log(popup.render_position)
         if (popup.render_position) {
-            position.x = popup.render_position.x - 250;
-            position.y = popup.render_position.y - 150;
+            position.x = popup.render_position.x - 400;
+            position.y = popup.render_position.y - 400;
         }
     })
 

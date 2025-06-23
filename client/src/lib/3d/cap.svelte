@@ -1,7 +1,8 @@
 <script lang="ts">
   import { T } from "@threlte/core";
   import type { Cap } from "../dojo/models.gen";
-    import { caps } from "../stores/caps.svelte";
+  import { caps } from "../stores/caps.svelte";
+  import { getBaseColor } from "../utils/colors";
 
   interface Props {
     cap: Cap;
@@ -9,20 +10,6 @@
   }
 
   let { cap, position }: Props = $props();
-
-  // Get darker shade of base color (different from target indicators)
-  const getBaseColor = (capTypeId: number) => {
-    let color_id = capTypeId % 4;
-    if (color_id == 0) {
-      return "darkred";
-    } else if (color_id == 1) {
-      return "darkblue";
-    } else if (color_id == 2) {
-      return "yellow";
-    } else if (color_id == 3) {
-      return "darkgreen";
-    }
-  };
 
   // Get border color based on player
   let accentColor = $derived(cap.owner === caps.game_state?.game.player1 ? "white" : "black");

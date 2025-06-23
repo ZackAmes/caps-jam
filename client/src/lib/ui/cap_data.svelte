@@ -25,11 +25,11 @@
     $effect(() => {
         if (window.innerWidth <= 768) return;
         if (capType === 'selected' && caps.selected_cap_render_position) {
-            position.x = caps.selected_cap_render_position.x;
-            position.y = caps.selected_cap_render_position.y - 150;
+            position.x = caps.selected_cap_render_position.x+100;
+            position.y = caps.selected_cap_render_position.y - 100;
         } else if (capType === 'inspected' && caps.inspected_cap_render_position) {
-            position.x = caps.inspected_cap_render_position.x;
-            position.y = caps.inspected_cap_render_position.y - 150;
+            position.x = caps.inspected_cap_render_position.x - 600;
+            position.y = caps.inspected_cap_render_position.y - 400;
         }
     });
 

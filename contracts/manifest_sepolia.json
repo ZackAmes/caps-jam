@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x1ffb95f236c09651373f30ece31af6b5781e50de387cab3856eb60cf917eeb3",
-      "class_hash": "0x404716c4dcaa7b57687593d10c71e488c2c8bc65f0055ad2500acbae0914daa",
+      "class_hash": "0x664c95d70d011e301c0f6fb28004152a10472a9a83bb78028cb90f8c48cdd0",
       "abi": [
         {
           "type": "impl",
@@ -1960,7 +1960,7 @@
     },
     {
       "address": "0x100bdb5e9ffcc2cb8283d06af3ebbd1852d8de6641222ea25203111cc7ad49a",
-      "class_hash": "0x2e99cd832614efe37031c98af554fab0e6807ab4fad5abb5ec9effd666ce5f5",
+      "class_hash": "0x45d99579be40ed03b534f7e58837ffb3813556b2a31e73c456dcf2ddbe7f2af",
       "abi": [
         {
           "type": "impl",
@@ -2237,6 +2237,22 @@
                 }
               ],
               "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_player_team",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::integer::u16"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },
@@ -2481,12 +2497,6 @@
     },
     {
       "members": [],
-      "class_hash": "0x455454215abf56a70e18cc927d971ab41c538f171d36011d64a7ad5ea466ef8",
-      "tag": "caps-GlobalStats",
-      "selector": "0x773bde9b14ec210e2d80fbd561c5715411c7d1b640bec35a7cd357b35ae510f"
-    },
-    {
-      "members": [],
       "class_hash": "0xdd1b87e685f79a67e791c2dca233ecbb69db299cfc35e4ffb733d35f3d95c6",
       "tag": "caps-Square",
       "selector": "0x25162d41aa11d953b327257d2132ea33b48a49e2146e30ebda33a9c8456114a"
@@ -2496,6 +2506,12 @@
       "class_hash": "0x266337fd7b249f407c4d5b58dd298073dd576f0dc0c20b7c70796dccdd1130f",
       "tag": "planetelo-AgentGames",
       "selector": "0x3de9da2014687def6774ff51edeaf6ca81a5ea6259a5fd5a3f5ffb751fd99c0"
+    },
+    {
+      "members": [],
+      "class_hash": "0x455454215abf56a70e18cc927d971ab41c538f171d36011d64a7ad5ea466ef8",
+      "tag": "planetelo-GlobalStats",
+      "selector": "0x63b10592f0e3e78e478d1cb4534c5d6ac3106c243c493a5f241472ede115956"
     },
     {
       "members": [],

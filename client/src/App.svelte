@@ -12,14 +12,20 @@
     import MoveData from './lib/ui/move_data.svelte';
     import Popup from './lib/ui/popup.svelte';
     import Profile from './lib/ui/Profile.svelte';
+    import TeamSelector from './lib/ui/TeamSelector.svelte';
 
     
 </script>
 
 <main>
-  <h1>Caps</h1>
+  <div class="header">
+    <h1>Caps</h1>
+    <div class="user-controls">
+      <Login />
+      <TeamSelector />
+    </div>
+  </div>
 
-  <Login />
   {#if account.account}
     <Matchmaking />
   {/if}
@@ -90,6 +96,38 @@
       max-width: 300px;
       margin-left: auto;
       margin-right: auto;
+    }
+  }
+
+  .header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .header > h1 {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .user-controls {
+    grid-column: 2;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .header {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .header > h1, .user-controls {
+      grid-column: 1;
+      justify-self: center;
     }
   }
 </style>

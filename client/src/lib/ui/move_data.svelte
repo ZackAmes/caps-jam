@@ -4,7 +4,7 @@
 
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
-    let position = $state({ x: 260, y: 20 }); 
+    let position = $state({ x: 600, y: 100 }); 
 
     function handleMouseDown(e: MouseEvent) {
         if (window.innerWidth <= 768) return;

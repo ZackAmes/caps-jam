@@ -13,9 +13,10 @@ pub trait IActions<T> {
 // dojo decorator
 #[dojo::contract]
 pub mod actions {
-    use super::{IActions};
+    use super::super::super::models::EffectTrait;
+use super::{IActions};
     use starknet::{ContractAddress, get_caller_address};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
+    use caps::models::{Vec2, Game, Cap, Global, GameTrait, Timing, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
     use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_move_step_effects, update_end_of_turn_effects, update_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
@@ -257,8 +258,7 @@ pub mod actions {
                 let mut double: bool = false;
                 let mut double_ids: Array<u64> = ArrayTrait::new();
 
-                let mut untriggered_move_step_effects: Array<u64> = ArrayTrait::new();
-                let mut untriggered_attack_step_effects: Array<u64> = ArrayTrait::new();
+                let mut new_move_step_effects: Array<u64> = ArrayTrait::new();
 
                 let mut index = 0;
                 while index < move_step_effects.len() {
@@ -277,7 +277,7 @@ pub mod actions {
                                         move_discount_amount += x;
                                     }
                                     else {
-                                        untriggered_move_step_effects.append(effect.effect_id);
+                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -293,7 +293,7 @@ pub mod actions {
                                         attack_discount_amount += x;
                                     }
                                     else {
-                                        untriggered_move_step_effects.append(effect.effect_id);
+                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -309,7 +309,7 @@ pub mod actions {
                                         ability_discount_amount += x;
                                     }
                                     else {
-                                        untriggered_move_step_effects.append(effect.effect_id);
+                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -325,7 +325,7 @@ pub mod actions {
                                         attack_bonus_amount += x;
                                     }
                                     else {
-                                        untriggered_move_step_effects.append(effect.effect_id);
+                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -341,7 +341,7 @@ pub mod actions {
                                         bonus_range_amount += x;
                                     }
                                     else {
-                                        untriggered_move_step_effects.append(effect.effect_id);
+                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -408,13 +408,13 @@ pub mod actions {
                         world.write_model(@cap);
 
                         for attack_discount_id in attack_discount_ids {
-                            untriggered_move_step_effects.append(attack_discount_id);
+                            new_move_step_effects.append(attack_discount_id);
                         };
                         for move_discount_id in move_discount_ids {
-                            untriggered_move_step_effects.append(move_discount_id);
+                            new_move_step_effects.append(move_discount_id);
                         };
                         for ability_discount_id in ability_discount_ids {
-                            untriggered_move_step_effects.append(ability_discount_id);
+                            new_move_step_effects.append(ability_discount_id);
                         }
                     },
                     ActionType::Attack(target) => {
@@ -434,7 +434,7 @@ pub mod actions {
                                 world.erase_model(@attack_discount_effect);
                             }
                             else {
-                                untriggered_move_step_effects.append(attack_discount_effect.effect_id);
+                                new_move_step_effects.append(attack_discount_effect.effect_id);
                                 world.write_model(@attack_discount_effect);
                             }
                             k += 1;
@@ -452,7 +452,7 @@ pub mod actions {
                                 world.erase_model(@attack_bonus_effect);
                             }
                             else {
-                                untriggered_move_step_effects.append(attack_bonus_effect.effect_id);
+                                new_move_step_effects.append(attack_bonus_effect.effect_id);
                                 world.write_model(@attack_bonus_effect);
                             }
                             l += 1;
@@ -469,13 +469,13 @@ pub mod actions {
 
                         
                         for ability_discount_id in ability_discount_ids {
-                            untriggered_move_step_effects.append(ability_discount_id);
+                            new_move_step_effects.append(ability_discount_id);
                         };
                         for bonus_range_id in bonus_range_ids {
-                            untriggered_move_step_effects.append(bonus_range_id);
+                            new_move_step_effects.append(bonus_range_id);
                         };
                         for move_discount_id in move_discount_ids {
-                            untriggered_move_step_effects.append(move_discount_id);
+                            new_move_step_effects.append(move_discount_id);
                         };
                         
                     },
@@ -504,22 +504,22 @@ pub mod actions {
                                 world.erase_model(@ability_discount_effect);
                             }
                             else {
-                                untriggered_move_step_effects.append(ability_discount_effect.effect_id);
+                                new_move_step_effects.append(ability_discount_effect.effect_id);
                                 world.write_model(@ability_discount_effect);
                             }
                             m += 1;
                         };
                         for bonus_range_id in bonus_range_ids {
-                            untriggered_move_step_effects.append(bonus_range_id);
+                            new_move_step_effects.append(bonus_range_id);
                         };
                         for move_discount_id in move_discount_ids {
-                            untriggered_move_step_effects.append(move_discount_id);
+                            new_move_step_effects.append(move_discount_id);
                         };
                         for attack_discount_id in attack_discount_ids {
-                            untriggered_move_step_effects.append(attack_discount_id);
+                            new_move_step_effects.append(attack_discount_id);
                         };
                         for attack_bonus_id in attack_bonus_ids {
-                            untriggered_move_step_effects.append(attack_bonus_id);
+                            new_move_step_effects.append(attack_bonus_id);
                         };
                         cap.use_ability(cap_type, *target, game_id, ref world);
 
@@ -534,15 +534,43 @@ pub mod actions {
                                 world.erase_model(@double_effect);
                             }
                             else {
-                                untriggered_move_step_effects.append(double_effect.effect_id);
+                                new_move_step_effects.append(double_effect.effect_id);
                                 world.write_model(@double_effect);
                             }
                         };
                     }
                 };
-                update_move_step_effects(game_id, ref world, untriggered_move_step_effects);
-                i = i + 1;
+                update_move_step_effects(game_id, ref world, new_move_step_effects);
+                i+=1;
             };
+
+            let mut i = 0;
+            while i < game.effect_counter {
+                let mut effect: Effect = world.read_model((game_id, i).into());
+                if effect.get_timing() == Timing::EndOfTurn {
+                    if effect.remaining_triggers > 1 {
+                        game.active_end_of_turn_effects.append(effect.effect_id);
+                        effect.remaining_triggers -= 1;
+                        world.write_model(@effect);
+                    }
+                    else {
+                        world.erase_model(@effect);
+                    }
+                }
+                i += 1;
+            };
+
+            let mut new_piece_ids: Array<u64> = ArrayTrait::new();
+            let mut j = 0;
+            while j < game.caps_ids.len() {
+                let cap: Cap = world.read_model(*game.caps_ids[j]);
+                if cap.owner != starknet::contract_address_const::<0x0>() {
+                    new_piece_ids.append(cap.id);
+                }
+                j += 1;
+            };
+            game.caps_ids = new_piece_ids;
+            world.write_model(@game);
 
             game.turn_count = game.turn_count + 1;
             let (over, _) = @game.check_over(@world);

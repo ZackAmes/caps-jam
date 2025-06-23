@@ -15,6 +15,12 @@ let caps_contract = new Contract(
     rpc
 ).typedv2(manifest.contracts[0].abi as Abi)
 
+let caps_planetelo_contract = new Contract(
+    manifest.contracts[1].abi,
+    manifest.contracts[1].address,
+    rpc
+).typedv2(manifest.contracts[1].abi as Abi)
+
 let game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
 
 let current_move = $state<Array<Action>>([])
@@ -34,7 +40,7 @@ let popup_state = $state<{
     visible: boolean,   
     position: {x: number, y: number} | null,
     render_position: {x: number, y: number} | null,
-    available_actions: Array<{type: 'move' | 'attack' | 'ability', label: string}> 
+    available_actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect', label: string}> 
 }>({
     visible: false,
     position: null,
@@ -159,6 +165,7 @@ let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 let max_energy = $derived(Number(game_state?.game.turn_count) + 2)
 let energy = max_energy
 
+let selected_team = $state<number | null>(null)
 
 
 const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2> | undefined) => {
@@ -182,7 +189,7 @@ const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec
 const get_available_actions_at_position = (position: {x: number, y: number}) => {
     if (!selected_cap) return []
     
-    let actions: Array<{type: 'move' | 'attack' | 'ability', label: string}> = []
+    let actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect', label: string}> = []
     
     // Check if position is a valid move
     let is_valid_move = valid_moves.some(move => move.x === position.x && move.y === position.y)
@@ -205,7 +212,16 @@ const get_available_actions_at_position = (position: {x: number, y: number}) => 
     return actions
 }
 
-const execute_action = (action_type: 'move' | 'attack' | 'ability', position: {x: number, y: number}) => {
+const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect', position: {x: number, y: number}) => {
+    if (action_type === 'deselect') {
+        selected_cap = null
+        selected_cap_render_position = null
+        popup_state.visible = false
+        popup_state.position = null
+        popup_state.available_actions = []
+        return
+    }
+
     if (!selected_cap) return
     
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
@@ -301,6 +317,23 @@ export const caps = {
                 }
             }
             energy = max_energy;
+            selected_team = await caps_planetelo_contract.get_player_team(account.account!.address);
+    },
+
+    select_team: async (team: number) => {
+        await account.account?.execute([
+            {
+                contractAddress: manifest.contracts[1].address,
+                entrypoint: "select_team",
+                calldata: [team]
+            }
+        ])
+
+        selected_team = team
+    },
+
+    get selected_team() {
+        return selected_team
     },
 
     get_cap_at: (x: number, y: number) => {
@@ -355,13 +388,30 @@ export const caps = {
     },
 
     handle_click: (position: {x: number, y: number}, e: any) => {
-        // If clicking on selected cap, deselect it
+        // If clicking on selected cap
         if (selected_cap && selected_cap.position.x == position.x && selected_cap.position.y == position.y) {
-            selected_cap = null
-            selected_cap_render_position = null
-            inspected_cap = null
-            inspected_cap_render_position = null
-            return
+            const cap_type = cap_types.find(c => c.id === selected_cap!.cap_type);
+            const ability_target_type = cap_type?.ability_target.activeVariant();
+
+            if (ability_target_type === 'SelfCap') {
+                // Show popup with "Use Ability" and "Deselect"
+                popup_state = {
+                    visible: true,
+                    position: position,
+                    render_position: {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY},
+                    available_actions: [
+                        {type: 'ability', label: 'Use Ability'},
+                        {type: 'deselect', label: 'Deselect'}
+                    ]
+                };
+            } else {
+                // Original behavior: just deselect
+                selected_cap = null
+                selected_cap_render_position = null
+                inspected_cap = null
+                inspected_cap_render_position = null
+            }
+            return;
         }
 
         console.log(e)

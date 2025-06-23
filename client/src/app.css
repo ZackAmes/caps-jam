@@ -59,6 +59,24 @@ h1 {
   text-align: center;
 }
 
+.game-board-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: min(90vw, 90vh, 600px);
+  aspect-ratio: 1;
+  margin: 2rem auto;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.game-board-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
 /* Mobile responsive app container */
 @media (max-width: 768px) {
   #app {
@@ -72,9 +90,9 @@ h1 {
     It will ensure the board fits nicely on mobile screens.
   */
   .game-board-container {
-    width: 90%;
-    aspect-ratio: 1 / 1;
-    margin: 0 auto;
+    width: 95vw;
+    padding: 0.5rem;
+    margin: 1rem auto;
   }
 
   /* This will force the canvas to fit inside its container */
