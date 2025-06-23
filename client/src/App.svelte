@@ -36,7 +36,7 @@
 
     
     <MoveData />
-    <div class="game-container">
+    <div class="game-board-container">
       <Canvas>
         <Game />
       </Canvas>
@@ -78,32 +78,9 @@
 </main>
 
 <style>
-  .game-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: min(90vw, 90vh, 600px);
-    aspect-ratio: 1;
-    padding: 1rem;
-    margin: 2rem auto;
-    border: 1px solid #ccc;
-  }
-
-  /* Mobile responsive game container */
-  @media (max-width: 768px) {
-    .game-container {
-      width: min(95vw, 95vh, 400px);
-      padding: 0.5rem;
-      margin: 1rem auto;
-      border-radius: 8px;
-    }
-  }
-
   /* Mobile responsive layout adjustments */
-  @media (max-width: 768px) {
-    main {
-      padding: 0.5rem;
-    }
+  @media (max-width: 720px) {
+
     
     /* Stack buttons vertically on mobile */
     main > button {
