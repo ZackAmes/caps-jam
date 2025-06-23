@@ -146,6 +146,8 @@
     {@const cap_type = caps.cap_types.find(cap_type => cap_type.id == display_cap.cap_type)}
     {#if cap_type}
         <div 
+            role="dialog"
+            aria-label="{cap_type.name} Data"
             class="cap-data-container" 
             class:opponent={is_opponent}
             class:desktop-popup={typeof window !== 'undefined' && window.innerWidth > 768}
