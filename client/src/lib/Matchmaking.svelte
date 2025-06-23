@@ -60,7 +60,7 @@
       {#if planetelo.queue_status == 0 || planetelo.queue_status == null}
         <button onclick={planetelo.handleQueue}>Queue</button>
       {:else if planetelo.queue_status == 1}
-        {#if planetelo.queue_length && planetelo.queue_length >= 2}
+        {#if planetelo.queue_length! >= 2}
           <button class="match-found" onclick={planetelo.handleMatchmake}>Match Found</button>
         {:else}
           <button disabled>In Queue</button>

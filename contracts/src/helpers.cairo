@@ -133,7 +133,6 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
         effect.remaining_triggers -= 1;
         match effect.effect_type {
             EffectType::DOT(dmg) => {
-                panic!("got dot");
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
                         let cap: Cap = world.read_model(cap_id);

@@ -76,7 +76,7 @@
 {#if account.account}
     <div class="profile-container">
         <button class="profile-toggle" onclick={toggleProfile}>
-            {account.username || 'User'} {planetelo.elo ? `Elo: ${planetelo.elo}` : ''} 
+            {account.username || 'User'} 
             {#if planetelo.invites.length > 0}
                 <span class="notification-badge">{planetelo.invites.length}</span>
             {/if}
@@ -85,7 +85,7 @@
         {#if isOpen}
             <div class="profile-dropdown">
                 <div class="profile-header">
-                    <strong>{account.username || 'User'}</strong>
+                    <strong>{account.username || 'User'} | {planetelo.elo ? `ELO: ${planetelo.elo}` : ''}</strong>
                     <div class="header-buttons">
                         <button class="disconnect-btn" onclick={account.disconnect}>Disconnect</button>
                         <button class="close-button" onclick={toggleProfile}>×</button>

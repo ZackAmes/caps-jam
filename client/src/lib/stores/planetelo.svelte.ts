@@ -78,6 +78,7 @@ export const planetelo = {
                 current_game_id = planetelo_game_id;
             }
             agent_game_id = await caps_planetelo_contract.get_player_game_id(account.account!.address);
+            queue_length = await plantelo_contract.get_queue_length(game_id, "0");
         }
     },
 
@@ -197,6 +198,7 @@ export const planetelo = {
             current_game_id = agent_game_id;
         }
         caps.get_game(current_game_id);
+        planetelo.update_status();
         console.log(caps.game_state)
     },
 

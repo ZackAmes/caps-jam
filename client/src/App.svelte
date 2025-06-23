@@ -22,7 +22,9 @@
     <h1>Caps</h1>
     <div class="user-controls">
       <Login />
+      {#if account.account}
       <TeamSelector />
+      {/if}
     </div>
   </div>
 
