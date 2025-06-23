@@ -34,14 +34,19 @@
 <T.Group position={[position.x, position.y, 0]}>
   {#if Math.floor(Number(cap.cap_type) / 4) == 0}
     <!-- Main body -->
-    <T.Mesh position={[0, 0, 0.000001]} scale={0.2}>
+    <T.Mesh position={[0, 0, 0.000001]} scale={0.22}>
       <T.BoxGeometry />
       <T.MeshBasicMaterial color={baseColor} />
     </T.Mesh>
-    <!-- Accent -->
-    <T.Mesh scale={0.205}>
+    <!-- Wireframe Accent -->
+    <T.Mesh scale={0.225}>
       <T.BoxGeometry />
       <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+    </T.Mesh>
+    <!-- Crown Accent -->
+    <T.Mesh position={[0, 0, 0.1]} rotation.z={Math.PI / 2} scale={0.17}>
+      <T.TorusGeometry args={[0.5, 0.1]} />
+      <T.MeshBasicMaterial color={accentColor} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 1}
     <!-- Main body -->
