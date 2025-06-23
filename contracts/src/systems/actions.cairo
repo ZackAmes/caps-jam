@@ -227,8 +227,7 @@ use super::{IActions};
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
             while i < turn.len() {
-                let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(game_id, @world);
-                game = world.read_model(game_id);
+                let (_, move_step_effects, _) = get_active_effects(game_id, @world);
 
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(game_id, @world);
@@ -466,7 +465,7 @@ use super::{IActions};
                         if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        handle_damage(game_id, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
+                        game = handle_damage(ref game, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
 
                         
                         for ability_discount_id in ability_discount_ids {
@@ -522,10 +521,10 @@ use super::{IActions};
                         for attack_bonus_id in attack_bonus_ids {
                             new_move_step_effects.append(attack_bonus_id);
                         };
-                        cap.use_ability(cap_type, *target, game_id, ref world);
+                        game = cap.use_ability(cap_type, *target, ref game, ref world);
 
                         if double && cap_type_3.ability_target.is_valid(@cap, ref cap_type_3, *target, game_id, @world) {
-                            cap.use_ability(cap_type_3, *target, game_id, ref world);
+                            game = cap.use_ability(cap_type_3, *target, ref game, ref world);
                         }
 
                         for double_id in double_ids {
@@ -541,7 +540,8 @@ use super::{IActions};
                         };
                     }
                 };
-                update_move_step_effects(game_id, ref world, new_move_step_effects);
+                panic!("game effect counter: {}", game.effect_counter);
+                game = update_move_step_effects(ref game, ref world, new_move_step_effects);
                 i+=1;
             };
 

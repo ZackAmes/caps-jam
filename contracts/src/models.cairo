@@ -25,7 +25,7 @@ pub struct Square {
     pub ids: Array<u64>,
 }
 
-#[derive(Drop, Serde, Debug)]
+#[derive(Drop, Serde, Debug, Clone)]
 #[dojo::model]
 pub struct Game {
     #[key]
@@ -322,8 +322,8 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, cap_type: CapType, target: Vec2, game_id: u64, ref world: WorldStorage) {
-        let mut locations = get_piece_locations(game_id, @world);
+    fn use_ability(ref self: Cap, cap_type: CapType, target: Vec2, ref game: Game, ref world: WorldStorage) -> Game {
+        let mut locations = get_piece_locations(game.id, @world);
         match self.cap_type {
             0 => {
                 //none
@@ -339,7 +339,7 @@ pub impl CapImpl of CapTrait {
                 },
             4 => {
                 //Deal 5 damage to the target
-                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 5);
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 5);
             },
             5 => {
                 //Heal 5 damage
@@ -353,12 +353,11 @@ pub impl CapImpl of CapTrait {
             },
             6 => {
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 let mut new_effects: Array<u64> = ArrayTrait::new();
                 let mut found = false;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -366,7 +365,7 @@ pub impl CapImpl of CapTrait {
                                     if id == cap_at_target_id {
                                         let new_val = x + 5;
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(new_val),
                                             target: effect.target,
@@ -385,7 +384,7 @@ pub impl CapImpl of CapTrait {
                 };
                 if !found {
                     let new_effect = Effect {
-                        game_id,
+                        game_id: game.id,
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(5),
                         target: EffectTarget::Cap(cap_at_target_id),
@@ -397,10 +396,9 @@ pub impl CapImpl of CapTrait {
                 }
             },
             7 => {
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::AbilityDiscount(1),
                     target: EffectTarget::Cap(cap_at_target_id),
@@ -411,9 +409,8 @@ pub impl CapImpl of CapTrait {
                 world.write_model(@game);
             },
             8 => {
-                let mut game: Game = world.read_model(game_id);
                 let effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::AttackBonus(self.dmg_taken.try_into().unwrap()),
                     target: EffectTarget::Cap(self.id),
@@ -424,17 +421,15 @@ pub impl CapImpl of CapTrait {
                 world.write_model(@game);
             },
             9 => {
-                let mut game: Game = world.read_model(game_id);
-                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, self.dmg_taken.into());
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, self.dmg_taken.into());
                 self.dmg_taken = 0;
                 world.write_model(@self);
             },
             10 => {
-                let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 let mut found = false;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -442,7 +437,7 @@ pub impl CapImpl of CapTrait {
                                     if id == self.id {
                                         let cap_type = get_cap_type(self.cap_type);
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::AttackDiscount(cap_type.unwrap().attack_dmg.try_into().unwrap()),
                                             target: effect.target,
@@ -463,17 +458,16 @@ pub impl CapImpl of CapTrait {
             },
             11 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_start_of_turn_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_start_of_turn_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_start_of_turn_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::ExtraEnergy(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
                                             target: effect.target,
@@ -493,7 +487,6 @@ pub impl CapImpl of CapTrait {
             },
             12 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
                 let target_cap_type = get_cap_type(cap_at_target.cap_type);
@@ -505,7 +498,7 @@ pub impl CapImpl of CapTrait {
                 else {
                     cap_at_target.dmg_taken += 1;
                     let effect = Effect {
-                        game_id,
+                        game_id: game.id,
                         effect_id: game.effect_counter,
                         effect_type: EffectType::DamageBuff(3),
                         target: EffectTarget::Cap(cap_at_target_id),
@@ -513,15 +506,13 @@ pub impl CapImpl of CapTrait {
                     };
                     game.add_new_effect(effect);
                     world.write_model(@effect);
-                    world.write_model(@game);
                     world.write_model(@cap_at_target);
                 }
             },
             13 => {
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(cap_at_target_id),
@@ -529,20 +520,18 @@ pub impl CapImpl of CapTrait {
                 };  
                 game.add_new_effect(effect);
                 world.write_model(@effect);
-                world.write_model(@game);
             },
             14 => {
-                let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::MoveDiscount(x.try_into().unwrap()),
                                             target: effect.target,
@@ -561,10 +550,9 @@ pub impl CapImpl of CapTrait {
                 };
             },
             15 => {
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Double,
                     target: EffectTarget::Cap(cap_at_target_id),
@@ -572,14 +560,12 @@ pub impl CapImpl of CapTrait {
                 };
                 game.add_new_effect(effect);
                 world.write_model(@effect);
-                world.write_model(@game);
             },
             16 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::DOT(1),
                     target: EffectTarget::Cap(cap_at_target_id),
@@ -587,13 +573,11 @@ pub impl CapImpl of CapTrait {
                 };  
                 game.add_new_effect(effect);
                 world.write_model(@effect);
-                world.write_model(@game);
             },
             17 => {
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Heal(2),
                     target: EffectTarget::Cap(cap_at_target_id),
@@ -601,20 +585,18 @@ pub impl CapImpl of CapTrait {
                 };
                 game.add_new_effect(effect);
                 world.write_model(@effect);
-                world.write_model(@game);
             },
             18 => {
-                let mut game: Game = world.read_model(game_id);
                 let mut i = 0;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into(   ));
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into(   ));
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x * 2),
                                             target: effect.target,
@@ -635,9 +617,8 @@ pub impl CapImpl of CapTrait {
             },
             19 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
                 let mut energy_effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::ExtraEnergy(2),
                     target: EffectTarget::Cap(self.id),
@@ -645,7 +626,7 @@ pub impl CapImpl of CapTrait {
                 };
                 game.add_new_effect(energy_effect);
                 let stun_effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(self.id),
@@ -655,14 +636,14 @@ pub impl CapImpl of CapTrait {
                 let mut i = 0;
                 let mut active_shield = false;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
                                 EffectTarget::Cap(id) => {
                                     if id == self.id {
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x + 2),
                                             target: effect.target,
@@ -683,7 +664,7 @@ pub impl CapImpl of CapTrait {
                 };
                 if !active_shield {
                     let new_effect = Effect {
-                        game_id,
+                        game_id: game.id,
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(2),
                         target: EffectTarget::Cap(self.id),
@@ -692,8 +673,7 @@ pub impl CapImpl of CapTrait {
                     game.add_new_effect(new_effect);
                     world.write_model(@new_effect);
                 }
-                world.write_model(@energy_effect);
-                world.write_model(@game);
+                world.write_model(@energy_effect);  
             },
             20 => {
                 let self_cap_type = get_cap_type(self.cap_type);
@@ -702,14 +682,13 @@ pub impl CapImpl of CapTrait {
                 if self_health < 5 {
                     panic!("Not enough health, ability would kill self");
                 }
-                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 7);
-                handle_damage(game_id, self.id, ref world, 4);
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 7);
+                game = handle_damage(ref game, self.id, ref world, 4);
             },
             21 => {
-                let mut game: Game = world.read_model(game_id);
-                handle_damage(game_id, locations.get((target.x * 7 + target.y).into()), ref world, 9);
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 9);
                 let stun_effect = Effect {
-                    game_id,
+                    game_id: game.id,
                     effect_id: game.effect_counter,
                     effect_type: EffectType::Stun,
                     target: EffectTarget::Cap(self.id),
@@ -717,11 +696,9 @@ pub impl CapImpl of CapTrait {
                 };
                 game.add_new_effect(stun_effect);
                 world.write_model(@stun_effect);
-                world.write_model(@game);
             },
             22 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
                 let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
                 let cap_at_target_type = get_cap_type(cap_at_target.cap_type);
@@ -729,7 +706,7 @@ pub impl CapImpl of CapTrait {
                 let mut i = 0;
                 let mut ally_shield = 0;
                 while i < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+                    let effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -755,7 +732,7 @@ pub impl CapImpl of CapTrait {
                                 EffectTarget::Cap(id) => {
                                     if id == cap_at_target_id {
                                         let new_effect = Effect {
-                                            game_id,
+                                            game_id: game.id,
                                             effect_id: effect.effect_id,
                                             effect_type: EffectType::Shield(x + ally_shield),
                                             target: effect.target,
@@ -775,7 +752,7 @@ pub impl CapImpl of CapTrait {
                 };
                 if !found_shield {
                     let new_effect = Effect {
-                        game_id,
+                        game_id: game.id,
                         effect_id: game.effect_counter,
                         effect_type: EffectType::Shield(ally_shield),
                         target: EffectTarget::Cap(cap_at_target_id),
@@ -784,12 +761,10 @@ pub impl CapImpl of CapTrait {
                     game.add_new_effect(new_effect);
                     world.write_model(@new_effect);
                 }
-                world.write_model(@game);
             },
             23 => {
                 //none
-                let mut game: Game = world.read_model(game_id);
-                let player_pieces = get_player_pieces(game_id, game.player1, @world);
+                let player_pieces = get_player_pieces(game.id, game.player1, @world);
 
                 let mut i = 0;
                 let mut extra_energy = 0;
@@ -803,11 +778,13 @@ pub impl CapImpl of CapTrait {
                     }
                     i += 1;
                 };
-                handle_damage(game_id, self.id, ref world, 2 + extra_energy);
+                game = handle_damage(ref game, self.id, ref world, 2 + extra_energy);
                 
             },
             _ => panic!("Not yet implemented"),
         }
+
+        game.clone()
     }
 
 }
@@ -1344,8 +1321,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     res
 }
 
-pub fn handle_damage(game_id: u64, target_id: u64, ref world: WorldStorage, amount: u64) {
-    let mut game: Game = world.read_model(game_id);
+pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
     let mut target: Cap = world.read_model(target_id);
     let cap_type = get_cap_type(target.cap_type);
 
@@ -1354,7 +1330,7 @@ pub fn handle_damage(game_id: u64, target_id: u64, ref world: WorldStorage, amou
     let mut i = 0;
     let mut shield_amount = 0;
     while i < game.active_move_step_effects.len() {
-        let mut effect: Effect = world.read_model((game_id, *game.active_move_step_effects.at(i)).into());
+        let mut effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
         match effect.effect_type {
             EffectType::Shield(val) => {
                 match effect.target {
@@ -1371,7 +1347,6 @@ pub fn handle_damage(game_id: u64, target_id: u64, ref world: WorldStorage, amou
                             else {
                                 game.remove_effect(effect);
                                 world.erase_model(@effect);
-                                world.write_model(@game);
                             }
                         }
                         
@@ -1390,12 +1365,13 @@ pub fn handle_damage(game_id: u64, target_id: u64, ref world: WorldStorage, amou
     else if amount > shield_amount.into() + remaining_health.into() {
         game.remove_cap(target_id.try_into().unwrap());
         world.erase_model(@target);
-        world.write_model(@game);
 
     }
     else {
         target.dmg_taken += (amount - shield_amount.into()).try_into().unwrap();
         world.write_model(@target);
     }
+
+    return game.clone();
 
 }

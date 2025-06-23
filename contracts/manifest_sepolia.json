@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x1ffb95f236c09651373f30ece31af6b5781e50de387cab3856eb60cf917eeb3",
-      "class_hash": "0x4c006cb1f0f02ee3153c0af258bb29afc232b8369fe558d3236e6e0652eec80",
+      "class_hash": "0x3b0bd5e6846195ff83711bf423c5b8090bcff78f1e505c28eb48343b1e3edf9",
       "abi": [
         {
           "type": "impl",
@@ -1488,6 +1488,10 @@
             },
             {
               "name": "effect_counter",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "last_action_timestamp",
               "type": "core::integer::u64"
             }
           ]
@@ -1960,7 +1964,7 @@
     },
     {
       "address": "0x100bdb5e9ffcc2cb8283d06af3ebbd1852d8de6641222ea25203111cc7ad49a",
-      "class_hash": "0x45d99579be40ed03b534f7e58837ffb3813556b2a31e73c456dcf2ddbe7f2af",
+      "class_hash": "0x79341ae3c654f0e19eb9428ffb1548c88c43889957f59f00402e1e0d8388b8e",
       "abi": [
         {
           "type": "impl",
@@ -2485,7 +2489,7 @@
     },
     {
       "members": [],
-      "class_hash": "0x74fde6fb6adc7f890d561bd09a491c04e15f8af3343f69cbd824b02d35b5643",
+      "class_hash": "0x2a09484c85e27bb5116e170906bfdb7a5824d802b692888a9515fd8410a3ba8",
       "tag": "caps-Game",
       "selector": "0xe9697c6c427792aaa8a422a17897c4b838d7d6c76261f43cce21228c294477"
     },

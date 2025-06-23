@@ -70,33 +70,31 @@ pub fn get_active_effects(game_id: u64, world: @WorldStorage) -> (Array<Effect>,
     (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
-pub fn update_start_of_turn_effects(game_id: u64, ref world: WorldStorage) {
-    let mut game: Game = world.read_model(game_id);
+pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
     while i < game.effect_counter {
-        let mut effect: Effect = world.read_model((game_id, i).into());
+        let mut effect: Effect = world.read_model((game.id, i).into());
         effect.remaining_triggers -= 1;
         if effect.remaining_triggers == 0 {
             game.remove_effect(effect);
             world.erase_model(@effect);
-            world.write_model(@game);
         }
         else {
             world.write_model(@effect);
         }
         i += 1;
-    }
+    };
+    game.clone()
 }
 
-pub fn update_move_step_effects(game_id: u64, ref world: WorldStorage, untriggered_effects: Array<u64>) {
-    let mut game: Game = world.read_model(game_id);
+pub fn update_move_step_effects(ref game: Game, ref world: WorldStorage, untriggered_effects: Array<u64>) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
     while i < game.effect_counter {
         let effect_id = i;
         let mut j = 0;
         let mut untriggered = false;
-        let mut effect: Effect = world.read_model((game_id, effect_id).into());
+        let mut effect: Effect = world.read_model((game.id, effect_id).into());
         if effect.get_timing() != Timing::MoveStep {
             continue;
         }
@@ -122,16 +120,15 @@ pub fn update_move_step_effects(game_id: u64, ref world: WorldStorage, untrigger
         i+=1;
     };
     game.active_move_step_effects = new_ids;
-    world.write_model(@game);
+    game.clone()
 }
 
-pub fn update_end_of_turn_effects(game_id: u64, ref world: WorldStorage) {
-    let mut game: Game = world.read_model(game_id);
+pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
     while i < game.effect_counter {
         let effect_id = i;
-        let mut effect: Effect = world.read_model((game_id, effect_id).into());
+        let mut effect: Effect = world.read_model((game.id, effect_id).into());
         if effect.remaining_triggers == 0 {
             continue;
         }
@@ -141,7 +138,7 @@ pub fn update_end_of_turn_effects(game_id: u64, ref world: WorldStorage) {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
                         let cap: Cap = world.read_model(cap_id);
-                        handle_damage(game_id, cap_id, ref world, dmg.into());
+                        game = handle_damage(ref game, cap_id, ref world, dmg.into());
                     },
                     _ => {}
                 }
@@ -177,5 +174,5 @@ pub fn update_end_of_turn_effects(game_id: u64, ref world: WorldStorage) {
         i += 1;
     };
     game.active_end_of_turn_effects = new_ids;
-    world.write_model(@game);
+    game.clone()
 }
