@@ -2,6 +2,30 @@
   import { planetelo } from "./stores/planetelo.svelte";
   import { account } from "./stores/account.svelte";
   import { caps } from "./stores/caps.svelte";
+  import { onMount, onDestroy } from "svelte";
+
+  let statusInterval: NodeJS.Timeout;
+
+  onMount(() => {
+    // Check status immediately when component mounts
+    if (account.account) {
+      planetelo.update_status();
+    }
+    
+    // Set up interval to check status every 3 seconds
+    statusInterval = setInterval(() => {
+      if (account.account) {
+        planetelo.update_status();
+      }
+    }, 15000);
+  });
+
+  onDestroy(() => {
+    // Clean up interval when component is destroyed
+    if (statusInterval) {
+      clearInterval(statusInterval);
+    }
+  });
 </script>
 
 <div class="matchmaking-container">

@@ -28,6 +28,7 @@ export const account = {
             if (res) {
                 accountStore = res;
                 username = await controller.username()!;
+                console.log(accountStore)
                 console.log(accountStore, username);
             }
         },

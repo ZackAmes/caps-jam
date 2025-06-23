@@ -268,11 +268,16 @@ export const caps = {
     get_game: async (id: number) => {
         console.log('getting game', id)
             let res = (await caps_contract.get_game(id)).unwrap()
-            game_state = { game: res[0], caps: res[1], effects: res[2] } 
-            initial_state = { game: res[0], caps: res[1], effects: res[2] }
+            if (game_state != initial_state) {
+                initial_state = { game: res[0], caps: res[1], effects: res[2] }
+            }
+            else {
+                game_state = { game: res[0], caps: res[1], effects: res[2] } 
+                initial_state = { game: res[0], caps: res[1], effects: res[2] }
+            }
             planetelo.set_current_game_id(id);
             console.log(game_state)
-            for (let cap of game_state.caps) {
+            for (let cap of game_state?.caps || []) {
                 if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
                     let cap_type = (await caps_contract.get_cap_data(cap.cap_type)).unwrap()
                     cap_types.push(cap_type)
@@ -346,8 +351,16 @@ export const caps = {
         
         let cap = caps.get_cap_at(position.x, position.y)
         
+        // Debug ownership
+        if (cap) {
+            console.log('Clicked cap:', cap)
+            console.log('Cap owner:', cap.owner)
+            console.log('Account address:', BigInt(account.account?.address!))
+            console.log('Ownership check:', BigInt(cap.owner) == BigInt(account.account?.address || 0))
+        }
+        
         // If no cap selected and clicking on own cap, select it
-        if (!selected_cap && cap && cap.owner == account.account?.address) {
+        if (!selected_cap && cap && BigInt(cap.owner) == BigInt(account.account?.address || 0)) {
             selected_cap = cap
             selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY}
             inspected_cap = null
@@ -356,10 +369,10 @@ export const caps = {
                 energy = max_energy
             }
             return
-        } 
+        }
         
         // If clicking on an opponent's cap (regardless of whether we have a selected cap)
-        if (cap && cap.owner != account.account?.address) {
+        if (cap && BigInt(cap.owner) != BigInt(account.account?.address || 0)) {
             // If this is the same cap that's already inspected, close it
             if (inspected_cap && inspected_cap.id === cap.id) {
                 inspected_cap = null;

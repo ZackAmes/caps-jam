@@ -76,7 +76,7 @@
 {#if account.account}
     <div class="profile-container">
         <button class="profile-toggle" onclick={toggleProfile}>
-            {account.username || 'User'} 
+            {account.username || 'User'} {planetelo.elo ? `Elo: ${planetelo.elo}` : ''} 
             {#if planetelo.invites.length > 0}
                 <span class="notification-badge">{planetelo.invites.length}</span>
             {/if}
