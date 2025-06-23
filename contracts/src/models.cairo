@@ -114,7 +114,7 @@ pub impl GameImpl of GameTrait {
         let mut one_found = false;
         let mut two_found = false;
         while i < self.caps_ids.len() {
-            let cap: Cap = world.read_model(*self.caps_ids[i]);
+            let cap: Cap = world.read_model((self.id, *self.caps_ids[i]).into());
             if cap.owner == *self.player1 {
                 one_found = true;
             } else if cap.owner == *self.player2 {
@@ -150,6 +150,8 @@ pub impl GameImpl of GameTrait {
 #[derive(Copy, Drop, Serde, Debug)]
 #[dojo::model]
 pub struct Cap {
+    #[key]
+    pub game_id: u64,
     #[key]
     pub id: u64,
     pub owner: ContractAddress,
@@ -197,8 +199,8 @@ pub enum ActionType {
 
 #[generate_trait]
 pub impl CapImpl of CapTrait {
-    fn new(id: u64, owner: ContractAddress, position: Vec2, cap_type: u16) -> Cap {
-        Cap { id, owner, position, cap_type, dmg_taken: 0 }
+    fn new(game_id: u64, id: u64, owner: ContractAddress, position: Vec2, cap_type: u16) -> Cap {
+        Cap { game_id, id, owner, position, cap_type, dmg_taken: 0 }
     }
 
     fn get_new_index_from_dir(self: @Cap, direction: u8, amt: u8) -> felt252 {
@@ -353,7 +355,7 @@ pub impl CapImpl of CapTrait {
             5 => {
                 //Heal 5 damage
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+                let mut cap_at_target: Cap = world.read_model((game.id, cap_at_target_id).into());
                 if cap_at_target.dmg_taken < 5 {
                     cap_at_target.dmg_taken = 0;
                 }
@@ -435,7 +437,7 @@ pub impl CapImpl of CapTrait {
                 let mut i = 0;
                 let mut found = false;
                 while i < game.effect_ids.len() {
-                    let effect: Effect = world.read_model((game.id, i).into());
+                    let effect: Effect = world.read_model((game.game_id, i).into());
                     match effect.effect_type {
                         EffectType::Shield(x) => {
                             match effect.target {
@@ -827,7 +829,7 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 let mut locations = get_piece_locations(ref game, world);
                 let at_location_index = locations.get((target.x * 7 + target.y).into());
                 assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location: Cap = world.read_model((game.id, at_location_index).into());
                 //Must be player
                 assert!(at_location.owner == *cap.owner, "Cap is not owned by player");
                 if in_range && at_location.owner == *cap.owner {
@@ -842,7 +844,7 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 let mut locations = get_piece_locations(ref game, world);
                 let at_location_index = locations.get((target.x * 7 + target.y).into());
                 assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location: Cap = world.read_model((game.id, at_location_index).into());
                 assert!(*cap.owner != starknet::contract_address_const::<0x0>(), "Cap owner 0?");
                 assert!(at_location.owner != *cap.owner, "Cap is owned by player");
                 //Must be opponent
@@ -1334,7 +1336,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
 }
 
 pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
-    let mut target: Cap = world.read_model(target_id);
+    let mut target: Cap = world.read_model((game.id, target_id).into());
     let cap_type = get_cap_type(target.cap_type);
 
     let remaining_health = cap_type.unwrap().base_health - target.dmg_taken;

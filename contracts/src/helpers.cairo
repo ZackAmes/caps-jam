@@ -14,7 +14,7 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     assert!(game.player1 == player || game.player2 == player, "Not in game");
 
     while i < game.caps_ids.len() {
-        let cap: Cap = world.read_model(*game.caps_ids[i]);
+        let cap: Cap = world.read_model((game.id, *game.caps_ids[i]).into());
         if cap.owner == player {
             pieces.append(cap.id);
         }
@@ -30,7 +30,7 @@ pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<
     let mut i = 0;
 
     while i < game.caps_ids.len() {
-        let cap: Cap = world.read_model(*game.caps_ids[i]);
+        let cap: Cap = world.read_model((game.id, *game.caps_ids[i]).into());
         let index = cap.position.x * 7 + cap.position.y;
         locations.insert(index.into(), cap.id);
         i += 1;
@@ -135,7 +135,7 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
             EffectType::DOT(dmg) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let cap: Cap = world.read_model(cap_id);
+                        let cap: Cap = world.read_model((game.id, cap_id).into());
                         game = handle_damage(ref game, cap_id, ref world, dmg.into());
                     },
                     _ => {}
@@ -144,7 +144,7 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
             EffectType::Heal(heal) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let mut cap: Cap = world.read_model(cap_id);
+                        let mut cap: Cap = world.read_model((game.id, cap_id).into());
                         if heal.into() > cap.dmg_taken {
                             cap.dmg_taken = 0;
                         }
