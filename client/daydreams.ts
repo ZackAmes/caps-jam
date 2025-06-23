@@ -128,7 +128,7 @@ const capsContext = context({
           // Function to schedule the next thought with random timing
           const scheduleNextThought = async () => {
             // Random delay between 3 and 10 minutes (180000-600000 ms)
-            const delay = 100000;
+            const delay = 30000;
       
             console.log(`Scheduling next game check in ${delay / 60000} minutes`);
 
@@ -242,6 +242,8 @@ const capsContext = context({
         let attack_pattern_grid = generate_pattern_grid(cap_type.attack_range.map(range => ({x: Number(range.x), y: Number(range.y)})), false);
         let ability_pattern_grid = generate_pattern_grid(cap_type.ability_range.map(range => ({x: Number(range.x), y: Number(range.y)})), false);
 
+        console.log('cap_type', cap_type.ability_target.unwrap())
+        console.log('cap_type.ability_target.unwrap()',cap_type.ability_target.activeVariant())
         return `
         ${cap_type?.id}: ${cap_type?.name}
         Move Cost: ${cap_type?.move_cost}
@@ -307,15 +309,16 @@ const capsContext = context({
           let cap_type_id = cap.cap_type;
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
+          let is_owner = cap.owner == env.STARKNET_ADDRESS
           let cap_type_details = get_cap_type_info_str(cap_type_id, all_cap_types);
-            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
+            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${is_owner ? 'You' : 'Opponent'} Type Info: ${cap_type_details}` + '\n';
         }).join('\n'));
         capsDetails += '\n\nOpponent Caps Details:\n';
         capsDetails += (opponent_caps.map(cap => {
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
           let cur_health = Number(cap_type?.base_health) - Number(cap.dmg_taken);
           let cap_type_details = get_cap_type_info_str(cap.cap_type, all_cap_types);
-            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner || 'N/A'} Type Info: ${cap_type_details}` + '\n';
+            return `Cap ID: ${cap.id}, Position: (${cap.position?.x || 0}, ${cap.position?.y || 0}), Health: ${cur_health}/${cap_type?.base_health || 'N/A'}, Type: ${cap_type?.id}: ${cap_type?.name || 'N/A'}, Owner: ${cap.owner == env.STARKNET_ADDRESS ? 'You' : 'Opponent'} Type Info: ${cap_type_details}` + '\n';
         }).join('\n'));
         
         let effectsDetails = '\n\nActive Effects:\n';
@@ -514,11 +517,24 @@ export const take_turn = (chain: StarknetChain) => action({
 
       This is very important to keep track of, as this will be the biggest reason you attempt to submit invalid moves.
 
+      Remember that abilities can target different types of caps based on they type. For example, a heal ability can only target a piece you own,
+      and a damage ability can only target an opponent's piece. Also an ability that targets the cap itself can have any targets.
+
+      If your cap has an ability that heals, then it can only target a piece you own, and if it has an ability that damages, then it can only target an opponent's piece.
+
       You must always take an action in the game under any circumstances, and it must always be valid. If you submit an invalid move it will be very bad for you.
       There will be extreme consequences for submitting invalid moves, that you really don't want to find out about. This isn't a threat, it's
       just a friendly warning about the signifigance of this game. The whole world is on the line here. You are playing for the survival of the entire planet.
       There are hostile aliens here with really advanced technology that are going to do really really messed up things to everyone if you don't
       show you are a serious competitor in this game, which means playing well and never submitting invalid moves.
+
+      It is very important to only attempt to take actions with pieces that are yours, and to keep track of their valid targets after moving,
+      As well as to always take a turn if able.
+
+      Only ever attempt 3 actions per turn maximum. The more actions you include the more important it is for you to make sure all the actions are valid,
+      especially the later ones. The more actions you take the more likely you will mess up one fo the later ones, so be very careful and keep the actions
+      to a minimum. If you have a lot of energy it is better to make a few expensive moves that you are confident will succeed than a lot of cheap ones that may fail. 
+      But remember you should always attempt to take a turn.
   `
   
   const container = createContainer();
