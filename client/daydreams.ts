@@ -15,6 +15,7 @@ import {
   import { discord } from "@daydreamsai/discord";
   import { StarknetChain } from "@daydreamsai/defai";
   import { CapType, Action } from "../client/src/lib/dojo/models.gen";
+  import planetelo_manifest from "./src/lib/dojo/planetelo_sepolia_manifest.json";
   // Validate environment before proceeding
   const env = validateEnv(
     z.object({
@@ -44,6 +45,12 @@ let caps_planetelo_contract = new Contract(
     rpc
 ).typedv2(caps_manifest.contracts[1].abi as Abi)
 
+let planetelo_contract = new Contract(
+    planetelo_manifest.contracts[0].abi,
+    planetelo_manifest.contracts[0].address,
+    rpc
+).typedv2(planetelo_manifest.contracts[0].abi as Abi)
+
 const capsContext = context({
         type: "caps",
         schema: z.object({
@@ -67,6 +74,45 @@ const capsContext = context({
           return render(caps_template, {
             game_state: memory.game_state,
           });
+        },
+      });
+
+      export const purge_queue = (chain: StarknetChain) => input({
+        schema: z.object({
+          text: z.string(),
+        }),
+        async subscribe(send, { container }) {
+          // Check mentions every minute
+          let index = 0;
+          let timeout: ReturnType<typeof setTimeout>;
+
+          // Function to schedule the next thought with random timing
+          const scheduleNextThought = async () => {
+            // Random delay between 3 and 10 minutes (180000-600000 ms)
+            const delay = 100000;
+      
+            console.log(`Scheduling next queue purge in ${delay / 60000} minutes`);
+
+            timeout = setTimeout(async () => {
+
+              let res = await chain.account.execute(
+                [{
+                  contractAddress: planetelo_contract.address,
+                  entrypoint: 'purge_queue',
+                  calldata: []
+                }]
+              )
+
+              console.log('purged queue', res)
+              // Schedule the next thought
+              scheduleNextThought();
+            }, delay);
+          };
+      
+          // Start the first thought cycle
+          scheduleNextThought();
+      
+          return () => clearTimeout(timeout);
         },
       });
 
@@ -99,28 +145,20 @@ const capsContext = context({
                 game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
                 if (!game_state[0].over && game_state[0].turn_count % 2 == 1) {
                   console.log('found game to play')
-                  found = true;
+                  let game_state_str = await get_game_state_str(to_play)
+
+                  console.log('game_state', game_state)
+          
+                  let context = {
+                    id: "game:" + to_play + "turn: " + game_state[0].turn_count,
+                    game_state: game_state_str,
+                  }
+          
+                  send(capsContext, context, { text: "Take your turn" });
                   break;
                 }
                 i+=1;
               }
-
-              if (!found) {
-                console.log('no game to play')
-                return;
-              }
-
-              let game_state_str = await get_game_state_str(to_play)
-
-              console.log('game_state', game_state)
-      
-              let context = {
-                id: "game:" + to_play + "turn: " + game_state[0].turn_count,
-                game_state: game_state_str,
-              }
-      
-              send(capsContext, context, { text: "Take your turn" });
-              index += 1;
       
               // Schedule the next thought
               scheduleNextThought();
