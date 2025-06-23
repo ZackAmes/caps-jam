@@ -77,6 +77,13 @@ h1 {
     aspect-ratio: 1 / 1;
     margin: 0 auto;
   }
+
+  /* This will force the canvas to fit inside its container */
+  .game-board-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
 }
 
 button {
@@ -157,7 +164,7 @@ button:focus-visible {
 @media (max-width: 768px) {
   /* Prevent horizontal scroll */
   html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   
   /* Ensure popups don't go off-screen */
