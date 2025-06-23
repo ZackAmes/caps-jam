@@ -272,9 +272,13 @@ export const caps = {
                 initial_state = { game: res[0], caps: res[1], effects: res[2] }
             }
             else {
-                game_state = { game: res[0], caps: res[1], effects: res[2] } 
                 initial_state = { game: res[0], caps: res[1], effects: res[2] }
             }
+
+            if (!game_state || initial_state.game.turn_count > game_state.game.turn_count) {
+                game_state = initial_state
+            }
+
             planetelo.set_current_game_id(id);
             console.log(game_state)
             for (let cap of game_state?.caps || []) {
