@@ -392,7 +392,6 @@ pub impl CapImpl of CapTrait {
                     };
                     world.write_model(@new_effect);
                     game.add_new_effect(new_effect);
-                    world.write_model(@game);
                 }
             },
             7 => {
@@ -406,7 +405,6 @@ pub impl CapImpl of CapTrait {
                 };
                 world.write_model(@effect);
                 game.add_new_effect(effect);
-                world.write_model(@game);
             },
             8 => {
                 let effect = Effect {
@@ -418,7 +416,6 @@ pub impl CapImpl of CapTrait {
                 };
                 world.write_model(@effect);
                 game.add_new_effect(effect);
-                world.write_model(@game);
             },
             9 => {
                 game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, self.dmg_taken.into());
@@ -459,8 +456,8 @@ pub impl CapImpl of CapTrait {
             11 => {
                 //none
                 let mut i = 0;
-                while i < game.active_start_of_turn_effects.len() {
-                    let effect: Effect = world.read_model((game.id, *game.active_start_of_turn_effects.at(i)).into());
+                while i < game.effect_counter {
+                    let effect: Effect = world.read_model((game.id, i).into());
                     match effect.effect_type {
                         EffectType::ExtraEnergy(x) => {
                             match effect.target {
@@ -468,13 +465,14 @@ pub impl CapImpl of CapTrait {
                                     if id == self.id {
                                         let new_effect = Effect {
                                             game_id: game.id,
-                                            effect_id: effect.effect_id,
+                                            effect_id: game.effect_counter,
                                             effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
                                             target: effect.target,
                                             remaining_triggers: 2,
                                         };
                                         game.add_new_effect(new_effect);
                                         world.write_model(@new_effect);
+                                        break;
                                     }
                                 },
                                 _ => (),
@@ -492,7 +490,6 @@ pub impl CapImpl of CapTrait {
                 let target_cap_type = get_cap_type(cap_at_target.cap_type);
                 if target_cap_type.unwrap().base_health - cap_at_target.dmg_taken == 1 {
                     game.remove_cap(cap_at_target_id);
-                    world.write_model(@game);
                     world.erase_model(@cap_at_target);
                 }
                 else {
@@ -603,7 +600,6 @@ pub impl CapImpl of CapTrait {
                                             remaining_triggers: 2,
                                         };
                                         game.add_new_effect(new_effect);
-                                        world.write_model(@game);
                                         world.write_model(@new_effect);
                                     }
                                 },

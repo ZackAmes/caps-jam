@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x43e658a691e926792fd407255d2d808325a002ff5bfdf4c404b8d6d0cfcfc47",
-      "class_hash": "0x500a6a0319f352ed2c7475fc6036ed85d25e3f36ac2888da16f30b3517abeb0",
+      "class_hash": "0x7f5876dbd2904c9473a88a5bd91c120c8e71418d63569be57391ea1f51ab1f1",
       "abi": [
         {
           "type": "impl",
@@ -1423,6 +1423,38 @@
             {
               "type": "function",
               "name": "queue",
+              "inputs": [
+                {
+                  "name": "game",
+                  "type": "core::felt252"
+                },
+                {
+                  "name": "playlist",
+                  "type": "core::integer::u128"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "refresh_status",
+              "inputs": [
+                {
+                  "name": "game",
+                  "type": "core::felt252"
+                },
+                {
+                  "name": "playlist",
+                  "type": "core::integer::u128"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "purge_expired_games",
               "inputs": [
                 {
                   "name": "game",
@@ -1734,6 +1766,8 @@
       "selector": "0x5929ac3aca6f65089b9dc5ee8f3eb96b78a06258e752c311ea5b84b204b79a4",
       "systems": [
         "queue",
+        "refresh_status",
+        "purge_expired_games",
         "dequeue",
         "matchmake",
         "settle",

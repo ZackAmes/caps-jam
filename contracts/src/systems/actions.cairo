@@ -540,7 +540,6 @@ use super::{IActions};
                         };
                     }
                 };
-                panic!("game effect counter: {}", game.effect_counter);
                 game = update_move_step_effects(ref game, ref world, new_move_step_effects);
                 i+=1;
             };
@@ -571,7 +570,6 @@ use super::{IActions};
                 j += 1;
             };
             game.caps_ids = new_piece_ids;
-            world.write_model(@game);
 
             game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;
