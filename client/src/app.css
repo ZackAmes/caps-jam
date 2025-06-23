@@ -24,7 +24,7 @@ a:hover {
 
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 280px;
   min-height: 100vh;
   /* Prevent zoom on iOS Safari when focusing inputs */
   -webkit-text-size-adjust: 100%;
@@ -73,7 +73,7 @@ h1 {
     It will ensure the board fits nicely on mobile screens.
   */
   .game-board-container {
-    width: 100%;
+    width: 90%;
     aspect-ratio: 1 / 1;
     margin: 0 auto;
   }
