@@ -67,7 +67,7 @@
         {/if}
       {/if}
     {:else if account.account && planetelo.planetelo_game_id}
-      {#if caps.game_state?.game.over}
+      {#if caps.game_state?.game.over && planetelo.current_game_id == planetelo.planetelo_game_id}
         <button onclick={planetelo.handleSettle}>Settle</button>
       {:else if planetelo.current_game_id == planetelo.planetelo_game_id}
         <button disabled>Active</button>

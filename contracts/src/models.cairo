@@ -115,6 +115,11 @@ pub impl GameImpl of GameTrait {
         let mut two_found = false;
         while i < self.caps_ids.len() {
             let cap: Cap = world.read_model(*self.caps_ids[i]);
+            let cap_type = get_cap_type(cap.cap_type).unwrap();
+            if cap.dmg_taken >= cap_type.base_health {
+                i+=1;
+                continue;
+            }
             if cap.owner == *self.player1 {
                 one_found = true;
             } else if cap.owner == *self.player2 {
@@ -474,14 +479,6 @@ pub impl CapImpl of CapTrait {
                     remaining_triggers: 2,
                 };
                 game.add_new_effect(energy_effect);
-                let stun_effect = Effect {
-                    game_id: game.id,
-                    effect_id: game.effect_ids.len().into(),
-                    effect_type: EffectType::Stun,
-                    target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 2,
-                };
-                game.add_new_effect(stun_effect);
                 let mut i = 0;
                 let mut active_shield = false;
                 while i < game.effect_ids.len() {
@@ -550,15 +547,6 @@ pub impl CapImpl of CapTrait {
             },
             13 => {
                 let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
-                let mut effect = Effect {
-                    game_id: game.id,
-                    effect_id: game.effect_ids.len().into(),
-                    effect_type: EffectType::Stun,
-                    target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 2,
-                };  
-                game.add_new_effect(effect);
-                world.write_model(@effect);
             },
             14 => {
                 let mut i = 0;
@@ -700,15 +688,6 @@ pub impl CapImpl of CapTrait {
             },
             21 => {
                 game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 9);
-                let stun_effect = Effect {
-                    game_id: game.id,
-                    effect_id: game.effect_ids.len().into(),
-                    effect_type: EffectType::Stun,
-                    target: EffectTarget::Cap(self.id),
-                    remaining_triggers: 2,
-                };
-                game.add_new_effect(stun_effect);
-                world.write_model(@stun_effect);
             },
             22 => {
                 //none
@@ -1115,7 +1094,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
             move_range: Vec2 { x: 2, y: 2 },
             attack_dmg: 3,
             base_health: 11,
-            ability_target: TargetType::TeamCap,
+            ability_target: TargetType::OpponentCap,
             ability_cost: 2,
         }),
         10 => Option::Some(CapType {

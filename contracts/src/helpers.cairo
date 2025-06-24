@@ -69,73 +69,42 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
 
 pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
-    while i < game.effect_ids.len() {
+    let mut new_ids: Array<u64> = ArrayTrait::new();
+    while i < game.active_start_of_turn_effects.len() {
         let mut effect: Effect = world.read_model((game.id, i).into());
-        effect.remaining_triggers -= 1;
-        if effect.remaining_triggers == 0 {
-            game.remove_effect(effect);
+        if effect.remaining_triggers == 1 {
             world.erase_model(@effect);
         }
-        else {
+        else if effect.remaining_triggers > 1 {
+            effect.remaining_triggers -= 1;
+            new_ids.append(effect.effect_id);
             world.write_model(@effect);
         }
         i += 1;
     };
-    game.clone()
-}
-
-pub fn update_move_step_effects(ref game: Game, ref world: WorldStorage, untriggered_effects: Array<u64>) -> Game {
-    let mut i = 0;
-    let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.effect_ids.len().into() {
-        let effect_id = i;
-        let mut j = 0;
-        let mut untriggered = false;
-        let mut effect: Effect = world.read_model((game.id, effect_id).into());
-        if effect.get_timing() != Timing::MoveStep {
-            i+=1;
-            continue;
-        }
-        while j < untriggered_effects.len() {
-            if effect_id == *untriggered_effects.at(j) {
-                new_ids.append(effect_id);
-                untriggered = true;
-                break;
-            }
-            j += 1;
-        };
-        if !untriggered {
-            effect.remaining_triggers -= 1;
-            if effect.remaining_triggers == 0 {
-                game.remove_effect(effect);
-                world.erase_model(@effect);
-            }
-            else {
-                new_ids.append(effect_id);
-                world.write_model(@effect);
-            }
-        }
-        i+=1;
-    };
-    game.active_move_step_effects = new_ids;
+    game.active_start_of_turn_effects = new_ids;
     game.clone()
 }
 
 pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.effect_ids.len().into() {
+    while i < game.active_end_of_turn_effects.len().into() {
         let effect_id = i;
         let mut effect: Effect = world.read_model((game.id, effect_id).into());
-        if effect.remaining_triggers == 0 {
+        if effect.remaining_triggers == 1 {
+            world.erase_model(@effect);
             continue;
         }
-        effect.remaining_triggers -= 1;
+        else {
+            effect.remaining_triggers -= 1;
+            new_ids.append(effect_id);
+            world.write_model(@effect);
+        }
         match effect.effect_type {
             EffectType::DOT(dmg) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let cap: Cap = world.read_model(cap_id);
                         game = handle_damage(ref game, cap_id, ref world, dmg.into());
                     },
                     _ => {}
@@ -158,11 +127,12 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
         };
         match effect.get_timing() {
             Timing::EndOfTurn => {
-                effect.remaining_triggers -= 1;
-                if effect.remaining_triggers == 0 {
+                
+                if effect.remaining_triggers == 1 {
                     world.erase_model(@effect);
                 }
                 else {
+                    effect.remaining_triggers -= 1;
                     new_ids.append(effect_id);
                     world.write_model(@effect);
                 }

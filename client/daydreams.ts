@@ -145,6 +145,16 @@ const capsContext = context({
                 to_play = active_games[i];
                 game_state = (await caps_actions_contract.get_game(to_play)).unwrap()
                 if (!game_state[0].over && Number(game_state[0].turn_count) % 2 == 1) {
+                  if (game_state[0].over) {
+                    await chain.account.execute(
+                      [{
+                        contractAddress: caps_actions_contract.address,
+                        entrypoint: 'settle_agent_game',
+                        calldata: [to_play]
+                      }]
+                    )
+                    continue;
+                  }
                   console.log('found game to play')
                   let game_state_str = await get_game_state_str(to_play)
 

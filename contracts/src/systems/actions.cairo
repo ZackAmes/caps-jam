@@ -17,7 +17,7 @@ pub mod actions {
 use super::{IActions};
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use caps::models::{Vec2, Game, Cap, Global, GameTrait, Timing, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
-    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_move_step_effects, update_end_of_turn_effects, update_start_of_turn_effects};
+    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_end_of_turn_effects, update_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
@@ -205,8 +205,15 @@ use super::{IActions};
 
             let (over, _) = @game.check_over(@world);
             if *over {
+                if !game.over {
+                    game.over = true;
+                    world.write_model(@game);
+                    return;
+                }
                 panic!("Game is over");
             }
+
+
 
             if game.turn_count % 2 == 0 {
                 assert!(get_caller_address() == game.player1, "You are not the turn player, 1s turn");
@@ -271,10 +278,8 @@ use super::{IActions};
                 let mut double: bool = false;
                 let mut double_ids: Array<u64> = ArrayTrait::new();
 
-                let mut new_move_step_effects: Array<u64> = ArrayTrait::new();
-
                 let mut index = 0;
-                while index < game.effect_ids.len() {
+                while index < game.active_move_step_effects.len() {
                     let effect: Effect = world.read_model((game_id, index).into());
 
                     match effect.effect_type {
@@ -290,7 +295,6 @@ use super::{IActions};
                                         move_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -307,7 +311,6 @@ use super::{IActions};
                                         attack_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -324,7 +327,6 @@ use super::{IActions};
                                         ability_discount_amount += x;
                                     }
                                     else {
-                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -341,7 +343,6 @@ use super::{IActions};
                                         attack_bonus_amount += x;
                                     }
                                     else {
-                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -358,7 +359,6 @@ use super::{IActions};
                                         bonus_range_amount += x;
                                     }
                                     else {
-                                        new_move_step_effects.append(effect.effect_id);
                                     }
                                 },
                                 _ => {
@@ -428,15 +428,6 @@ use super::{IActions};
                         cap.move(cap_type, *dir.x, *dir.y, bonus_range_amount);
                         world.write_model(@cap);
 
-                        for attack_discount_id in attack_discount_ids {
-                            new_move_step_effects.append(attack_discount_id);
-                        };
-                        for move_discount_id in move_discount_ids {
-                            new_move_step_effects.append(move_discount_id);
-                        };
-                        for ability_discount_id in ability_discount_ids {
-                            new_move_step_effects.append(ability_discount_id);
-                        }
                     },
                     ActionType::Attack(target) => {
                         assert!(energy >= cap_type.attack_cost, "Not enough energy");
@@ -451,11 +442,11 @@ use super::{IActions};
                         while k < attack_discount_ids.len() {
                             let mut attack_discount_effect: Effect = world.read_model((game_id, *attack_discount_ids.at(k)));
                             if attack_discount_effect.remaining_triggers == 0 {
+                                game.remove_effect(attack_discount_effect);
                                 world.erase_model(@attack_discount_effect);
                             }
                             else {
                                 attack_discount_effect.remaining_triggers -= 1;
-                                new_move_step_effects.append(attack_discount_effect.effect_id);
                                 world.write_model(@attack_discount_effect);
                             }
                             k += 1;
@@ -472,11 +463,11 @@ use super::{IActions};
                         while l < attack_bonus_ids.len() {
                             let mut attack_bonus_effect: Effect = world.read_model((game_id, *attack_bonus_ids.at(l)));
                             if attack_bonus_effect.remaining_triggers == 1 {
+                                game.remove_effect(attack_bonus_effect);
                                 world.erase_model(@attack_bonus_effect);
                             }
                             else {
-                                attack_bonus_effect.remaining_triggers = 1;
-                                new_move_step_effects.append(attack_bonus_effect.effect_id);
+                                attack_bonus_effect.remaining_triggers = attack_bonus_effect.remaining_triggers - 1;
                                 world.write_model(@attack_bonus_effect);
                             }
                             l += 1;
@@ -491,16 +482,6 @@ use super::{IActions};
                         }
                         game = handle_damage(ref game, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
 
-                        
-                        for ability_discount_id in ability_discount_ids {
-                            new_move_step_effects.append(ability_discount_id);
-                        };
-                        for bonus_range_id in bonus_range_ids {
-                            new_move_step_effects.append(bonus_range_id);
-                        };
-                        for move_discount_id in move_discount_ids {
-                            new_move_step_effects.append(move_discount_id);
-                        };
                         
                     },
                     ActionType::Ability(target) => {
@@ -527,32 +508,19 @@ use super::{IActions};
                             let mut ability_discount_effect: Effect = world.read_model((game_id, *ability_discount_ids.at(m)));
                             ability_discount_effect.remaining_triggers -= 1;
                             if ability_discount_effect.remaining_triggers == 0 {
+                                game.remove_effect(ability_discount_effect);
                                 world.erase_model(@ability_discount_effect);
                             }
                             else {
-                                new_move_step_effects.append(ability_discount_effect.effect_id);
                                 world.write_model(@ability_discount_effect);
                             }
                             m += 1;
-                        };
-                        for bonus_range_id in bonus_range_ids {
-                            new_move_step_effects.append(bonus_range_id);
-                        };
-                        for move_discount_id in move_discount_ids {
-                            new_move_step_effects.append(move_discount_id);
-                        };
-                        for attack_discount_id in attack_discount_ids {
-                            new_move_step_effects.append(attack_discount_id);
-                        };
-                        for attack_bonus_id in attack_bonus_ids {
-                            new_move_step_effects.append(attack_bonus_id);
                         };
 
                         game = cap.use_ability(cap_type, *target, ref game, ref world);
                         
                     }
                 };
-                game = update_move_step_effects(ref game, ref world, new_move_step_effects);
                 
                 i+=1;
             };
@@ -563,11 +531,11 @@ use super::{IActions};
                 let mut effect: Effect = world.read_model((game_id, i).into());
                 if effect.get_timing() == Timing::EndOfTurn {
                     if effect.remaining_triggers > 1 {
-                        game.active_end_of_turn_effects.append(effect.effect_id);
                         effect.remaining_triggers -= 1;
                         world.write_model(@effect);
                     }
                     else {
+                        game.remove_effect(effect);
                         world.erase_model(@effect);
                     }
                 }
