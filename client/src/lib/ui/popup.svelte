@@ -14,13 +14,13 @@
     });
 
     // Position state
-    let position = $state({ x: 300, y: 100 });
+    let position = $state({ x: 300, y:-300 });
     
     $effect(() => {
         console.log(popup.render_position)
         if (popup.render_position) {
-            position.x = popup.render_position.x - 400;
-            position.y = popup.render_position.y - 400;
+            position.x = popup.render_position.x + 100;
+            position.y = popup.render_position.y - 200;
         }
     })
 
