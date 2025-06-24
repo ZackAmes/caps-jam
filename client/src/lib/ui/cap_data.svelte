@@ -9,20 +9,33 @@
     let dragOffset = { x: 0, y: 0 };
     let position = $state({ x: 0, y: 0 });
 
+    let windowWidth = $state(0);
+
     $effect(() => {
-        if (typeof window !== 'undefined' && window.innerWidth > 768) {
+        const updateWidth = () => {
+            windowWidth = window.innerWidth;
+        };
+        
+        window.addEventListener('resize', updateWidth);
+        updateWidth(); // Set initial width
+
+        return () => window.removeEventListener('resize', updateWidth);
+    });
+
+    $effect(() => {
+        if (windowWidth > 768) {
             if (capType === 'selected') {
-                position.x = window.innerWidth / 2 - 190; // 380px width / 2
+                position.x = windowWidth / 2 - 190; // 380px width / 2
                 position.y = 20;
             } else { // inspected
-                position.x = window.innerWidth - 380 - 20;
+                position.x = windowWidth - 380 - 20;
                 position.y = 60;
             }
         }
     });
 
     function handleMouseDown(e: MouseEvent) {
-        if (typeof window !== 'undefined' && window.innerWidth <= 768) return;
+        if (windowWidth <= 768) return;
         isDragging = true;
         dragOffset.x = e.clientX - position.x;
         dragOffset.y = e.clientY - position.y;
@@ -113,11 +126,11 @@
             aria-label="{cap_type.name} Data"
             class="cap-data-container" 
             class:opponent={is_opponent}
-            class:desktop-popup={typeof window !== 'undefined' && window.innerWidth > 768}
-            class:mobile-static={typeof window !== 'undefined' && window.innerWidth <= 768}
+            class:desktop-popup={windowWidth > 768}
+            class:mobile-static={windowWidth <= 768}
             class:selected-view={capType === 'selected'}
             class:inspected-view={capType === 'inspected'}
-            style={typeof window !== 'undefined' && window.innerWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''}
+            style={windowWidth > 768 ? `left: ${position.x}px; top: ${position.y}px;` : ''}
             onmousedown={handleMouseDown}
         >
             <div class="cap-box">

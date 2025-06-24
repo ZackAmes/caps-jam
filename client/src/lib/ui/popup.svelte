@@ -13,18 +13,23 @@
         height: 250
     });
 
-    // Position state
-    let position = $state({ x: 300, y:-300 });
+    // Position state, nullable to prevent rendering before it's set
+    let position = $state<{ x: number, y: number } | null>(null);
     
     $effect(() => {
-        console.log(popup.render_position)
         if (popup.render_position) {
-            position.x = popup.render_position.x + 100;
-            position.y = popup.render_position.y - 200;
+            position = {
+                x: popup.render_position.x + 100,
+                y: popup.render_position.y - 200
+            };
+        } else {
+            // Ensure position is null if render_position is not available
+            position = null;
         }
-    })
+    });
 
     function handleMouseDown(e: MouseEvent) {
+        if (!position) return;
         if ((e.target as HTMLElement).classList.contains('resize-handle')) {
             isResizing = true;
         } else {
@@ -36,6 +41,7 @@
     }
 
     function handleMouseMove(e: MouseEvent) {
+        if (!position) return;
         if (isDragging) {
             position.x = e.clientX - dragOffset.x;
             position.y = e.clientY - dragOffset.y;
@@ -51,6 +57,7 @@
     }
 
     function handleTouchStart(e: TouchEvent) {
+        if (!position) return;
         const touch = e.touches[0];
         if ((e.target as HTMLElement).classList.contains('resize-handle')) {
             isResizing = true;
@@ -63,6 +70,7 @@
     }
 
     function handleTouchMove(e: TouchEvent) {
+        if (!position) return;
         const touch = e.touches[0];
         if (isDragging) {
             position.x = touch.clientX - dragOffset.x;
@@ -117,11 +125,22 @@
     function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean}) {
         if (popup.position && action.canAfford) {
             caps.execute_action(action.type, popup.position);
+            handleClose(); // Close popup after action
         }
     }
     
     function handleClose() {
         caps.close_popup();
+    }
+
+    // New handler to fix type error
+    function onActionButtonClick(action: (typeof actionDetails)[0]) {
+        if (action.type === 'move' || action.type === 'attack' || action.type === 'ability') {
+            handleActionClick(action);
+        } else {
+            // Handle other action types like 'deselect'
+            handleClose();
+        }
     }
 </script>
 
@@ -132,10 +151,10 @@
     on:touchend={handleTouchEnd}
 />
 
-{#if popup.visible && popup.position}
+{#if popup.visible && popup.position && position}
     <div 
         class="action-popup"
-        class:mobile={window.innerWidth <= 768}
+        class:mobile={typeof window !== 'undefined' && window.innerWidth <= 768}
         style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
         onmousedown={handleMouseDown}
         ontouchstart={handleTouchStart}
@@ -157,7 +176,7 @@
                     <button 
                         class="action-button action-{action.type}"
                         class:disabled={!action.canAfford}
-                        onclick={() => handleActionClick(action)}
+                        onclick={() => onActionButtonClick(action)}
                         disabled={!action.canAfford}
                     >
                         {action.label}
