@@ -18,10 +18,27 @@
     
     $effect(() => {
         if (popup.render_position) {
-            position = {
-                x: popup.render_position.x + 100,
-                y: popup.render_position.y - 200
-            };
+            const popupHeight = size.height;
+            const popupWidth = size.width;
+            
+            let newX = popup.render_position.x + 20;
+            let newY = popup.render_position.y - (popupHeight + 20);
+
+            // Flip to below the cursor if there's no space above
+            if (newY < 0) {
+                newY = popup.render_position.y + 20;
+            }
+
+            // Clamp to viewport bounds
+            if (newX < 10) newX = 10;
+            if (newX + popupWidth > window.innerWidth) {
+                newX = window.innerWidth - popupWidth - 10;
+            }
+            if (newY + popupHeight > window.innerHeight) {
+                newY = window.innerHeight - popupHeight - 10;
+            }
+
+            position = { x: newX, y: newY };
         } else {
             // Ensure position is null if render_position is not available
             position = null;
@@ -122,6 +139,11 @@
     // Get the cost and availability for each action
     let actionDetails = $derived(get_action_details(caps.selected_cap!));
     
+    // Type guard to check for executable actions
+    function isExecutableAction(action: any): action is {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean} {
+        return action.type === 'move' || action.type === 'attack' || action.type === 'ability';
+    }
+
     function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean}) {
         if (popup.position && action.canAfford) {
             caps.execute_action(action.type, popup.position);
@@ -135,7 +157,7 @@
 
     // New handler to fix type error
     function onActionButtonClick(action: (typeof actionDetails)[0]) {
-        if (action.type === 'move' || action.type === 'attack' || action.type === 'ability') {
+        if (isExecutableAction(action)) {
             handleActionClick(action);
         } else {
             // Handle other action types like 'deselect'
