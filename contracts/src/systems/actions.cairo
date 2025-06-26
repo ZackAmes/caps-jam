@@ -471,6 +471,7 @@ use super::{IActions};
 
             game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;
+            game.effect_ids = new_effect_ids;
             let (over, _) = @game.check_over(@world);
             game.over = *over;
             world.write_model(@game);
