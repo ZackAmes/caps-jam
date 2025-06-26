@@ -17,7 +17,7 @@ use super::{IActions};
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType,};
     use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
-    use caps::models::cap::{Cap, CapTrait};
+    use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
     use caps::sets::set_zero::get_cap_type;
     use caps::helpers::handle_damage;
     use caps::helpers::{get_player_pieces, get_move_step_effects, check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
@@ -225,7 +225,7 @@ use super::{IActions};
                 assert!(get_caller_address() == game.player2, "You are not the turn player, 2s turn");
             }
 
-            let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects(ref game, @world);
+            let (mut start_of_turn_effects, _, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
             //handle start of turn effects
             let (mut game, extra_energy, stunned_pieces) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
@@ -242,88 +242,74 @@ use super::{IActions};
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
-                let cap_type = self.get_cap_data(cap.cap_type).unwrap();
+                let cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
 
 
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
+                        let mut move_discount = 0;
+                        let mut move_bonus = 0;
+                        //Does this work??????
+                        for mut effect in move_effects {
+                            match effect.effect_type {
+                                EffectType::MoveDiscount(x) => {
+                                    move_discount += x;
+                                    effect.trigger();
+                                },
+                                EffectType::MoveBonus(x) => {
+                                    move_bonus += x;
+                                    effect.trigger();
+                                },
+                                _ => {}
+                            }
+                        };
                         let mut move_cost = cap_type.move_cost;
-                        if move_discount_amount > move_cost {
+                        if move_discount > cap_type.move_cost {
                             move_cost = 0;
                         }
                         else {
-                            move_cost -= move_discount_amount;
+                            move_cost -= move_discount;
                         }
-                        if stunned {
-                            let mut j = 0;
-                            while j < stun_effect_ids.len() {
-                                let mut effect: Effect = world.read_model((game_id, *stun_effect_ids.at(j)).into());
-                                match effect.target {
-                                    EffectTarget::Cap(id) => {
-                                        if id == cap.id {
-                                            panic!("Cannot move stunned cap");
-                                            
-                                        }
-                                    },
-                                    _ => {
-                                        
-                                    }
-                                }
-                                j += 1;
-                            }
-                        }
+                        assert!(move_cost <= energy, "Not enough energy");
                         energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
-                        cap.move(cap_type, *dir.x, *dir.y, bonus_range_amount);
+                        cap.move(cap_type, *dir.x, *dir.y, move_bonus);
                         world.write_model(@cap);
 
                     },
                     ActionType::Attack(target) => {
                         assert!(energy >= cap_type.attack_cost, "Not enough energy");
                         let mut attack_cost = cap_type.attack_cost;
-                        if attack_discount_amount > attack_cost {
+                        let mut attack_discount = 0;
+                        let mut attack_bonus = 0;
+                        
+                        for mut effect in attack_effects {
+                            match effect.effect_type {
+                                EffectType::AttackDiscount(x) => {
+                                    attack_discount += x;
+                                    effect.trigger();
+                                },
+                                EffectType::AttackBonus(x) => {
+                                    attack_bonus += x;
+                                    effect.trigger();
+                                },
+                                _ => {}
+                            }
+                        };
+                        if attack_discount > cap_type.attack_cost {
                             attack_cost = 0;
                         }
                         else {
-                            attack_cost -= attack_discount_amount;
+                            attack_cost -= attack_discount;
                         }
-                        let mut k = 0;
-                        while k < attack_discount_ids.len() {
-                            let mut attack_discount_effect: Effect = world.read_model((game_id, *attack_discount_ids.at(k)));
-                            if attack_discount_effect.remaining_triggers == 0 {
-                                game.remove_effect(attack_discount_effect);
-                                world.erase_model(@attack_discount_effect);
-                            }
-                            else {
-                                attack_discount_effect.remaining_triggers -= 1;
-                                world.write_model(@attack_discount_effect);
-                            }
-                            k += 1;
-                        };
-                        if attack_cost > energy {
-                            panic!("Not enough energy");
-                        }
+                        
+                        assert!(attack_cost <= energy, "Not enough energy");
                         energy -= attack_cost;
                         let mut attack_dmg = cap_type.attack_dmg;
-                        if attack_bonus_amount > 0 {
-                            attack_dmg += attack_bonus_amount.into();
-                        }
-                        let mut l = 0;
-                        while l < attack_bonus_ids.len() {
-                            let mut attack_bonus_effect: Effect = world.read_model((game_id, *attack_bonus_ids.at(l)));
-                            if attack_bonus_effect.remaining_triggers == 1 {
-                                game.remove_effect(attack_bonus_effect);
-                                world.erase_model(@attack_bonus_effect);
-                            }
-                            else {
-                                attack_bonus_effect.remaining_triggers = attack_bonus_effect.remaining_triggers - 1;
-                                world.write_model(@attack_bonus_effect);
-                            }
-                            l += 1;
-                        };
+                        attack_dmg += attack_bonus.into();
                         
                         let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                         let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
@@ -337,61 +323,57 @@ use super::{IActions};
                         
                     },
                     ActionType::Ability(target) => {
-                        let mut cap_type = self.get_cap_data(cap.cap_type).unwrap();
-                        let mut cap_type_2 = self.get_cap_data(cap.cap_type).unwrap();
-                        let mut cap_type_3 = self.get_cap_data(cap.cap_type).unwrap();
+                        let mut cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type_2, *target, ref game, @world);
+                        let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
                         game = new_game;
                         assert!(valid, "Ability is not valid");
                         let mut ability_cost = cap_type.ability_cost;
-                        if ability_discount_amount > ability_cost { 
+                        let mut ability_discount = 0;
+                        let mut double_count = 0;
+                        
+                        for mut effect in ability_effects {
+                            match effect.effect_type {
+                                EffectType::AbilityDiscount(x) => {
+                                    ability_discount += x;
+                                    effect.trigger();
+                                },
+                                EffectType::Double(x) => {
+                                    double_count += x;
+                                    effect.trigger();
+                                },
+                                _ => {}
+                            }
+                        };
+                        if ability_discount > cap_type.ability_cost {
                             ability_cost = 0;
                         }
                         else {
-                            ability_cost -= ability_discount_amount;
+                            ability_cost -= ability_discount;
                         }
-                        if ability_cost > energy {
-                            panic!("Not enough energy");
-                        }
+
+                        assert!(ability_cost <= energy, "Not enough energy");
                         energy -= ability_cost;
-                        let mut m = 0;
-                        while m < ability_discount_ids.len() {
-                            let mut ability_discount_effect: Effect = world.read_model((game_id, *ability_discount_ids.at(m)));
-                            ability_discount_effect.remaining_triggers -= 1;
-                            if ability_discount_effect.remaining_triggers == 0 {
-                                game.remove_effect(ability_discount_effect);
-                                world.erase_model(@ability_discount_effect);
+                        
+
+                        game = cap.use_ability(cap_type, *target, ref game, ref world);
+
+                        while double_count > 0 {
+                            let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
+                            if valid {
+                                game = cap.use_ability(cap_type, *target, ref game, ref world);
+                                double_count -= 1;
+                                game = new_game;
                             }
                             else {
-                                world.write_model(@ability_discount_effect);
+                                double_count = 0;
                             }
-                            m += 1;
-                        };
-
-           //             game = cap.use_ability(cap_type, *target, ref game, ref world);
+                        }
                         
                     }
                 };
                 
                 i+=1;
-            };
-
-
-            let mut i = 0;
-            while i < game.effect_ids.len() {
-                let mut effect: Effect = world.read_model((game_id, i).into());
-                if effect.get_timing() == Timing::EndOfTurn {
-                    if effect.remaining_triggers > 1 {
-                        effect.remaining_triggers -= 1;
-                        world.write_model(@effect);
-                    }
-                    else {
-                        game.remove_effect(effect);
-                        world.erase_model(@effect);
-                    }
-                }
-                i += 1;
             };
 
             game = update_end_of_turn_effects(ref game, ref world);

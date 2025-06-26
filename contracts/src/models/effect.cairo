@@ -48,12 +48,10 @@ pub impl EffectImpl of EffectTrait {
         }
     }
 
-    fn trigger(ref self: Effect) -> Option<Effect> {
-        if self.remaining_triggers == 0 {
-            return Option::None;
+    fn trigger(ref self: Effect) {
+        if self.remaining_triggers > 0 {
+            self.remaining_triggers -= 1;
         }
-        self.remaining_triggers -= 1;
-        Option::Some(self)
     }
 
     fn get_timing(self: @Effect) -> Timing {

@@ -1,6 +1,7 @@
 use caps::helpers::{get_piece_locations, handle_damage};
 use caps::models::effect::{Effect, EffectType, EffectTarget};
 use caps::models::game::{Game, GameTrait, Vec2};
+use caps::sets::set_zero::get_cap_type;
 
 use dojo::world::WorldStorage;
 
@@ -156,11 +157,9 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, cap_type: CapType, target: Vec2, ref game: Game, ref p1_pieces: Array<Cap>, ref p2_pieces: Array<Cap>) -> (Game, Array<Effect>, Array<Cap>, Array<Cap>) {
-        let mut locations = get_piece_locations(ref game, ref p1_pieces, ref p2_pieces);
+    fn use_ability(ref self: Cap, cap_type: CapType, target: Vec2, ref game: Game, ref world: WorldStorage) -> Game {
+        let mut locations = get_piece_locations(ref game, @world);
         let mut new_effects: Array<Effect> = ArrayTrait::new();
-        let mut new_p1_pieces: Array<Cap> = ArrayTrait::new();
-        let mut new_p2_pieces: Array<Cap> = ArrayTrait::new();
         match self.cap_type {
             0 => {
                 //none
@@ -176,7 +175,7 @@ pub impl CapImpl of CapTrait {
                 },
             4 => {
                 //Deal 5 damage to the target
-                (game, new_effects, new_p1_pieces, new_p2_pieces) = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 4);
+                game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 4);
             },
             5 => {
                 //Heal 5 damage
