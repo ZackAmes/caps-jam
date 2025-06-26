@@ -8,7 +8,7 @@ pub trait IActions<T> {
     fn create_game(ref self: T, p1: ContractAddress, p2: ContractAddress, p1_team: u16, p2_team: u16) -> u64;
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
-    fn get_cap_data(self: @T, cap_type: u16) -> Option<CapType>;
+    fn get_cap_data(self: @T, set_id: u64, cap_type: u16) -> Option<CapType>;
 }
 
 
@@ -20,7 +20,7 @@ use super::{IActions};
     use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType,};
     use caps::models::effect::{Effect, EffectTrait, EffectType, Timing};
     use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
-    use caps::sets::set_zero::get_cap_type;
+    use caps::models::set::{ISetInterfaceDispatcher, ISetInterface, ISetInterfaceDispatcherTrait, Set};
     use caps::helpers::handle_damage;
     use caps::helpers::{check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
     use core::dict::{Felt252DictTrait,};
@@ -70,6 +70,7 @@ use super::{IActions};
                 id: global.cap_counter + 1,
                 owner: p1,
                 position: Vec2 { x: 2, y: 0 },
+                set_id: 0,
                 cap_type: *p1_types[0],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -78,6 +79,7 @@ use super::{IActions};
                 id: global.cap_counter + 2,
                 owner: p1,
                 position: Vec2 { x: 4, y: 0 },
+                set_id: 0,
                 cap_type: *p1_types[1],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -87,6 +89,7 @@ use super::{IActions};
                 id: global.cap_counter + 3,
                 owner: p1,
                 position: Vec2 { x: 3, y: 0 },
+                set_id: 0,
                 cap_type: *p1_types[2],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -96,6 +99,7 @@ use super::{IActions};
                 id: global.cap_counter + 4,
                 owner: p1,
                 position: Vec2 { x: 1, y: 0 },
+                set_id: 0,
                 cap_type: *p1_types[3],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -104,6 +108,7 @@ use super::{IActions};
                 id: global.cap_counter + 5,
                 owner: p1,
                 position: Vec2 { x: 5, y: 0 },
+                set_id: 0,
                 cap_type: *p1_types[4],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -113,6 +118,7 @@ use super::{IActions};
                 id: global.cap_counter + 6,
                 owner: p1,
                 position: Vec2 { x: 3, y: 1 },
+                set_id: 0,
                 cap_type: *p1_types[5],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -123,6 +129,7 @@ use super::{IActions};
                 id: global.cap_counter + 7,
                 owner: p2,
                 position: Vec2 { x: 2, y: 6 },
+                set_id: 0,
                 cap_type: *p2_types[0],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -132,6 +139,7 @@ use super::{IActions};
                 id: global.cap_counter + 8,
                 owner: p2,
                 position: Vec2 { x: 4, y: 6 },
+                set_id: 0,
                 cap_type: *p2_types[1],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -143,6 +151,7 @@ use super::{IActions};
                 id: global.cap_counter + 9,
                 owner: p2,
                 position: Vec2 { x: 3, y: 6 },
+                set_id: 0,
                 cap_type: *p2_types[2],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -152,6 +161,7 @@ use super::{IActions};
                 id: global.cap_counter + 10,
                 owner: p2,
                 position: Vec2 { x: 1, y: 6 },
+                set_id: 0,
                 cap_type: *p2_types[3],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -161,6 +171,7 @@ use super::{IActions};
                 id: global.cap_counter + 11,
                 owner: p2,
                 position: Vec2 { x: 5, y: 6 },
+                set_id: 0,
                 cap_type: *p2_types[4],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -170,6 +181,7 @@ use super::{IActions};
                 id: global.cap_counter + 12,
                 owner: p2,
                 position: Vec2 { x: 3, y: 5 },
+                set_id: 0,
                 cap_type: *p2_types[5],
                 dmg_taken: 0,
                 shield_amt: 0,
@@ -250,7 +262,7 @@ use super::{IActions};
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
-                let cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
+                let cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                 let mut new_effects: Array<Effect> = ArrayTrait::new();
                 let mut new_move_step_effects: Array<Effect> = ArrayTrait::new();
 
@@ -348,7 +360,7 @@ use super::{IActions};
                         
                     },
                     ActionType::Ability(target) => {
-                        let mut cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
+                        let mut cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
                         let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
                         game = new_game;
@@ -388,9 +400,11 @@ use super::{IActions};
 
                         assert!(ability_cost <= energy, "Not enough energy");
                         energy -= ability_cost;
+
+                        let set: Set = world.read_model(cap.set_id);
                         
 
-                        let (mut game, mut created_effects) = cap.use_ability(ref cap_type, *target, ref game, ref world);
+                        let (mut game, mut created_effects) = cap.use_ability(*target, ref game, @set);
                         for effect in created_effects {
                             new_effects.append(effect);
                         };
@@ -399,7 +413,7 @@ use super::{IActions};
                             let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
                             game = new_game;
                             if valid {
-                                let (mut game, new_double_effects) = cap.use_ability(ref cap_type, *target, ref game, ref world);
+                                let (mut game, new_double_effects) = cap.use_ability(*target, ref game, @set);
                                 for effect in new_double_effects {
                                     new_effects.append(effect);
                                 };
@@ -489,9 +503,11 @@ use super::{IActions};
             Option::Some((game, caps.span(), effects.span()))
         }
 
-        fn get_cap_data(self: @ContractState, cap_type: u16) -> Option<CapType> {
-            
-            get_cap_type(cap_type)
+        fn get_cap_data(self: @ContractState, set_id: u64, cap_type: u16) -> Option<CapType> {
+            let mut world = self.world_default();
+            let set: Set = world.read_model(set_id);
+            let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
+            dispatcher.get_cap_type(cap_type)
         }
     }
 

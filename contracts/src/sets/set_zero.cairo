@@ -1,5 +1,38 @@
-use caps::models::cap::{CapType, TargetType};
-use caps::models::game::Vec2;
+use caps::models::cap::{Cap,CapType, TargetType};
+use caps::models::effect::{Effect, EffectType, EffectTarget};
+use caps::helpers::{get_piece_locations, handle_damage, get_player_pieces};
+use caps::models::game::{Vec2, Game, GameTrait};
+use dojo::world::WorldStorage;
+use dojo::model::{ModelStorage};
+
+
+#[dojo::contract]
+pub mod set_zero {
+    use caps::models::set::{Set, ISetInterface};
+    use super::{get_cap_type, use_ability};
+    use caps::models::cap::{Cap, CapType};
+    use caps::models::game::{Game, Vec2};
+    use caps::models::effect::Effect;
+    use dojo::world::WorldStorage;
+
+
+    #[abi(embed_v0)]
+    impl SetZeroImpl of ISetInterface<ContractState> {
+        fn get_cap_type(self: @ContractState, id: u16) -> Option<CapType> {
+            get_cap_type(id)
+        }
+
+        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game) -> (Game, Array<Effect>) {
+            let mut world = self.world(@"caps");
+            let mut cap = cap;
+            let mut game = game;
+            let mut cap_type = get_cap_type(cap.cap_type).unwrap();
+            use_ability(ref cap, ref cap_type, target, ref game, ref world)
+        }
+    }
+}
+
+
 pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     let res = match cap_type {
         0 => Option::Some(CapType {
@@ -366,4 +399,278 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
         _ => Option::None,
     };
     res
+}
+
+fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref world: WorldStorage) -> (Game, Array<Effect>) {
+    let mut locations = get_piece_locations(ref game, @world);
+    let mut new_effects: Array<Effect> = ArrayTrait::new();
+    match cap_type.id {
+        0 => {
+            //none
+        },
+        1 => {
+            //none
+        },
+        2 => {
+            //none
+        },
+        3 => {
+            //none
+            },
+        4 => {
+            //Deal 5 damage to the target
+            game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 4);
+        },
+        5 => {
+            //Heal 5 damage
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+            if cap_at_target.dmg_taken < 5 {
+                cap_at_target.dmg_taken = 0;
+            }
+            cap_at_target.dmg_taken -= 5;
+            world.write_model(@cap_at_target);
+        },
+        6 => {
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+            cap_at_target.shield_amt += 5;
+            world.write_model(@cap_at_target);
+        },
+        7 => {
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::AbilityDiscount(1),
+                target: EffectTarget::Cap(cap_at_target_id),
+                remaining_triggers: 2,
+            };
+            new_effects.append(effect);
+            game.effect_ids.append(effect.effect_id);
+        },
+        8 => {
+            let effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::AttackBonus(cap.dmg_taken.try_into().unwrap()),
+                target: EffectTarget::Cap(cap.id),
+                remaining_triggers: 2,
+            };
+            new_effects.append(effect);
+            game.effect_ids.append(effect.effect_id);
+        },
+        9 => {
+            game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, cap.dmg_taken.into());
+            cap.dmg_taken = 0;
+            world.write_model(@cap);
+        },
+        10 => {
+            
+            
+            let cap_type = get_cap_type(cap.cap_type);
+            let new_effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::AttackDiscount(cap_type.unwrap().attack_cost.try_into().unwrap()),
+                target: EffectTarget::Cap(cap.id),
+                remaining_triggers: cap.shield_amt.try_into().unwrap(),
+            };
+            new_effects.append(new_effect);
+            game.effect_ids.append(new_effect.effect_id);
+                                    
+        },
+        11 => {
+            
+            //none
+            let mut energy_effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::ExtraEnergy(2),
+                target: EffectTarget::Cap(cap.id),
+                remaining_triggers: 2,
+            };
+            new_effects.append(energy_effect);
+            game.effect_ids.append(energy_effect.effect_id);
+            cap.shield_amt += 2;
+            world.write_model(@cap);
+        },
+        12 => {
+            //none
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+            let target_cap_type = get_cap_type(cap_at_target.cap_type);
+
+            if target_cap_type.unwrap().base_health - cap_at_target.dmg_taken == 1 {
+                game.remove_cap(cap_at_target_id);
+                world.erase_model(@cap_at_target);
+            }
+            else {
+                cap_at_target.dmg_taken += 1;
+                let effect = Effect {
+                    game_id: game.id,
+                    effect_id: game.effect_ids.len().into(),
+                    effect_type: EffectType::DamageBuff(3),
+                    target: EffectTarget::Cap(cap_at_target_id),
+                    remaining_triggers: 2,
+                };
+                new_effects.append(effect);
+                game.effect_ids.append(effect.effect_id);
+                world.write_model(@cap_at_target);
+            }
+        },
+        13 => {
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+        },
+        14 => {
+            let mut i = 0;
+            while i < game.effect_ids.len() {
+                let effect: Effect = world.read_model((game.id, i).into());
+                match effect.effect_type {
+                    EffectType::Shield(x) => {
+                        match effect.target {
+                            EffectTarget::Cap(id) => {
+                                if id == cap.id {
+                                    let new_effect = Effect {
+                                        game_id: game.id,
+                                        effect_id: game.effect_ids.len().into(),
+                                        effect_type: EffectType::MoveDiscount(x.try_into().unwrap()),
+                                        target: effect.target,
+                                        remaining_triggers: x + 1,
+                                    };
+                                    new_effects.append(new_effect);
+                                    game.effect_ids.append(new_effect.effect_id);
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+                i += 1;
+            };
+        },
+        15 => {
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::Double(1),
+                target: EffectTarget::Cap(cap_at_target_id),
+                remaining_triggers: 2,
+            };
+            new_effects.append(effect);
+            game.effect_ids.append(effect.effect_id);
+        },
+        16 => {
+            //none
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::DOT(1),
+                target: EffectTarget::Cap(cap_at_target_id),
+                remaining_triggers: 4,
+            };  
+            new_effects.append(effect);
+            game.effect_ids.append(effect.effect_id);
+        },
+        17 => {
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::Heal(2),
+                target: EffectTarget::Cap(cap_at_target_id),
+                remaining_triggers: 4,
+            };
+            new_effects.append(effect);
+            game.effect_ids.append(effect.effect_id);
+        },
+        18 => {
+            cap.shield_amt *= 2;
+            world.write_model(@cap);
+        },
+        19 => {
+             //none
+            let mut i = 0;
+            while i < game.effect_ids.len() {
+                let effect: Effect = world.read_model((game.id, i).into());
+                match effect.effect_type {
+                    EffectType::ExtraEnergy(x) => {
+                        match effect.target {
+                            EffectTarget::Cap(id) => {
+                                if id == cap.id {
+                                    let new_effect = Effect {
+                                        game_id: game.id,
+                                        effect_id: game.effect_ids.len().into(),
+                                        effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
+                                        target: effect.target,
+                                        remaining_triggers: 2,
+                                    };
+                                    new_effects.append(new_effect);
+                                    game.effect_ids.append(new_effect.effect_id);
+                                    break;
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+                i += 1;
+            };
+        },
+        20 => {
+            let self_cap_type = get_cap_type(cap.cap_type).unwrap();
+            let clone = self_cap_type.clone();
+            let self_health = if clone.base_health > cap.dmg_taken {
+                clone.base_health - cap.dmg_taken
+            } else {
+                0
+            };
+            
+            if self_health < 5 {
+                panic!("Not enough health, ability would kill self");
+            }
+            game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 7);
+            game = handle_damage(ref game, cap.id, ref world, 4);
+        },
+        21 => {
+            game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 9);
+        },
+        22 => {
+            //none
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
+            let cap_at_target_type = get_cap_type(cap_at_target.cap_type);
+            
+            let mut ally_shield = cap_at_target.shield_amt.try_into().unwrap();
+           
+            cap.shield_amt += ally_shield;
+            world.write_model(@cap);
+        },
+        23 => {
+            //none
+            let player_pieces = get_player_pieces(game.id, game.player1, @world);
+
+            let mut i = 0;
+            let mut extra_energy = 0;
+            while i < game.effect_ids.len() {
+                let effect: Effect = world.read_model((game.id, i).into());
+                match effect.effect_type {
+                    EffectType::ExtraEnergy(x) => {
+                        extra_energy += x.into();
+                    },
+                    _ => (),
+                }
+                i += 1;
+            };
+        //    game = handle_damage(ref game, self.id, ref world, 2 + extra_energy);
+            
+        },
+        _ => panic!("Not yet implemented"),
+    }
+
+    (game.clone(), new_effects)
 }
