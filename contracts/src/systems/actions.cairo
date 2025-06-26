@@ -13,10 +13,13 @@ pub trait IActions<T> {
 // dojo decorator
 #[dojo::contract]
 pub mod actions {
-    use super::super::super::models::EffectTrait;
 use super::{IActions};
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
-    use caps::models::{Vec2, Game, Cap, Global, GameTrait, Timing, CapTrait, Action, ActionType, CapType, TargetType, TargetTypeTrait, Effect, EffectType, EffectTarget, get_cap_type, handle_damage};
+    use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType,};
+    use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+    use caps::models::cap::{Cap, CapTrait};
+    use caps::sets::set_zero::get_cap_type;
+    use caps::helpers::handle_damage;
     use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_end_of_turn_effects, update_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
@@ -517,7 +520,7 @@ use super::{IActions};
                             m += 1;
                         };
 
-                        game = cap.use_ability(cap_type, *target, ref game, ref world);
+           //             game = cap.use_ability(cap_type, *target, ref game, ref world);
                         
                     }
                 };

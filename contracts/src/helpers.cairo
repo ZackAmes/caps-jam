@@ -1,10 +1,12 @@
 
 use dojo::model::{ModelStorage};
-use caps::models::{Game, Cap, GameTrait, EffectType, EffectTrait, TargetType, TargetTypeTrait, EffectTarget, Timing };
+use caps::models::game::{Game, GameTrait, Vec2};
+use caps::models::cap::{Cap, CapTrait};
+use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+use caps::sets::set_zero::get_cap_type;
 use starknet::ContractAddress;
 use dojo::world::WorldStorage;
 use core::dict::Felt252Dict;
-use caps::models::{Effect, handle_damage};
 
 pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldStorage) -> Array<u64> {
     let mut game: Game = world.read_model(game_id);
@@ -143,4 +145,60 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
     };
     game.active_end_of_turn_effects = new_ids;
     game.clone()
+}
+
+pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
+    let mut target: Cap = world.read_model(target_id);
+    let cap_type = get_cap_type(target.cap_type);
+
+    let remaining_health = cap_type.unwrap().base_health - target.dmg_taken;
+
+
+    let mut i = 0;
+    let mut shield_amount = 0;
+    while i < game.active_move_step_effects.len() {
+        let mut effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
+        match effect.effect_type {
+            EffectType::Shield(val) => {
+                match effect.target {
+                    EffectTarget::Cap(effect_target_id) => {
+                        if effect_target_id == target_id {
+                            let mut new_val = 0;
+                            shield_amount = val.into();
+                            if val.into() > amount {
+                                new_val = val.into() - amount;
+                                effect.effect_type = EffectType::Shield(new_val.try_into().unwrap());
+                                
+                                world.write_model(@effect);
+                            }
+                            else {
+                                game.remove_effect(effect);
+                                world.erase_model(@effect);
+                            }
+                        }
+                        
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+        i += 1;
+    };
+
+    if shield_amount > amount {
+
+    }
+    else if amount > shield_amount.into() + remaining_health.into() {
+        game.remove_cap(target_id.try_into().unwrap());
+        world.erase_model(@target);
+
+    }
+    else {
+        target.dmg_taken += (amount - shield_amount.into()).try_into().unwrap();
+        world.write_model(@target);
+    }
+
+    return game.clone();
+
 }

@@ -83,7 +83,7 @@ mod planetelo {
     use dojo::world::{WorldStorage, WorldStorageTrait};    
     use dojo::model::{ModelStorage};
 
-    use caps::models::{Game, GameTrait};
+    use caps::models::game::{Game, GameTrait};
     use caps::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
 
 
