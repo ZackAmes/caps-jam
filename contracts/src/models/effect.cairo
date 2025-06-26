@@ -69,7 +69,7 @@ pub impl EffectImpl of EffectTrait {
             EffectType::AttackDiscount => Timing::MoveStep,
             EffectType::AbilityDiscount => Timing::MoveStep,
             EffectType::ExtraEnergy => Timing::StartOfTurn,
-            EffectType::Stun => Timing::EndOfTurn,
+            EffectType::Stun => Timing::StartOfTurn,
             EffectType::Double => Timing::EndOfTurn,
         }
     }

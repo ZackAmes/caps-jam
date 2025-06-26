@@ -20,7 +20,7 @@ use super::{IActions};
     use caps::models::cap::{Cap, CapTrait};
     use caps::sets::set_zero::get_cap_type;
     use caps::helpers::handle_damage;
-    use caps::helpers::{get_player_pieces, get_piece_locations, get_active_effects, update_end_of_turn_effects, update_start_of_turn_effects};
+    use caps::helpers::{get_player_pieces, check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
@@ -225,37 +225,21 @@ use super::{IActions};
                 assert!(get_caller_address() == game.player2, "You are not the turn player, 2s turn");
             }
 
-            let (start_of_turn_effects, move_step_effects, end_of_turn_effects) = get_active_effects(ref game, @world);
+            let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
-            let mut stunned: bool = false;
-            let mut stun_effect_ids: Array<u64> = ArrayTrait::new();
-
-            let mut extra_energy: u8 = 0;
-            let mut i = 0;
-            while i < game.effect_ids.len() {
-                let effect: Effect = world.read_model((game_id, i).into());
-                match effect.effect_type {
-                    EffectType::ExtraEnergy(x) => {
-                        extra_energy += x;
-                    },
-                    _ => {
-                        i+=1;
-                        continue;
-                    }
-                }
-                i += 1;
-            };
+            //handle start of turn effects
+            let (game, extra_energy, stunned_pieces) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
             let mut i = 0;
             while i < turn.len() {
-                let (_, move_step_effects, _) = get_active_effects(ref game, @world);
 
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(ref game, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
+                assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
 
                 //Triggers on Attack

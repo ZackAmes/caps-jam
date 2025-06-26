@@ -69,23 +69,37 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
     (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
-pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
+// Returns (game, extra_energy, stunned_pieces)
+pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, u8, Array<u64>) {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.active_start_of_turn_effects.len() {
-        let mut effect: Effect = world.read_model((game.id, i).into());
-        if effect.remaining_triggers == 1 {
-            world.erase_model(@effect);
-        }
-        else if effect.remaining_triggers > 1 {
-            effect.remaining_triggers -= 1;
-            new_ids.append(effect.effect_id);
-            world.write_model(@effect);
+    let mut extra_energy: u8 = 0;
+    let mut stunned_pieces: Array<u64> = ArrayTrait::new();
+    while i < start_of_turn_effects.len() {
+        let mut effect = *start_of_turn_effects.at(i);
+        match effect.effect_type {
+            EffectType::ExtraEnergy(x) => {
+                extra_energy += x;
+                let new_effect = effect.trigger();
+                if new_effect.is_some() {
+                    new_ids.append(new_effect.unwrap().effect_id);
+                    world.write_model(@new_effect.unwrap());
+                }
+            },
+            EffectType::Stun(x) => {
+                stunned_pieces.append(x.into());
+                let new_effect = effect.trigger();
+                if new_effect.is_some() {
+                    new_ids.append(new_effect.unwrap().effect_id);
+                    world.write_model(@new_effect.unwrap());
+                }
+            },
+            _ => {}
         }
         i += 1;
     };
     game.active_start_of_turn_effects = new_ids;
-    game.clone()
+    (game.clone(), extra_energy, stunned_pieces)
 }
 
 pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
@@ -201,4 +215,17 @@ pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, am
 
     return game.clone();
 
+}
+
+pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
+    let mut i = 0;
+    let mut found = false;
+    while i < array.len() {
+        if *array.at(i) == id {
+            found = true;
+            break;
+        }
+        i += 1;
+    };
+    return found;
 }
