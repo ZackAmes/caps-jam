@@ -239,7 +239,8 @@ use super::{IActions};
             let (mut start_of_turn_effects, _, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
             //handle start of turn effects
-            let (mut game, extra_energy, stunned_pieces) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
+            let (mut game, extra_energy, stunned_pieces, mut new_start_of_turn_effects) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
+            start_of_turn_effects = new_start_of_turn_effects;
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
@@ -419,7 +420,7 @@ use super::{IActions};
                 for effect in new_effects {
                     match effect.get_timing() {
                         Timing::StartOfTurn => {
-                            start_of_turn_effects.append(effect);
+                            new_start_of_turn_effects.append(effect);
                         },
                         Timing::MoveStep => {
                             move_effects.append(effect);
@@ -433,7 +434,28 @@ use super::{IActions};
                 
             };
 
-            game = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref world);
+            let (mut game, mut new_end_of_turn_effects) = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref world);
+            end_of_turn_effects = new_end_of_turn_effects;
+
+            let mut new_effect_ids: Array<u64> = ArrayTrait::new();
+            for effect in new_start_of_turn_effects {
+                if effect.remaining_triggers > 0 {
+                    new_effect_ids.append(effect.effect_id);
+                    world.write_model(@effect);
+                }
+            };
+            for effect in move_effects {
+                if effect.remaining_triggers > 0 {
+                    new_effect_ids.append(effect.effect_id);
+                    world.write_model(@effect);
+                }
+            };
+            for effect in end_of_turn_effects {
+                if effect.remaining_triggers > 0 {
+                    new_effect_ids.append(effect.effect_id);
+                    world.write_model(@effect);
+                }
+            };
 
             game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;

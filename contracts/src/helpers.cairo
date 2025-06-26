@@ -70,34 +70,40 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
 }
 
 // Returns (game, extra_energy, stunned_pieces)
-pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, u8, Array<u64>) {
+pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, u8, Array<u64>, Array<Effect>) {
     let mut i = 0;
     let mut extra_energy: u8 = 0;
     let mut stunned_pieces: Array<u64> = ArrayTrait::new();
+    let mut new_effects: Array<Effect> = ArrayTrait::new();
     while i < start_of_turn_effects.len() {
         let mut effect = *start_of_turn_effects.at(i);
+        effect.trigger();
+        if effect.remaining_triggers > 0 {
+            new_effects.append(effect);
+        }
         match effect.effect_type {
             EffectType::ExtraEnergy(x) => {
                 extra_energy += x;
-                effect.trigger();
             },
             EffectType::Stun(x) => {
                 stunned_pieces.append(x.into());
-                effect.trigger();
             },
             _ => {}
         }
         i += 1;
     };
-    (game.clone(), extra_energy, stunned_pieces)
+    (game.clone(), extra_energy, stunned_pieces, new_effects)
 }
 
-pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> Game {
+pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, Array<Effect>) {
     let mut i = 0;
-    let mut new_ids: Array<u64> = ArrayTrait::new();
+    let mut new_effects: Array<Effect> = ArrayTrait::new();
     while i < end_of_turn_effects.len() {
         let mut effect = *end_of_turn_effects.at(i);
         effect.trigger();
+        if effect.remaining_triggers > 0 {
+            new_effects.append(effect);
+        }
         match effect.effect_type {
             EffectType::DOT(dmg) => {
                 match effect.target {
@@ -124,7 +130,7 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
         };
         i += 1;
     };
-    game.clone()
+    (game.clone(), new_effects)
 }
 
 pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
