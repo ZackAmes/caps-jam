@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x75189e5cdabdb132e3a82d756f3a0167b89bf6c3b1b2bd463f062ecd52445f3",
-    "seed": "12fssdfrqwer7urqwe8ori23a",
+    "address": "0x25865ed23b858c00ec3f5bc583129bc8aa5a6d474c7b6038e39b3b9cc910b8d",
+    "seed": "1asdf2fssdfr",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x5e85dbcd1ac6dad17c1ad6f68ef525d7155b2843a11aa9f915fd2291170b75a",
-      "class_hash": "0x2634cb564deeac0e60f3ba6ddece78a3e8d97023bf818f9a20f662a51143689",
+      "address": "0xef429f38b23b97dfe2bed8997b2e1a2906eb89efc6815cff1738721399a122",
+      "class_hash": "0x46d9a39f402a42273f44bd060b9373617e45d27bfde67f5d3817a41932b47aa",
       "abi": [
         {
           "type": "impl",
@@ -1388,7 +1388,7 @@
         },
         {
           "type": "struct",
-          "name": "caps::models::Vec2",
+          "name": "caps::models::game::Vec2",
           "members": [
             {
               "name": "x",
@@ -1402,25 +1402,25 @@
         },
         {
           "type": "enum",
-          "name": "caps::models::ActionType",
+          "name": "caps::models::game::ActionType",
           "variants": [
             {
               "name": "Move",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
             },
             {
               "name": "Attack",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
             },
             {
               "name": "Ability",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
             }
           ]
         },
         {
           "type": "struct",
-          "name": "caps::models::Action",
+          "name": "caps::models::game::Action",
           "members": [
             {
               "name": "cap_id",
@@ -1428,7 +1428,7 @@
             },
             {
               "name": "action_type",
-              "type": "caps::models::ActionType"
+              "type": "caps::models::game::ActionType"
             }
           ]
         },
@@ -1448,7 +1448,7 @@
         },
         {
           "type": "struct",
-          "name": "caps::models::Game",
+          "name": "caps::models::game::Game",
           "members": [
             {
               "name": "id",
@@ -1475,18 +1475,6 @@
               "type": "core::bool"
             },
             {
-              "name": "active_start_of_turn_effects",
-              "type": "core::array::Array::<core::integer::u64>"
-            },
-            {
-              "name": "active_move_step_effects",
-              "type": "core::array::Array::<core::integer::u64>"
-            },
-            {
-              "name": "active_end_of_turn_effects",
-              "type": "core::array::Array::<core::integer::u64>"
-            },
-            {
               "name": "effect_ids",
               "type": "core::array::Array::<core::integer::u64>"
             },
@@ -1498,7 +1486,7 @@
         },
         {
           "type": "struct",
-          "name": "caps::models::Cap",
+          "name": "caps::models::cap::Cap",
           "members": [
             {
               "name": "id",
@@ -1510,7 +1498,11 @@
             },
             {
               "name": "position",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
+            },
+            {
+              "name": "set_id",
+              "type": "core::integer::u64"
             },
             {
               "name": "cap_type",
@@ -1519,22 +1511,26 @@
             {
               "name": "dmg_taken",
               "type": "core::integer::u16"
+            },
+            {
+              "name": "shield_amt",
+              "type": "core::integer::u16"
             }
           ]
         },
         {
           "type": "struct",
-          "name": "core::array::Span::<caps::models::Cap>",
+          "name": "core::array::Span::<caps::models::cap::Cap>",
           "members": [
             {
               "name": "snapshot",
-              "type": "@core::array::Array::<caps::models::Cap>"
+              "type": "@core::array::Array::<caps::models::cap::Cap>"
             }
           ]
         },
         {
           "type": "enum",
-          "name": "caps::models::EffectType",
+          "name": "caps::models::effect::EffectType",
           "variants": [
             {
               "name": "DamageBuff",
@@ -1582,17 +1578,17 @@
             },
             {
               "name": "Stun",
-              "type": "()"
+              "type": "core::integer::u8"
             },
             {
               "name": "Double",
-              "type": "()"
+              "type": "core::integer::u8"
             }
           ]
         },
         {
           "type": "enum",
-          "name": "caps::models::EffectTarget",
+          "name": "caps::models::effect::EffectTarget",
           "variants": [
             {
               "name": "Cap",
@@ -1600,13 +1596,13 @@
             },
             {
               "name": "Square",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
             }
           ]
         },
         {
           "type": "struct",
-          "name": "caps::models::Effect",
+          "name": "caps::models::effect::Effect",
           "members": [
             {
               "name": "game_id",
@@ -1618,11 +1614,11 @@
             },
             {
               "name": "effect_type",
-              "type": "caps::models::EffectType"
+              "type": "caps::models::effect::EffectType"
             },
             {
               "name": "target",
-              "type": "caps::models::EffectTarget"
+              "type": "caps::models::effect::EffectTarget"
             },
             {
               "name": "remaining_triggers",
@@ -1632,21 +1628,21 @@
         },
         {
           "type": "struct",
-          "name": "core::array::Span::<caps::models::Effect>",
+          "name": "core::array::Span::<caps::models::effect::Effect>",
           "members": [
             {
               "name": "snapshot",
-              "type": "@core::array::Array::<caps::models::Effect>"
+              "type": "@core::array::Array::<caps::models::effect::Effect>"
             }
           ]
         },
         {
           "type": "enum",
-          "name": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)>",
+          "name": "core::option::Option::<(caps::models::game::Game, core::array::Span::<caps::models::cap::Cap>, core::array::Span::<caps::models::effect::Effect>)>",
           "variants": [
             {
               "name": "Some",
-              "type": "(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)"
+              "type": "(caps::models::game::Game, core::array::Span::<caps::models::cap::Cap>, core::array::Span::<caps::models::effect::Effect>)"
             },
             {
               "name": "None",
@@ -1656,7 +1652,7 @@
         },
         {
           "type": "enum",
-          "name": "caps::models::TargetType",
+          "name": "caps::models::cap::TargetType",
           "variants": [
             {
               "name": "None",
@@ -1686,7 +1682,7 @@
         },
         {
           "type": "struct",
-          "name": "caps::models::CapType",
+          "name": "caps::models::cap::CapType",
           "members": [
             {
               "name": "id",
@@ -1710,11 +1706,11 @@
             },
             {
               "name": "attack_range",
-              "type": "core::array::Array::<caps::models::Vec2>"
+              "type": "core::array::Array::<caps::models::game::Vec2>"
             },
             {
               "name": "ability_range",
-              "type": "core::array::Array::<caps::models::Vec2>"
+              "type": "core::array::Array::<caps::models::game::Vec2>"
             },
             {
               "name": "ability_description",
@@ -1722,7 +1718,7 @@
             },
             {
               "name": "move_range",
-              "type": "caps::models::Vec2"
+              "type": "caps::models::game::Vec2"
             },
             {
               "name": "attack_dmg",
@@ -1734,7 +1730,7 @@
             },
             {
               "name": "ability_target",
-              "type": "caps::models::TargetType"
+              "type": "caps::models::cap::TargetType"
             },
             {
               "name": "ability_cost",
@@ -1744,11 +1740,11 @@
         },
         {
           "type": "enum",
-          "name": "core::option::Option::<caps::models::CapType>",
+          "name": "core::option::Option::<caps::models::cap::CapType>",
           "variants": [
             {
               "name": "Some",
-              "type": "caps::models::CapType"
+              "type": "caps::models::cap::CapType"
             },
             {
               "name": "None",
@@ -1798,7 +1794,7 @@
                 },
                 {
                   "name": "turn",
-                  "type": "core::array::Array::<caps::models::Action>"
+                  "type": "core::array::Array::<caps::models::game::Action>"
                 }
               ],
               "outputs": [],
@@ -1815,7 +1811,7 @@
               ],
               "outputs": [
                 {
-                  "type": "core::option::Option::<(caps::models::Game, core::array::Span::<caps::models::Cap>, core::array::Span::<caps::models::Effect>)>"
+                  "type": "core::option::Option::<(caps::models::game::Game, core::array::Span::<caps::models::cap::Cap>, core::array::Span::<caps::models::effect::Effect>)>"
                 }
               ],
               "state_mutability": "view"
@@ -1825,13 +1821,17 @@
               "name": "get_cap_data",
               "inputs": [
                 {
+                  "name": "set_id",
+                  "type": "core::integer::u64"
+                },
+                {
                   "name": "cap_type",
                   "type": "core::integer::u16"
                 }
               ],
               "outputs": [
                 {
-                  "type": "core::option::Option::<caps::models::CapType>"
+                  "type": "core::option::Option::<caps::models::cap::CapType>"
                 }
               ],
               "state_mutability": "view"
@@ -1963,8 +1963,537 @@
       ]
     },
     {
-      "address": "0x43f3433976200b39d92a4f54647e49e53e027dd75c77a780e412b65aed9e312",
-      "class_hash": "0x1999b1f8b801aec16e4ad613f5763436aa3ee9a500b27c6826478c2f4e03a8f",
+      "address": "0x7fd1f97122b82748def9da281b0e9da4a4f6e051b7386e73fe6370cd16211dd",
+      "class_hash": "0x5f322500b3ba7577578db2382a4185dd6867cec7e6c0fe0a286d79fd83e0388",
+      "abi": [
+        {
+          "type": "impl",
+          "name": "set_zero__ContractImpl",
+          "interface_name": "dojo::contract::interface::IContract"
+        },
+        {
+          "type": "interface",
+          "name": "dojo::contract::interface::IContract",
+          "items": []
+        },
+        {
+          "type": "impl",
+          "name": "set_zero__DeployedContractImpl",
+          "interface_name": "dojo::meta::interface::IDeployedResource"
+        },
+        {
+          "type": "struct",
+          "name": "core::byte_array::ByteArray",
+          "members": [
+            {
+              "name": "data",
+              "type": "core::array::Array::<core::bytes_31::bytes31>"
+            },
+            {
+              "name": "pending_word",
+              "type": "core::felt252"
+            },
+            {
+              "name": "pending_word_len",
+              "type": "core::integer::u32"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "dojo::meta::interface::IDeployedResource",
+          "items": [
+            {
+              "type": "function",
+              "name": "dojo_name",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "dojo_init",
+          "inputs": [],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "impl",
+          "name": "SetZeroImpl",
+          "interface_name": "caps::models::set::ISetInterface"
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::game::Vec2",
+          "members": [
+            {
+              "name": "x",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "y",
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "caps::models::cap::TargetType",
+          "variants": [
+            {
+              "name": "None",
+              "type": "()"
+            },
+            {
+              "name": "SelfCap",
+              "type": "()"
+            },
+            {
+              "name": "TeamCap",
+              "type": "()"
+            },
+            {
+              "name": "OpponentCap",
+              "type": "()"
+            },
+            {
+              "name": "AnyCap",
+              "type": "()"
+            },
+            {
+              "name": "AnySquare",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::cap::CapType",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "name",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "description",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "move_cost",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "attack_cost",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "attack_range",
+              "type": "core::array::Array::<caps::models::game::Vec2>"
+            },
+            {
+              "name": "ability_range",
+              "type": "core::array::Array::<caps::models::game::Vec2>"
+            },
+            {
+              "name": "ability_description",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "move_range",
+              "type": "caps::models::game::Vec2"
+            },
+            {
+              "name": "attack_dmg",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "base_health",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "ability_target",
+              "type": "caps::models::cap::TargetType"
+            },
+            {
+              "name": "ability_cost",
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<caps::models::cap::CapType>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "caps::models::cap::CapType"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::cap::Cap",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "owner",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "position",
+              "type": "caps::models::game::Vec2"
+            },
+            {
+              "name": "set_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "cap_type",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "dmg_taken",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "shield_amt",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::game::Game",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "player1",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "player2",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "caps_ids",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "turn_count",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "over",
+              "type": "core::bool"
+            },
+            {
+              "name": "effect_ids",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "last_action_timestamp",
+              "type": "core::integer::u64"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "caps::models::effect::EffectType",
+          "variants": [
+            {
+              "name": "DamageBuff",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Shield",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Heal",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "DOT",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "MoveBonus",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AttackBonus",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "BonusRange",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "MoveDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AttackDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "AbilityDiscount",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "ExtraEnergy",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Stun",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "Double",
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "caps::models::effect::EffectTarget",
+          "variants": [
+            {
+              "name": "Cap",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "Square",
+              "type": "caps::models::game::Vec2"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "caps::models::effect::Effect",
+          "members": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "effect_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "effect_type",
+              "type": "caps::models::effect::EffectType"
+            },
+            {
+              "name": "target",
+              "type": "caps::models::effect::EffectTarget"
+            },
+            {
+              "name": "remaining_triggers",
+              "type": "core::integer::u8"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "caps::models::set::ISetInterface",
+          "items": [
+            {
+              "type": "function",
+              "name": "get_cap_type",
+              "inputs": [
+                {
+                  "name": "id",
+                  "type": "core::integer::u16"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<caps::models::cap::CapType>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "activate_ability",
+              "inputs": [
+                {
+                  "name": "cap",
+                  "type": "caps::models::cap::Cap"
+                },
+                {
+                  "name": "target",
+                  "type": "caps::models::game::Vec2"
+                },
+                {
+                  "name": "game",
+                  "type": "caps::models::game::Game"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "(caps::models::game::Game, core::array::Array::<caps::models::effect::Effect>)"
+                }
+              ],
+              "state_mutability": "external"
+            }
+          ]
+        },
+        {
+          "type": "impl",
+          "name": "WorldProviderImpl",
+          "interface_name": "dojo::contract::components::world_provider::IWorldProvider"
+        },
+        {
+          "type": "struct",
+          "name": "dojo::world::iworld::IWorldDispatcher",
+          "members": [
+            {
+              "name": "contract_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "dojo::contract::components::world_provider::IWorldProvider",
+          "items": [
+            {
+              "type": "function",
+              "name": "world_dispatcher",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::world::iworld::IWorldDispatcher"
+                }
+              ],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "impl",
+          "name": "UpgradeableImpl",
+          "interface_name": "dojo::contract::components::upgradeable::IUpgradeable"
+        },
+        {
+          "type": "interface",
+          "name": "dojo::contract::components::upgradeable::IUpgradeable",
+          "items": [
+            {
+              "type": "function",
+              "name": "upgrade",
+              "inputs": [
+                {
+                  "name": "new_class_hash",
+                  "type": "core::starknet::class_hash::ClassHash"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            }
+          ]
+        },
+        {
+          "type": "constructor",
+          "name": "constructor",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "name": "dojo::contract::components::upgradeable::upgradeable_cpt::Upgraded",
+          "kind": "struct",
+          "members": [
+            {
+              "name": "class_hash",
+              "type": "core::starknet::class_hash::ClassHash",
+              "kind": "data"
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "name": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "enum",
+          "variants": [
+            {
+              "name": "Upgraded",
+              "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Upgraded",
+              "kind": "nested"
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "name": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "enum",
+          "variants": []
+        },
+        {
+          "type": "event",
+          "name": "caps::sets::set_zero::set_zero::Event",
+          "kind": "enum",
+          "variants": [
+            {
+              "name": "UpgradeableEvent",
+              "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+              "kind": "nested"
+            },
+            {
+              "name": "WorldProviderEvent",
+              "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+              "kind": "nested"
+            }
+          ]
+        }
+      ],
+      "init_calldata": [],
+      "tag": "caps-set_zero",
+      "selector": "0x35ce53c0ff5c6ffb239bb347c5287062ae627c62c39204363d9153ba72a9377",
+      "systems": [
+        "dojo_init",
+        "activate_ability",
+        "upgrade"
+      ]
+    },
+    {
+      "address": "0x676d3db66aaf5b79e262c4ea6ef17aa5e28676afb408003ff49dd4338352a0e",
+      "class_hash": "0x1afbc1f25a9f70d5859f86d1484ab20a87a7dc3dff45c05b2660e29bcc1a2bc",
       "abi": [
         {
           "type": "impl",
@@ -2465,13 +2994,13 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x410eb0104e80025897058f718d95bcc8247393c804597d230ee201d2e322c7e",
+      "class_hash": "0x1b1d359fb6447f2f0f377ac41d80b51ad224ae7d1cb18e81b71e0b29296c4ca",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
     },
     {
       "members": [],
-      "class_hash": "0x1d246d4f1c2f28b6f1129a4ffb4215cc98775acc45ed6a32b8d4b156fc6cf7a",
+      "class_hash": "0x916a203646b1c63fa642171f73e6329eeb26e73f93f89924f56522003655a",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
@@ -2483,27 +3012,27 @@
     },
     {
       "members": [],
-      "class_hash": "0x160fcd8bd403f0a7876aa589241e50f728cc35ea61283b8a858d8c667a93ab8",
+      "class_hash": "0x6d8c5205375dae972756e224a7bdf3ecc959fe54fb4e5e9a7c0bb541cddf6c",
       "tag": "caps-Effect",
       "selector": "0x224ce3db691874cd4a155cc1059d391c9d2cabec2e98b100233ce6365221dd8"
     },
     {
       "members": [],
-      "class_hash": "0x522bdc29d6275fd06ad7f1f5991413d9f3d4d430bab28c17d8a19795720baae",
+      "class_hash": "0x1836034a6995bd39bfa50d7d47920fc22d0a113b0b3d47baf9b2b64d49b6029",
       "tag": "caps-Game",
       "selector": "0xe9697c6c427792aaa8a422a17897c4b838d7d6c76261f43cce21228c294477"
     },
     {
       "members": [],
-      "class_hash": "0x166e0bb8179de2c803c230a8dbe5de34202de229b37f7fd837df4512ad8cbf0",
+      "class_hash": "0x286eae93099955a673d635c930d57d0dcfef5920bb6af88b58bb98d810b75d0",
       "tag": "caps-Global",
       "selector": "0x70e88df3f805a04831adfefc6e7231dc9a65cce7920bf65bcb51e6f0bf729c4"
     },
     {
       "members": [],
-      "class_hash": "0xdd1b87e685f79a67e791c2dca233ecbb69db299cfc35e4ffb733d35f3d95c6",
-      "tag": "caps-Square",
-      "selector": "0x25162d41aa11d953b327257d2132ea33b48a49e2146e30ebda33a9c8456114a"
+      "class_hash": "0x10d1db343d3cf1ca5b6a0da8bbbd783d0a7eda6f44f80b84df24ce88291d49d",
+      "tag": "caps-Set",
+      "selector": "0x5040dc1ca1ab78c673c858a24c5ea02dd0ed6ba32750672e582b101b3399235"
     },
     {
       "members": [],
@@ -2527,7 +3056,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x3173dbacd12d947f7b979b27cd260ab2fef641e1731b0154dafde9249fb895d",
+      "class_hash": "0x33ea998bd1592a8e31cdd78af69d3725d80de9e81d1fdf8c44454dd6c7aa5d3",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }
