@@ -15,6 +15,7 @@ pub struct Cap {
     pub id: u64,
     pub owner: ContractAddress,
     pub position: Vec2,
+    pub set_id: u64,
     pub cap_type: u16,
     pub dmg_taken: u16,
     pub shield_amt: u16
@@ -24,8 +25,8 @@ pub struct Cap {
 
 #[generate_trait]
 pub impl CapImpl of CapTrait {
-    fn new(id: u64, owner: ContractAddress, position: Vec2, cap_type: u16) -> Cap {
-        Cap { id, owner, position, cap_type, dmg_taken: 0, shield_amt: 0 }
+    fn new(id: u64, owner: ContractAddress, position: Vec2, set_id: u64, cap_type: u16) -> Cap {
+        Cap { id, owner, position, set_id, cap_type, dmg_taken: 0, shield_amt: 0 }
     }
 
     fn get_new_index_from_dir(self: @Cap, direction: u8, amt: u8) -> felt252 {
