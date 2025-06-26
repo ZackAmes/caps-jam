@@ -18,12 +18,12 @@ pub mod actions {
 use super::{IActions};
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType,};
-    use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+    use caps::models::effect::{Effect, EffectTrait, EffectType, Timing};
     use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
     use caps::sets::set_zero::get_cap_type;
     use caps::helpers::handle_damage;
-    use caps::helpers::{get_player_pieces, get_move_step_effects, check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
-    use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
+    use caps::helpers::{check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
+    use core::dict::{Felt252DictTrait,};
 
     use dojo::model::{ModelStorage};
     use dojo::event::EventStorage;
@@ -62,9 +62,6 @@ use super::{IActions};
                 effect_ids: ArrayTrait::new(),
                 last_action_timestamp: get_block_timestamp(),
             };
-
-            let mut p1_types: Array<u16> = ArrayTrait::new();
-            let mut p2_types: Array<u16> = ArrayTrait::new();
 
             let p1_types = array![0 + p1_team, 4 + p1_team, 8 + p1_team, 12 + p1_team, 16 + p1_team, 20 + p1_team];
             let p2_types = array![0 + p2_team, 4 + p2_team, 8 + p2_team, 12 + p2_team, 16 + p2_team, 20 + p2_team];
@@ -248,8 +245,6 @@ use super::{IActions};
             let mut i = 0;
             while i < turn.len() {
 
-                let (mut move_effects, mut attack_effects, mut ability_effects) = get_move_step_effects(ref move_step_effects);
-
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(ref game, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
@@ -259,12 +254,11 @@ use super::{IActions};
                 let mut new_effects: Array<Effect> = ArrayTrait::new();
                 let mut new_move_step_effects: Array<Effect> = ArrayTrait::new();
 
-
                 match action.action_type {
                     ActionType::Move(dir) => {
                         let mut move_discount: u8 = 0;
                         let mut move_bonus: u8 = 0;
-                        for mut effect in move_effects {
+                        for mut effect in move_step_effects {
                             match effect.effect_type {
                                 EffectType::MoveDiscount(x) => {
                                     move_discount += x;
@@ -308,7 +302,7 @@ use super::{IActions};
                         let mut attack_bonus: u8 = 0;
                         
 
-                        for mut effect in attack_effects {
+                        for mut effect in move_step_effects {
                             match effect.effect_type {
                                 EffectType::AttackDiscount(x) => {
                                     attack_discount += x;
@@ -363,7 +357,7 @@ use super::{IActions};
                         let mut ability_discount = 0;
                         let mut double_count: u8 = 0;
                         
-                        for mut effect in ability_effects {
+                        for mut effect in move_step_effects {
                             match effect.effect_type {
                                 EffectType::AbilityDiscount(x) => {
                                     ability_discount += x;
