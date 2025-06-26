@@ -20,7 +20,7 @@ use super::{IActions};
     use caps::models::cap::{Cap, CapTrait};
     use caps::sets::set_zero::get_cap_type;
     use caps::helpers::handle_damage;
-    use caps::helpers::{get_player_pieces, check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
+    use caps::helpers::{get_player_pieces, get_move_step_effects, check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
     use core::dict::{Felt252DictTrait, SquashedFelt252Dict};
 
     use dojo::model::{ModelStorage};
@@ -228,9 +228,11 @@ use super::{IActions};
             let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
             //handle start of turn effects
-            let (game, extra_energy, stunned_pieces) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
+            let (mut game, extra_energy, stunned_pieces) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
+
+            let (mut move_effects, mut attack_effects, mut ability_effects) = get_move_step_effects(ref game, ref world);
 
             let mut i = 0;
             while i < turn.len() {
@@ -242,144 +244,7 @@ use super::{IActions};
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type = self.get_cap_data(cap.cap_type).unwrap();
 
-                //Triggers on Attack
-                let mut attack_bonus_amount: u8 = 0;
-                let mut attack_bonus_ids: Array<u64> = ArrayTrait::new();
 
-                //Triggers on Move
-                let mut move_discount_amount: u8 = 0;
-                let mut move_discount_ids: Array<u64> = ArrayTrait::new();
-
-                //Triggers on Attack
-                let mut attack_discount_amount: u8 = 0;
-                let mut attack_discount_ids: Array<u64> = ArrayTrait::new();
-
-                //Triggers on Ability
-                let mut ability_discount_amount: u8 = 0;
-                let mut ability_discount_ids: Array<u64> = ArrayTrait::new();
-                
-                //Triggers on Move
-                let mut bonus_range_amount: u8 = 0;
-                let mut bonus_range_ids: Array<u64> = ArrayTrait::new();
-
-                let mut double: bool = false;
-                let mut double_ids: Array<u64> = ArrayTrait::new();
-
-                let mut index = 0;
-                while index < game.active_move_step_effects.len() {
-                    let effect: Effect = world.read_model((game_id, index).into());
-
-                    match effect.effect_type {
-                        EffectType::Double => {
-                            double = true;
-                            double_ids.append(effect.effect_id);
-                        },
-                        EffectType::MoveDiscount(x) => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        move_discount_ids.append(effect.effect_id);
-                                        move_discount_amount += x;
-                                    }
-                                    else {
-                                    }
-                                },
-                                _ => {
-                                    index += 1;
-                                    continue;
-                                }
-                            }
-                        },
-                        EffectType::AttackDiscount(x) => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        attack_discount_ids.append(effect.effect_id);
-                                        attack_discount_amount += x;
-                                    }
-                                    else {
-                                    }
-                                },
-                                _ => {
-                                    index += 1;
-                                    continue;
-                                }
-                            }
-                        },
-                        EffectType::AbilityDiscount(x) => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        ability_discount_ids.append(effect.effect_id);
-                                        ability_discount_amount += x;
-                                    }
-                                    else {
-                                    }
-                                },
-                                _ => {
-                                    index += 1;
-                                    continue;
-                                }
-                            }
-                        },   
-                        EffectType::AttackBonus(x) => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        attack_bonus_ids.append(effect.effect_id);
-                                        attack_bonus_amount += x;
-                                    }
-                                    else {
-                                    }
-                                },
-                                _ => {
-                                    index += 1;
-                                    continue;
-                                }
-                            }
-                        },
-                        EffectType::BonusRange(x) => {
-                            match effect.target {
-                                EffectTarget::Cap(id) => {
-                                    if id == cap.id {
-                                        bonus_range_ids.append(effect.effect_id);
-                                        bonus_range_amount += x;
-                                    }
-                                    else {
-                                    }
-                                },
-                                _ => {
-                                    index += 1;
-                                    continue;
-                                }
-                            }
-                        },
-                        _ => {
-                            index += 1;
-                            continue;
-                        }
-                    }
-
-
-                    index += 1;
-                };
-
-
-                let mut j = 0;
-                while j < game.effect_ids.len() {
-                    let effect: Effect = world.read_model((game_id, j).into());
-                    match effect.effect_type {
-                        EffectType::Stun => {
-                            stunned = true;
-                            stun_effect_ids.append(effect.effect_id);
-                        },
-                        _ => {
-                            j += 1;
-                            continue;
-                        }
-                    }
-                    j += 1;
-                };
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
