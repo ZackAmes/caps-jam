@@ -1,8 +1,7 @@
-use caps::helpers::{get_piece_locations, handle_damage, get_player_pieces};
-use caps::models::effect::{Effect, EffectType, EffectTarget};
-use caps::models::game::{Game, GameTrait, Vec2};
-use caps::sets::set_zero::get_cap_type;
-use caps::models::set::{ISetInterfaceDispatcher, ISetInterface, ISetInterfaceDispatcherTrait, Set};
+use caps::helpers::{get_piece_locations};
+use caps::models::effect::{Effect};
+use caps::models::game::{Game, Vec2};
+use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
 
 use dojo::world::WorldStorage;
 
@@ -165,8 +164,6 @@ pub impl CapImpl of CapTrait {
         let game_clone = game.clone();
         dispatcher.activate_ability(self, target, game_clone)
     }
-
-    
 
 }
 

@@ -20,7 +20,7 @@ use super::{IActions};
     use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType,};
     use caps::models::effect::{Effect, EffectTrait, EffectType, Timing};
     use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
-    use caps::models::set::{ISetInterfaceDispatcher, ISetInterface, ISetInterfaceDispatcherTrait, Set};
+    use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
     use caps::helpers::handle_damage;
     use caps::helpers::{check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
     use core::dict::{Felt252DictTrait,};
@@ -405,6 +405,7 @@ use super::{IActions};
                         
 
                         let (mut game, mut created_effects) = cap.use_ability(*target, ref game, @set);
+
                         for effect in created_effects {
                             new_effects.append(effect);
                         };

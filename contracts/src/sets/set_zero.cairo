@@ -1,6 +1,6 @@
 use caps::models::cap::{Cap,CapType, TargetType};
 use caps::models::effect::{Effect, EffectType, EffectTarget};
-use caps::helpers::{get_piece_locations, handle_damage, get_player_pieces};
+use caps::helpers::{get_piece_locations, handle_damage};
 use caps::models::game::{Vec2, Game, GameTrait};
 use dojo::world::WorldStorage;
 use dojo::model::{ModelStorage};
@@ -8,12 +8,11 @@ use dojo::model::{ModelStorage};
 
 #[dojo::contract]
 pub mod set_zero {
-    use caps::models::set::{Set, ISetInterface};
+    use caps::models::set::{ISetInterface};
     use super::{get_cap_type, use_ability};
     use caps::models::cap::{Cap, CapType};
     use caps::models::game::{Game, Vec2};
     use caps::models::effect::Effect;
-    use dojo::world::WorldStorage;
 
 
     #[abi(embed_v0)]
@@ -521,6 +520,15 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         13 => {
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
+            let stun_effect = Effect {
+                game_id: game.id,
+                effect_id: game.effect_ids.len().into(),
+                effect_type: EffectType::Stun(1),
+                target: EffectTarget::Cap(cap_at_target_id),
+                remaining_triggers: 1,
+            };
+            new_effects.append(stun_effect);
+            game.effect_ids.append(stun_effect.effect_id);
         },
         14 => {
             let mut i = 0;
@@ -643,17 +651,12 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             //none
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
-            let cap_at_target_type = get_cap_type(cap_at_target.cap_type);
-            
             let mut ally_shield = cap_at_target.shield_amt.try_into().unwrap();
            
             cap.shield_amt += ally_shield;
             world.write_model(@cap);
         },
         23 => {
-            //none
-            let player_pieces = get_player_pieces(game.id, game.player1, @world);
-
             let mut i = 0;
             let mut extra_energy = 0;
             while i < game.effect_ids.len() {

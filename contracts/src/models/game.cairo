@@ -1,8 +1,8 @@
 use starknet::{ContractAddress};
 use dojo::model::{ModelStorage};
 use dojo::world::WorldStorage;
-use caps::models::effect::{Effect, EffectTrait, Timing};
-use caps::models::cap::{Cap, CapType};
+use caps::models::effect::{Effect};
+use caps::models::cap::{Cap};
 use caps::sets::set_zero::get_cap_type;
 
 #[derive(Copy, Drop, Serde, Debug)]

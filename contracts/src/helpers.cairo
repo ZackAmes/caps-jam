@@ -1,7 +1,7 @@
 
 use dojo::model::{ModelStorage};
-use caps::models::game::{Game, GameTrait, Vec2};
-use caps::models::cap::{Cap, CapTrait};
+use caps::models::game::{Game, GameTrait};
+use caps::models::cap::{Cap};
 use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
 use caps::sets::set_zero::get_cap_type;
 use starknet::ContractAddress;

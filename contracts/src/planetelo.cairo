@@ -99,7 +99,7 @@ mod planetelo {
     impl PlaneteloInterfaceImpl of IPlanetelo<ContractState> {
 
         fn get_result(self: @ContractState, session_id: u32) -> (bool, ContractAddress) {
-            let mut world = self.world(@"caps");
+            let mut world: WorldStorage = self.world(@"caps");
             let game: Game = world.read_model(session_id);
             let (over, winner) = @game.check_over(@world);
             if *over {
@@ -161,7 +161,7 @@ mod planetelo {
 
             if found {
                 let game: Game = caps_world.read_model(player.game_id);
-                let (over, winner) = @game.check_over(@caps_world);
+                let (_over, winner) = @game.check_over(@caps_world);
                 if *winner == player_address {
                     player.agent_wins += 1;
                     agent_games.losses += 1;
@@ -256,7 +256,6 @@ mod planetelo {
             }
             let mut p1: Player = world.read_model(invite.player1);
             let mut p2: Player = world.read_model(invite.player2);
-            let mut global_stats: GlobalStats = world.read_model(0);
 
             let mut dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
             let id: u128 = dispatcher.create_game(p1.address, p2.address, p1.team, p2.team).into();
@@ -266,7 +265,6 @@ mod planetelo {
 
         fn decline_invite(ref self: ContractState, invite_id: u128) {
             let mut world = self.world(@"planetelo");
-            let mut player: Player = world.read_model(get_caller_address());
             let mut invite: CustomGames = world.read_model(invite_id);
             if invite.player2 != get_caller_address() {
                 panic!("You are not the recipient of this invite");
@@ -274,7 +272,6 @@ mod planetelo {
             assert!(invite.game_id == 0, "Game has already started");
             let mut p1: Player = world.read_model(invite.player1);
             let mut p2: Player = world.read_model(invite.player2);
-            let mut global_stats: GlobalStats = world.read_model(0);
             let mut new_p1_ids: Array<u128> = ArrayTrait::new();
             let mut new_p2_ids: Array<u128> = ArrayTrait::new();
             let mut i = 0;
