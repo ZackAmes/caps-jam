@@ -174,15 +174,15 @@ pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
 }
 
 //Returns Array of (amount, ids) for each effect type, separated by whether they trigger on move, attack, or ability
-pub fn get_move_step_effects(ref game: Game, ref world: WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {//Triggers on Attack
+pub fn get_move_step_effects(ref effects: Array<Effect>) -> (Array<Effect>, Array<Effect>, Array<Effect>) {//Triggers on Attack
 
     let mut move_effects: Array<Effect> = ArrayTrait::new();
     let mut attack_effects: Array<Effect> = ArrayTrait::new();
     let mut ability_effects: Array<Effect> = ArrayTrait::new();
 
     let mut index = 0;
-    while index < game.effect_ids.len() {
-        let effect: Effect = world.read_model((game.id, index).into());
+    while index < effects.len() {
+        let effect: Effect = *effects.at(index);
 
         if effect.get_timing() != Timing::MoveStep {
             index += 1;

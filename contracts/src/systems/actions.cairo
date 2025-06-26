@@ -236,7 +236,7 @@ use super::{IActions};
                 assert!(get_caller_address() == game.player2, "You are not the turn player, 2s turn");
             }
 
-            let (mut start_of_turn_effects, _, mut end_of_turn_effects) = get_active_effects(ref game, @world);
+            let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
             //handle start of turn effects
             let (mut game, extra_energy, stunned_pieces, mut new_start_of_turn_effects) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
@@ -244,10 +244,11 @@ use super::{IActions};
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
-            let (mut move_effects, mut attack_effects, mut ability_effects) = get_move_step_effects(ref game, ref world);
 
             let mut i = 0;
             while i < turn.len() {
+
+                let (mut move_effects, mut attack_effects, mut ability_effects) = get_move_step_effects(ref move_step_effects);
 
                 let action = turn.at(i);
                 let mut locations = get_piece_locations(ref game, @world);
@@ -256,6 +257,7 @@ use super::{IActions};
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
                 let mut new_effects: Array<Effect> = ArrayTrait::new();
+                let mut new_move_step_effects: Array<Effect> = ArrayTrait::new();
 
 
                 match action.action_type {
@@ -263,27 +265,28 @@ use super::{IActions};
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
                         let mut move_discount: u8 = 0;
                         let mut move_bonus: u8 = 0;
-                        let mut new_move_effects: Array<Effect> = ArrayTrait::new();
                         for mut effect in move_effects {
                             match effect.effect_type {
                                 EffectType::MoveDiscount(x) => {
                                     move_discount += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_move_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
                                 EffectType::MoveBonus(x) => {
                                     move_bonus += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_move_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
-                                _ => {}
+                                _ => {
+                                    new_move_step_effects.append(effect);
+                                }
                             }
                         };
-                        move_effects = new_move_effects;
+                        move_step_effects = new_move_step_effects;
                         let mut move_cost = cap_type.move_cost;
                         if move_discount > cap_type.move_cost {
                             move_cost = 0;
@@ -306,7 +309,6 @@ use super::{IActions};
                         let mut attack_discount: u8 = 0;
                         let mut attack_bonus: u8 = 0;
                         
-                        let mut new_attack_effects: Array<Effect> = ArrayTrait::new();
 
                         for mut effect in attack_effects {
                             match effect.effect_type {
@@ -314,20 +316,22 @@ use super::{IActions};
                                     attack_discount += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_attack_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
                                 EffectType::AttackBonus(x) => {
                                     attack_bonus += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_attack_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
-                                _ => {}
+                                _ => {
+                                    new_move_step_effects.append(effect);
+                                }
                             }
                         };
-                        attack_effects = new_attack_effects;
+                        move_step_effects = new_move_step_effects;
                         if attack_discount > cap_type.attack_cost {
                             attack_cost = 0;
                         }
@@ -361,27 +365,28 @@ use super::{IActions};
                         let mut ability_discount = 0;
                         let mut double_count: u8 = 0;
                         
-                        let mut new_ability_effects: Array<Effect> = ArrayTrait::new();
                         for mut effect in ability_effects {
                             match effect.effect_type {
                                 EffectType::AbilityDiscount(x) => {
                                     ability_discount += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_ability_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
                                 EffectType::Double(x) => {
                                     double_count += x;
                                     effect.trigger();
                                     if effect.remaining_triggers > 0 {
-                                        new_ability_effects.append(effect);
+                                        new_move_step_effects.append(effect);
                                     }
                                 },
-                                _ => {}
+                                _ => {
+                                    new_move_step_effects.append(effect);
+                                }
                             }
                         };
-                        ability_effects = new_ability_effects;
+                        move_step_effects = new_move_step_effects;
                         if ability_discount > cap_type.ability_cost {
                             ability_cost = 0;
                         }
@@ -423,7 +428,7 @@ use super::{IActions};
                             new_start_of_turn_effects.append(effect);
                         },
                         Timing::MoveStep => {
-                            move_effects.append(effect);
+                            move_step_effects.append(effect);
                         },
                         Timing::EndOfTurn => {
                             end_of_turn_effects.append(effect);
@@ -444,7 +449,7 @@ use super::{IActions};
                     world.write_model(@effect);
                 }
             };
-            for effect in move_effects {
+            for effect in move_step_effects {
                 if effect.remaining_triggers > 0 {
                     new_effect_ids.append(effect.effect_id);
                     world.write_model(@effect);
