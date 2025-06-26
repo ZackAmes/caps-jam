@@ -32,6 +32,8 @@ pub mod set_zero {
         }
 
         fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game) -> (Game, Array<Effect>) {
+            // Ideally we should change this so it doesn't need to write to the world. 
+            // Which mostly means returning the updated caps instead of writing them
             let mut world = self.world(@"caps");
             let mut cap = cap;
             let mut game = game;
