@@ -24,9 +24,6 @@ pub struct Game {
     pub caps_ids: Array<u64>,
     pub turn_count: u64,
     pub over: bool,
-    pub active_start_of_turn_effects: Array<u64>,
-    pub active_move_step_effects: Array<u64>,
-    pub active_end_of_turn_effects: Array<u64>,
     pub effect_ids: Array<u64>,
     pub last_action_timestamp: u64,
 }
@@ -34,7 +31,7 @@ pub struct Game {
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     fn new(id: u64, player1: ContractAddress, player2: ContractAddress) -> Game {
-        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, active_start_of_turn_effects: ArrayTrait::new(), active_move_step_effects: ArrayTrait::new(), active_end_of_turn_effects: ArrayTrait::new(),  effect_ids: ArrayTrait::new(), last_action_timestamp: 0 }
+        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, effect_ids: ArrayTrait::new(), last_action_timestamp: 0 }
     }
 
     fn add_cap(ref self: Game, cap_id: u64) {
@@ -55,43 +52,41 @@ pub impl GameImpl of GameTrait {
         self.caps_ids = new_ids;
     }
 
-    fn remove_effect(ref self: Game, effect: Effect) {
-        let mut i = 0;
-        let mut new_effects: Array<u64> = ArrayTrait::new();
-        match effect.get_timing() {
-            Timing::StartOfTurn => {
-                while i < self.active_start_of_turn_effects.len() {
-                    if *self.active_start_of_turn_effects.at(i) != effect.effect_id {
-                        new_effects.append(*self.active_start_of_turn_effects.at(i));
-                    }
-                    i += 1;
-                };
-                self.active_start_of_turn_effects = new_effects;
-            },
-            Timing::MoveStep => {
-                while i < self.active_move_step_effects.len() {
-                    if *self.active_move_step_effects.at(i) != effect.effect_id {
-                        new_effects.append(*self.active_move_step_effects.at(i));
-                    }
-                    i += 1;
-                };
-                self.active_move_step_effects = new_effects;
-            },
-            Timing::EndOfTurn => {
-                while i < self.active_end_of_turn_effects.len() {
-                    if *self.active_end_of_turn_effects.at(i) != effect.effect_id {
-                        new_effects.append(*self.active_end_of_turn_effects.at(i));
-                    }
-                    i += 1;
-                };
-                self.active_end_of_turn_effects = new_effects;
-            },
-        };
+    fn update_effects(ref self: Game, ref world: WorldStorage, ref start_of_turn_effects: Array<Effect>, ref move_step_effects: Array<Effect>, ref end_of_turn_effects: Array<Effect>) {
         let mut i = 0;
         let mut new_ids: Array<u64> = ArrayTrait::new();
-        while i < self.effect_ids.len() {
-            if *self.effect_ids.at(i) != effect.effect_id {
-                new_ids.append(*self.effect_ids.at(i));
+        while i < start_of_turn_effects.len() {
+            let mut effect = *start_of_turn_effects.at(i);
+            if effect.remaining_triggers > 0 {
+                new_ids.append(effect.effect_id);
+                world.write_model(@effect);
+            }
+            else {
+                world.erase_model(@effect);
+            }
+            i += 1;
+        };
+        let mut i = 0;
+        while i < move_step_effects.len() {
+            let mut effect = *move_step_effects.at(i);
+            if effect.remaining_triggers > 0 {
+                new_ids.append(effect.effect_id);
+                world.write_model(@effect);
+            }
+            else {
+                world.erase_model(@effect);
+            }
+            i += 1;
+        };
+        let mut i = 0;
+        while i < end_of_turn_effects.len() {
+            let mut effect = *end_of_turn_effects.at(i);
+            if effect.remaining_triggers > 0 {
+                new_ids.append(effect.effect_id);
+                world.write_model(@effect);
+            }
+            else {
+                world.erase_model(@effect);
             }
             i += 1;
         };
@@ -122,21 +117,6 @@ pub impl GameImpl of GameTrait {
             return (true, *self.player1);
         }
         (false, starknet::contract_address_const::<0>())
-    }
-
-    fn add_new_effect(ref self: Game, effect: Effect) {
-        match effect.get_timing() {
-            Timing::StartOfTurn => {
-                self.active_start_of_turn_effects.append(effect.effect_id);
-            },
-            Timing::MoveStep => {
-                self.active_move_step_effects.append(effect.effect_id);
-            },
-            Timing::EndOfTurn => {
-                self.active_end_of_turn_effects.append(effect.effect_id);
-            },
-        }
-        self.effect_ids.append(effect.effect_id);
     }
 
 }

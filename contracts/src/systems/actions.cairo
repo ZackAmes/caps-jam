@@ -1,4 +1,6 @@
-use caps::models::{Vec2, Game, Cap, Action, CapType, Effect, EffectType};
+use caps::models::game::{Game, Action};
+use caps::models::cap::{Cap, CapType};
+use caps::models::effect::{Effect};
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
@@ -57,9 +59,6 @@ use super::{IActions};
                 caps_ids: ArrayTrait::new(),
                 turn_count: 0,
                 over: false,
-                active_start_of_turn_effects: ArrayTrait::new(),
-                active_move_step_effects: ArrayTrait::new(),
-                active_end_of_turn_effects: ArrayTrait::new(),
                 effect_ids: ArrayTrait::new(),
                 last_action_timestamp: get_block_timestamp(),
             };
@@ -76,6 +75,7 @@ use super::{IActions};
                 position: Vec2 { x: 2, y: 0 },
                 cap_type: *p1_types[0],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
             let p1_cap2 = Cap {
                 id: global.cap_counter + 2,
@@ -83,6 +83,7 @@ use super::{IActions};
                 position: Vec2 { x: 4, y: 0 },
                 cap_type: *p1_types[1],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p1_cap3 = Cap {
@@ -91,6 +92,7 @@ use super::{IActions};
                 position: Vec2 { x: 3, y: 0 },
                 cap_type: *p1_types[2],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p1_cap4 = Cap {
@@ -99,6 +101,7 @@ use super::{IActions};
                 position: Vec2 { x: 1, y: 0 },
                 cap_type: *p1_types[3],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
             let p1_cap5 = Cap {
                 id: global.cap_counter + 5,
@@ -106,6 +109,7 @@ use super::{IActions};
                 position: Vec2 { x: 5, y: 0 },
                 cap_type: *p1_types[4],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p1_cap6 = Cap {
@@ -114,6 +118,7 @@ use super::{IActions};
                 position: Vec2 { x: 3, y: 1 },
                 cap_type: *p1_types[5],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
 
@@ -123,6 +128,7 @@ use super::{IActions};
                 position: Vec2 { x: 2, y: 6 },
                 cap_type: *p2_types[0],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p2_cap2 = Cap {
@@ -131,6 +137,7 @@ use super::{IActions};
                 position: Vec2 { x: 4, y: 6 },
                 cap_type: *p2_types[1],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             
@@ -141,6 +148,7 @@ use super::{IActions};
                 position: Vec2 { x: 3, y: 6 },
                 cap_type: *p2_types[2],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p2_cap4 = Cap {
@@ -149,6 +157,7 @@ use super::{IActions};
                 position: Vec2 { x: 1, y: 6 },
                 cap_type: *p2_types[3],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p2_cap5 = Cap {
@@ -157,6 +166,7 @@ use super::{IActions};
                 position: Vec2 { x: 5, y: 6 },
                 cap_type: *p2_types[4],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             let p2_cap6 = Cap {
@@ -165,6 +175,7 @@ use super::{IActions};
                 position: Vec2 { x: 3, y: 5 },
                 cap_type: *p2_types[5],
                 dmg_taken: 0,
+                shield_amt: 0,
             };
 
             game.add_cap(p1_cap1.id);
@@ -243,27 +254,35 @@ use super::{IActions};
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type: CapType = self.get_cap_data(cap.cap_type).unwrap();
+                let mut new_effects: Array<Effect> = ArrayTrait::new();
 
 
                 match action.action_type {
                     ActionType::Move(dir) => {
                         assert!(energy >= cap_type.move_cost, "Not enough energy");
-                        let mut move_discount = 0;
-                        let mut move_bonus = 0;
-                        //Does this work??????
+                        let mut move_discount: u8 = 0;
+                        let mut move_bonus: u8 = 0;
+                        let mut new_move_effects: Array<Effect> = ArrayTrait::new();
                         for mut effect in move_effects {
                             match effect.effect_type {
                                 EffectType::MoveDiscount(x) => {
                                     move_discount += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_move_effects.append(effect);
+                                    }
                                 },
                                 EffectType::MoveBonus(x) => {
                                     move_bonus += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_move_effects.append(effect);
+                                    }
                                 },
                                 _ => {}
                             }
                         };
+                        move_effects = new_move_effects;
                         let mut move_cost = cap_type.move_cost;
                         if move_discount > cap_type.move_cost {
                             move_cost = 0;
@@ -283,22 +302,31 @@ use super::{IActions};
                     ActionType::Attack(target) => {
                         assert!(energy >= cap_type.attack_cost, "Not enough energy");
                         let mut attack_cost = cap_type.attack_cost;
-                        let mut attack_discount = 0;
-                        let mut attack_bonus = 0;
+                        let mut attack_discount: u8 = 0;
+                        let mut attack_bonus: u8 = 0;
                         
+                        let mut new_attack_effects: Array<Effect> = ArrayTrait::new();
+
                         for mut effect in attack_effects {
                             match effect.effect_type {
                                 EffectType::AttackDiscount(x) => {
                                     attack_discount += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_attack_effects.append(effect);
+                                    }
                                 },
                                 EffectType::AttackBonus(x) => {
                                     attack_bonus += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_attack_effects.append(effect);
+                                    }
                                 },
                                 _ => {}
                             }
                         };
+                        attack_effects = new_attack_effects;
                         if attack_discount > cap_type.attack_cost {
                             attack_cost = 0;
                         }
@@ -330,21 +358,29 @@ use super::{IActions};
                         assert!(valid, "Ability is not valid");
                         let mut ability_cost = cap_type.ability_cost;
                         let mut ability_discount = 0;
-                        let mut double_count = 0;
+                        let mut double_count: u8 = 0;
                         
+                        let mut new_ability_effects: Array<Effect> = ArrayTrait::new();
                         for mut effect in ability_effects {
                             match effect.effect_type {
                                 EffectType::AbilityDiscount(x) => {
                                     ability_discount += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_ability_effects.append(effect);
+                                    }
                                 },
                                 EffectType::Double(x) => {
                                     double_count += x;
                                     effect.trigger();
+                                    if effect.remaining_triggers > 0 {
+                                        new_ability_effects.append(effect);
+                                    }
                                 },
                                 _ => {}
                             }
                         };
+                        ability_effects = new_ability_effects;
                         if ability_discount > cap_type.ability_cost {
                             ability_cost = 0;
                         }
@@ -356,12 +392,19 @@ use super::{IActions};
                         energy -= ability_cost;
                         
 
-                        game = cap.use_ability(cap_type, *target, ref game, ref world);
+                        let (mut game, mut created_effects) = cap.use_ability(ref cap_type, *target, ref game, ref world);
+                        for effect in created_effects {
+                            new_effects.append(effect);
+                        };
 
                         while double_count > 0 {
                             let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
+                            game = new_game;
                             if valid {
-                                game = cap.use_ability(cap_type, *target, ref game, ref world);
+                                let (mut game, new_double_effects) = cap.use_ability(ref cap_type, *target, ref game, ref world);
+                                for effect in new_double_effects {
+                                    new_effects.append(effect);
+                                };
                                 double_count -= 1;
                                 game = new_game;
                             }
@@ -372,11 +415,25 @@ use super::{IActions};
                         
                     }
                 };
+
+                for effect in new_effects {
+                    match effect.get_timing() {
+                        Timing::StartOfTurn => {
+                            start_of_turn_effects.append(effect);
+                        },
+                        Timing::MoveStep => {
+                            move_effects.append(effect);
+                        },
+                        Timing::EndOfTurn => {
+                            end_of_turn_effects.append(effect);
+                        },
+                        _ => {}
+                    }
+                };
                 
-                i+=1;
             };
 
-            game = update_end_of_turn_effects(ref game, ref world);
+            game = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref world);
 
             game.last_action_timestamp = get_block_timestamp();
             game.turn_count = game.turn_count + 1;

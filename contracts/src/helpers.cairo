@@ -72,7 +72,6 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
 // Returns (game, extra_energy, stunned_pieces)
 pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, u8, Array<u64>) {
     let mut i = 0;
-    let mut new_ids: Array<u64> = ArrayTrait::new();
     let mut extra_energy: u8 = 0;
     let mut stunned_pieces: Array<u64> = ArrayTrait::new();
     while i < start_of_turn_effects.len() {
@@ -80,43 +79,25 @@ pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: A
         match effect.effect_type {
             EffectType::ExtraEnergy(x) => {
                 extra_energy += x;
-                let new_effect = effect.trigger();
-                if new_effect.is_some() {
-                    new_ids.append(new_effect.unwrap().effect_id);
-                    world.write_model(@new_effect.unwrap());
-                }
+                effect.trigger();
             },
             EffectType::Stun(x) => {
                 stunned_pieces.append(x.into());
-                let new_effect = effect.trigger();
-                if new_effect.is_some() {
-                    new_ids.append(new_effect.unwrap().effect_id);
-                    world.write_model(@new_effect.unwrap());
-                }
+                effect.trigger();
             },
             _ => {}
         }
         i += 1;
     };
-    game.active_start_of_turn_effects = new_ids;
     (game.clone(), extra_energy, stunned_pieces)
 }
 
-pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
+pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> Game {
     let mut i = 0;
     let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.active_end_of_turn_effects.len().into() {
-        let effect_id = i;
-        let mut effect: Effect = world.read_model((game.id, effect_id).into());
-        if effect.remaining_triggers == 1 {
-            world.erase_model(@effect);
-            continue;
-        }
-        else {
-            effect.remaining_triggers -= 1;
-            new_ids.append(effect_id);
-            world.write_model(@effect);
-        }
+    while i < end_of_turn_effects.len() {
+        let mut effect = *end_of_turn_effects.at(i);
+        effect.trigger();
         match effect.effect_type {
             EffectType::DOT(dmg) => {
                 match effect.target {
@@ -141,75 +122,31 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
             },
             _ => {}
         };
-        match effect.get_timing() {
-            Timing::EndOfTurn => {
-                
-                if effect.remaining_triggers == 1 {
-                    world.erase_model(@effect);
-                }
-                else {
-                    effect.remaining_triggers -= 1;
-                    new_ids.append(effect_id);
-                    world.write_model(@effect);
-                }
-            }, 
-            _ => {}
-        }
         i += 1;
     };
-    game.active_end_of_turn_effects = new_ids;
     game.clone()
 }
 
 pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
     let mut target: Cap = world.read_model(target_id);
-    let cap_type = get_cap_type(target.cap_type);
+    let cap_type = get_cap_type(target.cap_type).unwrap();
 
-    let remaining_health = cap_type.unwrap().base_health - target.dmg_taken;
+    let remaining_health = cap_type.base_health - target.dmg_taken;
 
-
-    let mut i = 0;
-    let mut shield_amount = 0;
-    while i < game.active_move_step_effects.len() {
-        let mut effect: Effect = world.read_model((game.id, *game.active_move_step_effects.at(i)).into());
-        match effect.effect_type {
-            EffectType::Shield(val) => {
-                match effect.target {
-                    EffectTarget::Cap(effect_target_id) => {
-                        if effect_target_id == target_id {
-                            let mut new_val = 0;
-                            shield_amount = val.into();
-                            if val.into() > amount {
-                                new_val = val.into() - amount;
-                                effect.effect_type = EffectType::Shield(new_val.try_into().unwrap());
-                                
-                                world.write_model(@effect);
-                            }
-                            else {
-                                game.remove_effect(effect);
-                                world.erase_model(@effect);
-                            }
-                        }
-                        
-                    },
-                    _ => {}
-                }
-            },
-            _ => {}
-        }
-        i += 1;
-    };
-
-    if shield_amount > amount {
-
+    if target.shield_amt.into() > amount {
+        target.shield_amt -= amount.try_into().unwrap();
+        world.write_model(@target);
     }
-    else if amount > shield_amount.into() + remaining_health.into() {
+    else if amount > target.shield_amt.into() + remaining_health.into() {
+        target.dmg_taken = cap_type.base_health;
+        target.shield_amt = 0;
         game.remove_cap(target_id.try_into().unwrap());
         world.erase_model(@target);
 
     }
     else {
-        target.dmg_taken += (amount - shield_amount.into()).try_into().unwrap();
+        target.dmg_taken += (amount - target.shield_amt.try_into().unwrap()).try_into().unwrap();
+        target.shield_amt = 0;
         world.write_model(@target);
     }
 
@@ -238,8 +175,13 @@ pub fn get_move_step_effects(ref game: Game, ref world: WorldStorage) -> (Array<
     let mut ability_effects: Array<Effect> = ArrayTrait::new();
 
     let mut index = 0;
-    while index < game.active_move_step_effects.len() {
+    while index < game.effect_ids.len() {
         let effect: Effect = world.read_model((game.id, index).into());
+
+        if effect.get_timing() != Timing::MoveStep {
+            index += 1;
+            continue;
+        }
 
         match effect.effect_type {
             EffectType::Double => {

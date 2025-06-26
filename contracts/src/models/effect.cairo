@@ -25,8 +25,8 @@ pub enum EffectType {
     AttackDiscount: u8,
     AbilityDiscount: u8,
     ExtraEnergy: u8,
-    Stun,
-    Double,
+    Stun: u8,
+    Double: u8,
 }
 
 #[derive(Copy, Drop, Serde, PartialEq, Introspect)]
