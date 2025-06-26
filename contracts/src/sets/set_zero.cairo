@@ -417,23 +417,23 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
     let mut new_effects: Array<Effect> = ArrayTrait::new();
     match cap_type.id {
         0 => {
-            //none
+            // "None"
         },
         1 => {
-            //none
+            // "None"
         },
         2 => {
-            //none
+            // "None"
         },
         3 => {
-            //none
+            // "None"
             },
         4 => {
-            //Deal 5 damage to the target
+            // "Deal 4 damage to an enemy"
             game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 4);
         },
         5 => {
-            //Heal 5 damage
+            // "Heal 5 damage from an ally"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
             if cap_at_target.dmg_taken < 5 {
@@ -443,12 +443,14 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             world.write_model(@cap_at_target);
         },
         6 => {
+            // "Shield an ally for 5"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
             cap_at_target.shield_amt += 5;
             world.write_model(@cap_at_target);
         },
         7 => {
+            // "Target unit's next ability use costs 1 less energy"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let effect = Effect {
                 game_id: game.id,
@@ -461,6 +463,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(effect.effect_id);
         },
         8 => {
+            // "Next attack deals 1 more damage for each damage this unit has taken"
             let effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -472,13 +475,13 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(effect.effect_id);
         },
         9 => {
+            // "Fully heal this unit, then damage an enemy unit equal to the amount healed"
             game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, cap.dmg_taken.into());
             cap.dmg_taken = 0;
             world.write_model(@cap);
         },
         10 => {
-            
-            
+            // "Gain free attacks equal to the strength of this cards shield"
             let cap_type = get_cap_type(cap.cap_type);
             let new_effect = Effect {
                 game_id: game.id,
@@ -492,8 +495,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                                     
         },
         11 => {
-            
-            //none
+            // "Next turn gain 2 energy. This card becomes stunned next turn and recieves a 2 health shield"
             let mut energy_effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -507,7 +509,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             world.write_model(@cap);
         },
         12 => {
-            //none
+            // "Deal 1 damage to an ally to make its next attack deal 3 more damage"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
             let target_cap_type = get_cap_type(cap_at_target.cap_type);
@@ -531,6 +533,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             }
         },
         13 => {
+            // "Stun a target enemy unit"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let stun_effect = Effect {
                 game_id: game.id,
@@ -543,6 +546,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(stun_effect.effect_id);
         },
         14 => {
+            // "Target unit gains move range equal to its shield health"
             let mut i = 0;
             while i < game.effect_ids.len() {
                 let effect: Effect = world.read_model((game.id, i).into());
@@ -571,6 +575,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             };
         },
         15 => {
+            // "Repeat the effect of the ally's next ability (if possible)"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut effect = Effect {
                 game_id: game.id,
@@ -583,7 +588,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(effect.effect_id);
         },
         16 => {
-            //none
+            // "Inflict target with burn that deals 3 damage each turn for 3 turns"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut effect = Effect {
                 game_id: game.id,
@@ -596,6 +601,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(effect.effect_id);
         },
         17 => {
+            // "Target unit heals 2 health per turn at the end of the next 3 turns"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut effect = Effect {
                 game_id: game.id,
@@ -608,11 +614,12 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game.effect_ids.append(effect.effect_id);
         },
         18 => {
+            // "Double the strength of this unit's shield"
             cap.shield_amt *= 2;
             world.write_model(@cap);
         },
         19 => {
-             //none
+            // "Next attack deals 1 more damage for each extra energy you started this turn with"
             let mut i = 0;
             while i < game.effect_ids.len() {
                 let effect: Effect = world.read_model((game.id, i).into());
@@ -642,6 +649,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             };
         },
         20 => {
+            // "Deal 4 damage to self and 7 damage to an enemy"
             let self_cap_type = get_cap_type(cap.cap_type).unwrap();
             let clone = self_cap_type.clone();
             let self_health = if clone.base_health > cap.dmg_taken {
@@ -657,10 +665,11 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             game = handle_damage(ref game, cap.id, ref world, 4);
         },
         21 => {
+            // "Deal 8 damage to an enemy, but stun this unit next turn"
             game = handle_damage(ref game, locations.get((target.x * 7 + target.y).into()), ref world, 9);
         },
         22 => {
-            //none
+            // "Gain shield equal to target unit's shield"
             let cap_at_target_id = locations.get((target.x * 7 + target.y).into());
             let mut cap_at_target: Cap = world.read_model(cap_at_target_id);
             let mut ally_shield = cap_at_target.shield_amt.try_into().unwrap();
@@ -669,6 +678,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             world.write_model(@cap);
         },
         23 => {
+            // "Heal all allies for 2 health, plus 1 health per extra energy you started this turn with"
             let mut i = 0;
             let mut extra_energy = 0;
             while i < game.effect_ids.len() {
