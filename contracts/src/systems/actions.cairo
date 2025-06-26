@@ -262,7 +262,6 @@ use super::{IActions};
 
                 match action.action_type {
                     ActionType::Move(dir) => {
-                        assert!(energy >= cap_type.move_cost, "Not enough energy");
                         let mut move_discount: u8 = 0;
                         let mut move_bonus: u8 = 0;
                         for mut effect in move_effects {
@@ -304,7 +303,6 @@ use super::{IActions};
 
                     },
                     ActionType::Attack(target) => {
-                        assert!(energy >= cap_type.attack_cost, "Not enough energy");
                         let mut attack_cost = cap_type.attack_cost;
                         let mut attack_discount: u8 = 0;
                         let mut attack_bonus: u8 = 0;
