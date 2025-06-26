@@ -8,12 +8,22 @@ use dojo::model::{ModelStorage};
 
 #[dojo::contract]
 pub mod set_zero {
-    use caps::models::set::{ISetInterface};
+    use caps::models::set::{ISetInterface, Set};
     use super::{get_cap_type, use_ability};
     use caps::models::cap::{Cap, CapType};
     use caps::models::game::{Game, Vec2};
     use caps::models::effect::Effect;
+    use dojo::world::{WorldStorage, WorldStorageTrait};
+    use dojo::model::{ModelStorage};
 
+    fn dojo_init(ref self: ContractState) {
+        let mut world: WorldStorage = self.world(@"caps");
+        let set = Set {
+            id: 0,
+            address: world.dns_address(@"set_zero").unwrap(),
+        };
+        world.write_model(@set);
+    }
 
     #[abi(embed_v0)]
     impl SetZeroImpl of ISetInterface<ContractState> {
