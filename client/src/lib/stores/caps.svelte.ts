@@ -312,7 +312,7 @@ export const caps = {
             console.log(game_state)
             for (let cap of game_state?.caps || []) {
                 if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
-                    let cap_type = (await caps_contract.get_cap_data(cap.cap_type)).unwrap()
+                    let cap_type = (await caps_contract.get_cap_data(0, cap.cap_type)).unwrap()
                     cap_types.push(cap_type)
                 }
             }

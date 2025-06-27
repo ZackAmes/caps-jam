@@ -25,17 +25,17 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
-	const build_actions_getCapData_calldata = (capType: BigNumberish): DojoCall => {
+	const build_actions_getCapData_calldata = (setId: BigNumberish, capType: BigNumberish): DojoCall => {
 		return {
 			contractName: "actions",
 			entrypoint: "get_cap_data",
-			calldata: [capType],
+			calldata: [setId, capType],
 		};
 	};
 
-	const actions_getCapData = async (capType: BigNumberish) => {
+	const actions_getCapData = async (setId: BigNumberish, capType: BigNumberish) => {
 		try {
-			return await provider.call("dojo_starter", build_actions_getCapData_calldata(capType));
+			return await provider.call("dojo_starter", build_actions_getCapData_calldata(setId, capType));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -160,34 +160,17 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
-	const build_planetelo_getCustomGames_calldata = (): DojoCall => {
+	const build_planetelo_getPlayerCustomGames_calldata = (address: string): DojoCall => {
 		return {
 			contractName: "planetelo",
-			entrypoint: "get_custom_games",
-			calldata: [],
+			entrypoint: "get_player_custom_games",
+			calldata: [address],
 		};
 	};
 
-	const planetelo_getCustomGames = async () => {
+	const planetelo_getPlayerCustomGames = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getCustomGames_calldata());
-		} catch (error) {
-			console.error(error);
-			throw error;
-		}
-	};
-
-	const build_planetelo_getInvites_calldata = (): DojoCall => {
-		return {
-			contractName: "planetelo",
-			entrypoint: "get_invites",
-			calldata: [],
-		};
-	};
-
-	const planetelo_getInvites = async () => {
-		try {
-			return await provider.call("dojo_starter", build_planetelo_getInvites_calldata());
+			return await provider.call("dojo_starter", build_planetelo_getPlayerCustomGames_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -211,6 +194,23 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
+	const build_planetelo_getPlayerInvites_calldata = (address: string): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "get_player_invites",
+			calldata: [address],
+		};
+	};
+
+	const planetelo_getPlayerInvites = async (address: string) => {
+		try {
+			return await provider.call("dojo_starter", build_planetelo_getPlayerInvites_calldata(address));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
 	const build_planetelo_getPlayerStats_calldata = (address: string): DojoCall => {
 		return {
 			contractName: "planetelo",
@@ -222,6 +222,23 @@ export function setupWorld(provider: DojoProvider) {
 	const planetelo_getPlayerStats = async (address: string) => {
 		try {
 			return await provider.call("dojo_starter", build_planetelo_getPlayerStats_calldata(address));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
+	const build_planetelo_getPlayerTeam_calldata = (address: string): DojoCall => {
+		return {
+			contractName: "planetelo",
+			entrypoint: "get_player_team",
+			calldata: [address],
+		};
+	};
+
+	const planetelo_getPlayerTeam = async (address: string) => {
+		try {
+			return await provider.call("dojo_starter", build_planetelo_getPlayerTeam_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -371,6 +388,44 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
+	const build_set_zero_activateAbility_calldata = (cap: models.Cap, target: models.Vec2, game: models.Game): DojoCall => {
+		return {
+			contractName: "set_zero",
+			entrypoint: "activate_ability",
+			calldata: [cap, target, game],
+		};
+	};
+
+	const set_zero_activateAbility = async (snAccount: Account | AccountInterface, cap: models.Cap, target: models.Vec2, game: models.Game) => {
+		try {
+			return await provider.execute(
+				snAccount,
+				build_set_zero_activateAbility_calldata(cap, target, game),
+				"dojo_starter",
+			);
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
+	const build_set_zero_getCapType_calldata = (id: BigNumberish): DojoCall => {
+		return {
+			contractName: "set_zero",
+			entrypoint: "get_cap_type",
+			calldata: [id],
+		};
+	};
+
+	const set_zero_getCapType = async (id: BigNumberish) => {
+		try {
+			return await provider.call("dojo_starter", build_set_zero_getCapType_calldata(id));
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
+	};
+
 
 
 	return {
@@ -393,14 +448,16 @@ export function setupWorld(provider: DojoProvider) {
 			buildDeclineInviteCalldata: build_planetelo_declineInvite_calldata,
 			getAgentGames: planetelo_getAgentGames,
 			buildGetAgentGamesCalldata: build_planetelo_getAgentGames_calldata,
-			getCustomGames: planetelo_getCustomGames,
-			buildGetCustomGamesCalldata: build_planetelo_getCustomGames_calldata,
-			getInvites: planetelo_getInvites,
-			buildGetInvitesCalldata: build_planetelo_getInvites_calldata,
+			getPlayerCustomGames: planetelo_getPlayerCustomGames,
+			buildGetPlayerCustomGamesCalldata: build_planetelo_getPlayerCustomGames_calldata,
 			getPlayerGameId: planetelo_getPlayerGameId,
 			buildGetPlayerGameIdCalldata: build_planetelo_getPlayerGameId_calldata,
+			getPlayerInvites: planetelo_getPlayerInvites,
+			buildGetPlayerInvitesCalldata: build_planetelo_getPlayerInvites_calldata,
 			getPlayerStats: planetelo_getPlayerStats,
 			buildGetPlayerStatsCalldata: build_planetelo_getPlayerStats_calldata,
+			getPlayerTeam: planetelo_getPlayerTeam,
+			buildGetPlayerTeamCalldata: build_planetelo_getPlayerTeam_calldata,
 			getResult: planetelo_getResult,
 			buildGetResultCalldata: build_planetelo_getResult_calldata,
 			invite: planetelo_invite,
@@ -415,6 +472,12 @@ export function setupWorld(provider: DojoProvider) {
 			buildSettleCustomGameCalldata: build_planetelo_settleCustomGame_calldata,
 			settleMatch: planetelo_settleMatch,
 			buildSettleMatchCalldata: build_planetelo_settleMatch_calldata,
+		},
+		set_zero: {
+			activateAbility: set_zero_activateAbility,
+			buildActivateAbilityCalldata: build_set_zero_activateAbility_calldata,
+			getCapType: set_zero_getCapType,
+			buildGetCapTypeCalldata: build_set_zero_getCapType_calldata,
 		},
 	};
 }
