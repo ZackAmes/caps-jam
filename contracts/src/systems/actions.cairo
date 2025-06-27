@@ -299,7 +299,7 @@ use super::{IActions};
                         else {
                             move_cost -= move_discount;
                         }
-                        assert!(move_cost <= energy, "Not enough energy");
+                        assert!(move_cost <= energy, "Not enough energy, move cost: {}, energy: {}", move_cost, energy);
                         energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
@@ -443,6 +443,7 @@ use super::{IActions};
                         _ => {}
                     }
                 };
+                i+=1;
                 
             };
 
