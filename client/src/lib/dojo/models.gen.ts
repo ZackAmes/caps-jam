@@ -1,17 +1,19 @@
 import type { SchemaType as ISchemaType } from "@dojoengine/sdk";
 
-import { CairoCustomEnum, BigNumberish } from 'starknet';
+import { CairoCustomEnum, type BigNumberish } from 'starknet';
 
-// Type definition for `caps::models::Cap` struct
+// Type definition for `caps::models::cap::Cap` struct
 export interface Cap {
 	id: BigNumberish;
 	owner: string;
 	position: Vec2;
+	set_id: BigNumberish;
 	cap_type: BigNumberish;
 	dmg_taken: BigNumberish;
+	shield_amt: BigNumberish;
 }
 
-// Type definition for `caps::models::CapType` struct
+// Type definition for `caps::models::cap::CapType` struct
 export interface CapType {
 	id: BigNumberish;
 	name: string;
@@ -28,7 +30,7 @@ export interface CapType {
 	ability_cost: BigNumberish;
 }
 
-// Type definition for `caps::models::CapTypeValue` struct
+// Type definition for `caps::models::cap::CapTypeValue` struct
 export interface CapTypeValue {
 	name: string;
 	description: string;
@@ -44,15 +46,17 @@ export interface CapTypeValue {
 	ability_cost: BigNumberish;
 }
 
-// Type definition for `caps::models::CapValue` struct
+// Type definition for `caps::models::cap::CapValue` struct
 export interface CapValue {
 	owner: string;
 	position: Vec2;
+	set_id: BigNumberish;
 	cap_type: BigNumberish;
 	dmg_taken: BigNumberish;
+	shield_amt: BigNumberish;
 }
 
-// Type definition for `caps::models::Effect` struct
+// Type definition for `caps::models::effect::Effect` struct
 export interface Effect {
 	game_id: BigNumberish;
 	effect_id: BigNumberish;
@@ -61,14 +65,14 @@ export interface Effect {
 	remaining_triggers: BigNumberish;
 }
 
-// Type definition for `caps::models::EffectValue` struct
+// Type definition for `caps::models::effect::EffectValue` struct
 export interface EffectValue {
 	effect_type: EffectTypeEnum;
 	target: EffectTargetEnum;
 	remaining_triggers: BigNumberish;
 }
 
-// Type definition for `caps::models::Game` struct
+// Type definition for `caps::models::game::Game` struct
 export interface Game {
 	id: BigNumberish;
 	player1: string;
@@ -76,55 +80,49 @@ export interface Game {
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
 	over: boolean;
-	active_start_of_turn_effects: Array<BigNumberish>;
-	active_move_step_effects: Array<BigNumberish>;
-	active_end_of_turn_effects: Array<BigNumberish>;
-	effect_counter: BigNumberish;
+	effect_ids: Array<BigNumberish>;
+	last_action_timestamp: BigNumberish;
 }
 
-// Type definition for `caps::models::GameValue` struct
+// Type definition for `caps::models::game::GameValue` struct
 export interface GameValue {
 	player1: string;
 	player2: string;
 	caps_ids: Array<BigNumberish>;
 	turn_count: BigNumberish;
 	over: boolean;
-	active_start_of_turn_effects: Array<BigNumberish>;
-	active_move_step_effects: Array<BigNumberish>;
-	active_end_of_turn_effects: Array<BigNumberish>;
-	effect_counter: BigNumberish;
+	effect_ids: Array<BigNumberish>;
+	last_action_timestamp: BigNumberish;
 }
 
-// Type definition for `caps::models::Global` struct
+// Type definition for `caps::models::game::Global` struct
 export interface Global {
 	key: BigNumberish;
 	games_counter: BigNumberish;
 	cap_counter: BigNumberish;
 }
 
-// Type definition for `caps::models::GlobalValue` struct
+// Type definition for `caps::models::game::GlobalValue` struct
 export interface GlobalValue {
 	games_counter: BigNumberish;
 	cap_counter: BigNumberish;
 }
 
-// Type definition for `caps::models::Square` struct
-export interface Square {
-	game_id: BigNumberish;
-	x: BigNumberish;
-	y: BigNumberish;
-	ids: Array<BigNumberish>;
-}
-
-// Type definition for `caps::models::SquareValue` struct
-export interface SquareValue {
-	ids: Array<BigNumberish>;
-}
-
-// Type definition for `caps::models::Vec2` struct
+// Type definition for `caps::models::game::Vec2` struct
 export interface Vec2 {
 	x: BigNumberish;
 	y: BigNumberish;
+}
+
+// Type definition for `caps::models::set::Set` struct
+export interface Set {
+	id: BigNumberish;
+	address: string;
+}
+
+// Type definition for `caps::models::set::SetValue` struct
+export interface SetValue {
+	address: string;
 }
 
 // Type definition for `caps::planetelo::AgentGames` struct
@@ -193,7 +191,7 @@ export interface PlayerValue {
 	custom_game_ids: Array<BigNumberish>;
 }
 
-// Type definition for `caps::models::Action` struct
+// Type definition for `caps::models::game::Action` struct
 export interface Action {
 	cap_id: BigNumberish;
 	action_type: ActionTypeEnum;
@@ -212,7 +210,19 @@ export interface MovedValue {
 	turn: Array<Action>;
 }
 
-// Type definition for `caps::models::EffectTarget` enum
+// Type definition for `caps::models::cap::TargetType` enum
+export const targetType = [
+	'None',
+	'SelfCap',
+	'TeamCap',
+	'OpponentCap',
+	'AnyCap',
+	'AnySquare',
+] as const;
+export type TargetType = { [key in typeof targetType[number]]: string };
+export type TargetTypeEnum = CairoCustomEnum;
+
+// Type definition for `caps::models::effect::EffectTarget` enum
 export const effectTarget = [
 	'Cap',
 	'Square',
@@ -223,7 +233,7 @@ export type EffectTarget = {
 };
 export type EffectTargetEnum = CairoCustomEnum;
 
-// Type definition for `caps::models::EffectType` enum
+// Type definition for `caps::models::effect::EffectType` enum
 export const effectType = [
 	'DamageBuff',
 	'Shield',
@@ -242,19 +252,7 @@ export const effectType = [
 export type EffectType = { [key in typeof effectType[number]]: string };
 export type EffectTypeEnum = CairoCustomEnum;
 
-// Type definition for `caps::models::TargetType` enum
-export const targetType = [
-	'None',
-	'SelfCap',
-	'TeamCap',
-	'OpponentCap',
-	'AnyCap',
-	'AnySquare',
-] as const;
-export type TargetType = { [key in typeof targetType[number]]: string };
-export type TargetTypeEnum = CairoCustomEnum;
-
-// Type definition for `caps::models::ActionType` enum
+// Type definition for `caps::models::game::ActionType` enum
 export const actionType = [
 	'Move',
 	'Attack',
@@ -279,9 +277,9 @@ export interface SchemaType extends ISchemaType {
 		GameValue: GameValue,
 		Global: Global,
 		GlobalValue: GlobalValue,
-		Square: Square,
-		SquareValue: SquareValue,
 		Vec2: Vec2,
+		Set: Set,
+		SetValue: SetValue,
 		AgentGames: AgentGames,
 		AgentGamesValue: AgentGamesValue,
 		CustomGames: CustomGames,
@@ -301,8 +299,10 @@ export const schema: SchemaType = {
 			id: 0,
 			owner: "",
 		position: { x: 0, y: 0, },
+			set_id: 0,
 			cap_type: 0,
 			dmg_taken: 0,
+			shield_amt: 0,
 		},
 		CapType: {
 			id: 0,
@@ -348,8 +348,10 @@ export const schema: SchemaType = {
 		CapValue: {
 			owner: "",
 		position: { x: 0, y: 0, },
+			set_id: 0,
 			cap_type: 0,
 			dmg_taken: 0,
+			shield_amt: 0,
 		},
 		Effect: {
 			game_id: 0,
@@ -400,10 +402,8 @@ export const schema: SchemaType = {
 			caps_ids: [0],
 			turn_count: 0,
 			over: false,
-			active_start_of_turn_effects: [0],
-			active_move_step_effects: [0],
-			active_end_of_turn_effects: [0],
-			effect_counter: 0,
+			effect_ids: [0],
+			last_action_timestamp: 0,
 		},
 		GameValue: {
 			player1: "",
@@ -411,10 +411,8 @@ export const schema: SchemaType = {
 			caps_ids: [0],
 			turn_count: 0,
 			over: false,
-			active_start_of_turn_effects: [0],
-			active_move_step_effects: [0],
-			active_end_of_turn_effects: [0],
-			effect_counter: 0,
+			effect_ids: [0],
+			last_action_timestamp: 0,
 		},
 		Global: {
 			key: 0,
@@ -425,18 +423,16 @@ export const schema: SchemaType = {
 			games_counter: 0,
 			cap_counter: 0,
 		},
-		Square: {
-			game_id: 0,
-			x: 0,
-			y: 0,
-			ids: [0],
-		},
-		SquareValue: {
-			ids: [0],
-		},
 		Vec2: {
 			x: 0,
 			y: 0,
+		},
+		Set: {
+			id: 0,
+			address: "",
+		},
+		SetValue: {
+			address: "",
 		},
 		AgentGames: {
 			id: 0,
@@ -517,6 +513,7 @@ export enum ModelsMapping {
 	CapType = 'caps-CapType',
 	CapTypeValue = 'caps-CapTypeValue',
 	CapValue = 'caps-CapValue',
+	TargetType = 'caps-TargetType',
 	Effect = 'caps-Effect',
 	EffectTarget = 'caps-EffectTarget',
 	EffectType = 'caps-EffectType',
@@ -525,10 +522,9 @@ export enum ModelsMapping {
 	GameValue = 'caps-GameValue',
 	Global = 'caps-Global',
 	GlobalValue = 'caps-GlobalValue',
-	Square = 'caps-Square',
-	SquareValue = 'caps-SquareValue',
-	TargetType = 'caps-TargetType',
 	Vec2 = 'caps-Vec2',
+	Set = 'caps-Set',
+	SetValue = 'caps-SetValue',
 	AgentGames = 'caps-AgentGames',
 	AgentGamesValue = 'caps-AgentGamesValue',
 	CustomGames = 'caps-CustomGames',
