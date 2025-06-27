@@ -439,7 +439,9 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             if cap_at_target.dmg_taken < 5 {
                 cap_at_target.dmg_taken = 0;
             }
-            cap_at_target.dmg_taken -= 5;
+            else {
+                cap_at_target.dmg_taken -= 5;
+            }
             world.write_model(@cap_at_target);
         },
         6 => {
@@ -457,7 +459,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                 effect_id: game.effect_ids.len().into(),
                 effect_type: EffectType::AbilityDiscount(1),
                 target: EffectTarget::Cap(cap_at_target_id),
-                remaining_triggers: 2,
+                remaining_triggers: 1,
             };
             new_effects.append(effect);
             game.effect_ids.append(effect.effect_id);
@@ -469,7 +471,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                 effect_id: game.effect_ids.len().into(),
                 effect_type: EffectType::AttackBonus(cap.dmg_taken.try_into().unwrap()),
                 target: EffectTarget::Cap(cap.id),
-                remaining_triggers: 2,
+                remaining_triggers: 1,
             };
             new_effects.append(effect);
             game.effect_ids.append(effect.effect_id);
@@ -525,7 +527,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                     effect_id: game.effect_ids.len().into(),
                     effect_type: EffectType::DamageBuff(3),
                     target: EffectTarget::Cap(cap_at_target_id),
-                    remaining_triggers: 2,
+                    remaining_triggers: 1,
                 };
                 new_effects.append(effect);
                 game.effect_ids.append(effect.effect_id);
@@ -595,7 +597,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                 effect_id: game.effect_ids.len().into(),
                 effect_type: EffectType::DOT(1),
                 target: EffectTarget::Cap(cap_at_target_id),
-                remaining_triggers: 4,
+                remaining_triggers: 3,
             };  
             new_effects.append(effect);
             game.effect_ids.append(effect.effect_id);
@@ -608,7 +610,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                 effect_id: game.effect_ids.len().into(),
                 effect_type: EffectType::Heal(2),
                 target: EffectTarget::Cap(cap_at_target_id),
-                remaining_triggers: 4,
+                remaining_triggers: 3,
             };
             new_effects.append(effect);
             game.effect_ids.append(effect.effect_id);
@@ -633,7 +635,7 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                                         effect_id: game.effect_ids.len().into(),
                                         effect_type: EffectType::AttackBonus(x.try_into().unwrap()),
                                         target: effect.target,
-                                        remaining_triggers: 2,
+                                        remaining_triggers: 1,
                                     };
                                     new_effects.append(new_effect);
                                     game.effect_ids.append(new_effect.effect_id);

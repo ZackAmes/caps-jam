@@ -120,7 +120,9 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
                         if heal.into() > cap.dmg_taken {
                             cap.dmg_taken = 0;
                         }
-                        cap.dmg_taken -= heal.into();
+                        else {
+                            cap.dmg_taken -= heal.into();
+                        }
                         world.write_model(@cap);
                     },
                     _ => {}
