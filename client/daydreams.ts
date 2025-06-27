@@ -40,10 +40,10 @@ let caps_actions_contract = new Contract(
 ).typedv2(caps_manifest.contracts[0].abi as Abi)
 
 let caps_planetelo_contract = new Contract(
-    caps_manifest.contracts[1].abi,
-    caps_manifest.contracts[1].address,
+    caps_manifest.contracts[2].abi,
+    caps_manifest.contracts[2].address,
     rpc
-).typedv2(caps_manifest.contracts[1].abi as Abi)
+).typedv2(caps_manifest.contracts[2].abi as Abi)
 
 let planetelo_contract = new Contract(
     planetelo_manifest.contracts[0].abi,

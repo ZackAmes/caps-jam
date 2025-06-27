@@ -16,10 +16,10 @@ let caps_contract = new Contract(
 ).typedv2(manifest.contracts[0].abi as Abi)
 
 let caps_planetelo_contract = new Contract(
-    manifest.contracts[1].abi,
-    manifest.contracts[1].address,
+    manifest.contracts[2].abi,
+    manifest.contracts[2].address,
     rpc
-).typedv2(manifest.contracts[1].abi as Abi)
+).typedv2(manifest.contracts[2].abi as Abi)
 
 let game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effect>}>()
 
