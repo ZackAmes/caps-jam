@@ -26,15 +26,15 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     pieces
 }
 
-pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<u64> {
-    let mut locations: Felt252Dict<u64> = Default::default();
+pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<Nullable<Cap>> {
+    let mut locations: Felt252Dict<Nullable<Cap>> = Default::default();
 
     let mut i = 0;
 
     while i < game.caps_ids.len() {
         let cap: Cap = world.read_model(*game.caps_ids[i]);
         let index = cap.position.x * 7 + cap.position.y;
-        locations.insert(index.into(), cap.id);
+        locations.insert(index.into(), NullableTrait::new(cap));
         i += 1;
     };
 
@@ -135,30 +135,26 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
     (game.clone(), new_effects)
 }
 
-pub fn handle_damage(ref game: Game, target_id: u64, ref world: WorldStorage, amount: u64) -> Game {
-    let mut target: Cap = world.read_model(target_id);
+pub fn handle_damage(ref game: Game, ref target: Cap, amount: u64) -> (Game, Cap) {
     let cap_type = get_cap_type(target.cap_type).unwrap();
 
     let remaining_health = cap_type.base_health - target.dmg_taken;
 
     if target.shield_amt.into() > amount {
         target.shield_amt -= amount.try_into().unwrap();
-        world.write_model(@target);
     }
     else if amount > target.shield_amt.into() + remaining_health.into() {
         target.dmg_taken = cap_type.base_health;
         target.shield_amt = 0;
-        game.remove_cap(target_id.try_into().unwrap());
-        world.erase_model(@target);
+        game.remove_cap(target.id.try_into().unwrap());
 
     }
     else {
         target.dmg_taken += (amount - target.shield_amt.try_into().unwrap()).try_into().unwrap();
         target.shield_amt = 0;
-        world.write_model(@target);
     }
 
-    return game.clone();
+    return (game.clone(), target);
 
 }
 

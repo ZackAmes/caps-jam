@@ -302,8 +302,8 @@ use super::{IActions};
                         assert!(move_cost <= energy, "Not enough energy, move cost: {}, energy: {}", move_cost, energy);
                         energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
-                        let piece_at_location_id = locations.get(new_location_index.into());
-                        assert!(piece_at_location_id == 0, "There is a piece at the new location");
+                        let piece_at_location = locations.get(new_location_index.into());
+                        assert!(piece_at_location.id == 0, "There is a piece at the new location");
                         cap.move(cap_type, *dir.x, *dir.y, move_bonus);
                         world.write_model(@cap);
 
@@ -348,14 +348,15 @@ use super::{IActions};
                         let mut attack_dmg = cap_type.attack_dmg;
                         attack_dmg += attack_bonus.into();
                         
-                        let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
-                        let mut piece_at_location: Cap = world.read_model(piece_at_location_id);
-                        assert!(piece_at_location_id != 0, "There is no piece at the target location");
+                        let mut piece_at_location = locations.get((*target.x * 7 + *target.y).into()).deref();
+                        assert!(piece_at_location.id != 0, "There is no piece at the target location");
                         assert!(piece_at_location.owner != get_caller_address(), "You cannot attack your own piece");
                         if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        game = handle_damage(ref game, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
+                        let (new_game, new_piece) = handle_damage(ref game, ref piece_at_location, attack_dmg.try_into().unwrap());
+                        game = new_game;
+                        locations.insert((*target.x * 7 + *target.y).into(), NullableTrait::new(new_piece));
 
                         
                     },
