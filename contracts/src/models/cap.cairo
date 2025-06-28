@@ -6,6 +6,7 @@ use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, S
 use dojo::world::WorldStorage;
 
 use dojo::model::{ModelStorage};
+use core::dict::Felt252Dict;
 use starknet::ContractAddress;
 
 #[derive(Copy, Drop, Serde, Debug)]
@@ -159,10 +160,10 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set) -> (Game, Array<Effect>) {
+    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, locations: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
-        dispatcher.activate_ability(self, target, game_clone)
+        dispatcher.activate_ability(self, target, game_clone, locations)
     }
 
 }
@@ -208,7 +209,7 @@ pub enum TargetType {
 
 #[generate_trait]
 pub impl TargetTypeImpl of TargetTypeTrait {
-    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, world: @WorldStorage) -> (bool, Game) {
+    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, locations: Felt252Dict<Nullable<Cap>>) -> (bool, Game) {
         match *self {
             TargetType::None => (false, game.clone()),
             TargetType::SelfCap => {
@@ -218,10 +219,8 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location = locations.get((target.x * 7 + target.y).into()).deref();
+                assert!(at_location.id != 0, "No cap at location");
                 //Must be player
                 assert!(at_location.owner == *cap.owner, "Cap is not owned by player");
                 if in_range && at_location.owner == *cap.owner {
@@ -233,10 +232,8 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location = locations.get((target.x * 7 + target.y).into()).deref();
+                assert!(at_location.id != 0, "No cap at location");
                 assert!(*cap.owner != starknet::contract_address_const::<0x0>(), "Cap owner 0?");
                 assert!(at_location.owner != *cap.owner, "Cap is owned by player");
                 //Must be opponent
@@ -249,9 +246,8 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                if at_location_index != 0 && in_range {
+                let at_location = locations.get((target.x * 7 + target.y).into()).deref();
+                if at_location.id != 0 && in_range {
                     return (true, game.clone());
                 }
                 (false, game.clone())

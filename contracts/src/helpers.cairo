@@ -69,8 +69,34 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
     (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
+pub fn get_active_effects_from_array(effects: @Array<Effect>) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
+    let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
+    let mut move_step_effects: Array<Effect> = ArrayTrait::new();
+    let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
+    
+    let mut i = 0;
+    while i < effects.len() {
+        let effect = *effects.at(i);
+        match effect.get_timing() {
+            Timing::StartOfTurn => {
+                start_of_turn_effects.append(effect);
+            },
+            Timing::MoveStep => {
+                move_step_effects.append(effect);
+            },
+            Timing::EndOfTurn => {
+                end_of_turn_effects.append(effect);
+            },
+            _ => {}
+        }
+        i += 1;
+    };
+
+    (start_of_turn_effects, move_step_effects, end_of_turn_effects)
+}
+
 // Returns (game, extra_energy, stunned_pieces)
-pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, u8, Array<u64>, Array<Effect>) {
+pub fn handle_start_of_turn_effects(start_of_turn_effects: @Array<Effect>) -> (u8, Array<u64>, Array<Effect>) {
     let mut i = 0;
     let mut extra_energy: u8 = 0;
     let mut stunned_pieces: Array<u64> = ArrayTrait::new();
@@ -92,7 +118,7 @@ pub fn handle_start_of_turn_effects(ref game: Game, ref start_of_turn_effects: A
         }
         i += 1;
     };
-    (game.clone(), extra_energy, stunned_pieces, new_effects)
+    (extra_energy, stunned_pieces, new_effects)
 }
 
 pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, Array<Effect>) {
@@ -108,7 +134,10 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
             EffectType::DOT(dmg) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        game = handle_damage(ref game, cap_id, ref world, dmg.into());
+                        let mut cap: Cap = world.read_model(cap_id);
+                        let (new_game, new_cap) = handle_damage(ref game, ref cap, dmg.into());
+                        game = new_game;
+                        world.write_model(@new_cap);
                     },
                     _ => {}
                 }

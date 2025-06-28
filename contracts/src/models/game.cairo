@@ -119,6 +119,28 @@ pub impl GameImpl of GameTrait {
         (false, starknet::contract_address_const::<0>())
     }
 
+    fn check_over_simulated(self: @Game, caps: @Array<Cap>) -> (bool, ContractAddress) {
+        let mut i = 0;
+        let mut one_found = false;
+        let mut two_found = false;
+        let mut winner = starknet::contract_address_const::<0>();
+        while i < caps.len() {
+            let cap: Cap = *caps.at(i);
+            if cap.owner == *self.player1 {
+                one_found = true;
+                winner = *self.player1;
+                break;
+            }
+            if cap.owner == *self.player2 {
+                two_found = true;
+                winner = *self.player2;
+                break;
+            }
+            i+=1;
+        };
+        (one_found && two_found, winner)
+    }
+
 }
 
 
