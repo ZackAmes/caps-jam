@@ -9,7 +9,7 @@ pub trait IActions<T> {
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
     fn get_cap_data(self: @T, set_id: u64, cap_type: u16) -> Option<CapType>;
-    fn simulate_turn(self: @T, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>) -> (Game, Array<Effect>, Array<Cap>);
+  //  fn simulate_turn(self: @T, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>) -> (Game, Array<Effect>, Array<Cap>);
 }
 
 
@@ -257,7 +257,7 @@ use super::{IActions};
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
-            let (mut keys, mut locations) = get_piece_locations(ref game, @world);
+            let (mut locations, mut keys) = get_piece_locations(ref game, @world);
 
             let mut i = 0;
             while i < turn.len() {
@@ -309,9 +309,9 @@ use super::{IActions};
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
                         let old_position_index = cap.position.x * 7 + cap.position.y;
-                        locations.insert(old_position_index.into(), NullableTrait::new(0));
+                        locations.insert(old_position_index.into(), 0);
                         cap.move(cap_type, *dir.x, *dir.y, move_bonus);
-                        locations.insert((cap.position.x * 7 + cap.position.y).into(), NullableTrait::new(cap.id));
+                        locations.insert((cap.position.x * 7 + cap.position.y).into(), cap.id);
                         keys.insert(cap.id.into(), NullableTrait::new(cap));
 
                     },
@@ -370,7 +370,7 @@ use super::{IActions};
                     ActionType::Ability(target) => {
                         let mut cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        let (valid, new_game, new_keys, new_locations) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
+                        let (valid, new_game, new_locations, new_keys) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
                         game = new_game;
                         keys = new_keys;
                         locations = new_locations;
@@ -414,18 +414,24 @@ use super::{IActions};
                         let set: Set = world.read_model(cap.set_id);
                         
 
-                        let (mut game, mut created_effects, mut new_locations) = cap.use_ability(*target, ref game, @set, locations);
+                        let (mut game, mut created_effects, mut new_locations, mut new_keys) = cap.use_ability(*target, ref game, @set, locations, keys);
 
+                        locations = new_locations;
+                        keys = new_keys;
+                        
                         for effect in created_effects {
                             new_effects.append(effect);
                         };
 
                         while double_count > 0 {
-                            let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, locations);
+                            let (valid, new_game, new_locations, new_keys) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
                             game = new_game;
+                            locations = new_locations;
+                            keys = new_keys;
                             if valid {
-                                let (mut game, new_double_effects, mut new_locations) = cap.use_ability(*target, ref game, @set, locations);
+                                let (mut game, new_double_effects, mut new_locations, mut new_keys) = cap.use_ability(*target, ref game, @set, locations, keys);
                                 locations = new_locations;
+                                keys = new_keys;
                                 for effect in new_double_effects {
                                     new_effects.append(effect);
                                 };
@@ -455,7 +461,7 @@ use super::{IActions};
                     }
                 };
 
-                let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
+                let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
                 game = new_game;
                 keys = new_keys;
                 locations = new_locations;
@@ -529,162 +535,6 @@ use super::{IActions};
             dispatcher.get_cap_type(cap_type)
         }
 
-        fn simulate_turn(self: @ContractState, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>) -> (Game, Array<Effect>, Array<Cap>) {
-            let mut game: Game = game;
-            let mut caps: Array<Cap> = caps;
-
-            let (over, _) = game.check_over_simulated(@caps);
-            assert!(!*over, "Game is over");
-
-            let player = if game.turn_count % 2 == 0 {
-                game.player1
-            } else {
-                game.player2
-            };
-
-            let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects_from_array(@effects);
-
-            // This helper does not exist, but it would be implemented to not use world
-            let  (extra_energy, stunned_pieces, new_sote) = handle_start_of_turn_effects(@start_of_turn_effects);
-            start_of_turn_effects = new_sote;
-
-            let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
-
-            let mut i = 0;
-            while i < turn.len() {
-                let action = turn.at(i);
-                let mut locations = get_piece_locations_from_caps(@caps);
-                
-                let mut cap_index = 0;
-                let mut found = false;
-                while cap_index < caps.len() {
-                    if *caps.at(cap_index).id == *action.cap_id {
-                        found = true;
-                        break;
-                    }
-                    cap_index += 1;
-                };
-                assert!(found, "Cap not found in input");
-                
-                let mut cap: Cap = *caps.at(cap_index);
-                assert!(cap.owner == player, "Not your piece");
-                assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
-                
-                let cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
-                let mut new_effects: Array<Effect> = ArrayTrait::new();
-                let mut new_move_step_effects: Array<Effect> = ArrayTrait::new();
-
-                match action.action_type {
-                    ActionType::Move(dir) => {
-                        let mut move_discount: u8 = 0;
-                        let mut move_bonus: u8 = 0;
-                        for mut effect in move_step_effects {
-                            match effect.effect_type {
-                                EffectType::MoveDiscount(x) => {
-                                    move_discount += x;
-                                    effect.trigger();
-                                    if effect.remaining_triggers > 0 {
-                                        new_move_step_effects.append(effect);
-                                    }
-                                },
-                                EffectType::MoveBonus(x) => {
-                                    move_bonus += x;
-                                    effect.trigger();
-                                    if effect.remaining_triggers > 0 {
-                                        new_move_step_effects.append(effect);
-                                    }
-                                },
-                                _ => {
-                                    new_move_step_effects.append(effect);
-                                }
-                            }
-                        };
-                        move_step_effects = new_move_step_effects;
-                        let mut move_cost = cap_type.move_cost;
-                        if move_discount > cap_type.move_cost {
-                            move_cost = 0;
-                        } else {
-                            move_cost -= move_discount;
-                        }
-                        assert!(move_cost <= energy, "Not enough energy, move cost: {}, energy: {}", move_cost, energy);
-                        energy -= move_cost;
-                        let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
-                        let piece_at_location_id = locations.get(new_location_index.into());
-                        assert!(piece_at_location_id == 0, "There is a piece at the new location");
-                        cap.move(cap_type, *dir.x, *dir.y, move_bonus);
-                        locations.insert((cap.position.x * 7 + cap.position.y).into(), NullableTrait::new(cap));
-                    },
-                    ActionType::Attack(target) => {
-                        let mut attack_cost = cap_type.attack_cost;
-                        let mut attack_discount: u8 = 0;
-                        let mut attack_bonus: u8 = 0;
-                        
-                        for mut effect in move_step_effects {
-                            match effect.effect_type {
-                                EffectType::AttackDiscount(x) => {
-                                    attack_discount += x;
-                                    effect.trigger();
-                                    if effect.remaining_triggers > 0 {
-                                        new_move_step_effects.append(effect);
-                                    }
-                                },
-                                EffectType::AttackBonus(x) => {
-                                    attack_bonus += x;
-                                    effect.trigger();
-                                    if effect.remaining_triggers > 0 {
-                                        new_move_step_effects.append(effect);
-                                    }
-                                },
-                                _ => {
-                                    new_move_step_effects.append(effect);
-                                }
-                            }
-                        };
-                        move_step_effects = new_move_step_effects;
-                    },
-                    ActionType::Ability(target) => {
-                        let mut ability_discount: u8 = 0;
-                        let mut ability_bonus: u8 = 0;
-                        
-                        move_step_effects = new_move_step_effects;
-                    }
-                };
-                
-                i += 1;
-            };
-
-            let (g, c, new_eote) = update_end_of_turn_effects_simulated(game, caps, end_of_turn_effects, locations);
-            game = g;
-            caps = c;
-            end_of_turn_effects = new_eote;
-
-            let mut final_effects: Array<Effect> = ArrayTrait::new();
-            for effect in start_of_turn_effects {
-                if effect.remaining_triggers > 0 {
-                    final_effects.append(effect);
-                }
-            };
-            for effect in move_step_effects {
-                if effect.remaining_triggers > 0 {
-                    final_effects.append(effect);
-                }
-            };
-            for effect in end_of_turn_effects {
-                if effect.remaining_triggers > 0 {
-                    final_effects.append(effect);
-                }
-            };
-            
-            game.turn_count += 1;
-            
-
-
-            
-            let (is_over, _) = game.check_over_simulated(@caps);
-            game.over = *is_over;
-
-            (game, final_effects, caps)
-        }
     }
 
     #[generate_trait]
