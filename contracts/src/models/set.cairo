@@ -17,5 +17,5 @@ pub struct Set {
 #[starknet::interface]
 pub trait ISetInterface<T> {
     fn get_cap_type(self: @T, id: u16) -> Option<CapType>;
-    fn activate_ability(ref self: T, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>);
+    fn activate_ability(ref self: T, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<Cap>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>);
 }

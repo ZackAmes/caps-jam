@@ -1,6 +1,6 @@
 use caps::models::cap::{Cap,CapType, TargetType};
 use caps::models::effect::{Effect, EffectType, EffectTarget};
-use caps::helpers::{get_piece_locations, handle_damage};
+use caps::helpers::{get_piece_locations, handle_damage, clone_dicts};
 use caps::models::game::{Vec2, Game, GameTrait};
 use dojo::world::WorldStorage;
 use dojo::model::{ModelStorage};
@@ -32,14 +32,15 @@ pub mod set_zero {
             get_cap_type(id)
         }
 
-        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
+        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<Cap>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
             // Ideally we should change this so it doesn't need to write to the world. 
             // Which mostly means returning the updated caps instead of writing them
             let mut cap = cap;
             let mut game = game;
             let mut cap_type = get_cap_type(cap.cap_type).unwrap();
             let mut locations = locations;
-            use_ability(ref cap, ref cap_type, target, ref game, ref locations)
+            let mut keys = keys;
+            use_ability(ref cap, ref cap_type, target, ref game, ref locations, ref keys)
         }
     }
 }
@@ -413,9 +414,10 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     res
 }
 
-fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
+fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
     let mut new_effects: Array<Effect> = ArrayTrait::new();
-    let mut new_locations: Felt252Dict<Nullable<Cap>> = Default::default();
+    let mut new_locations: Felt252Dict<Nullable<u64>> = Default::default();
+    let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
     match cap_type.id {
         0 => {
             // "None"
@@ -431,31 +433,38 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             },
         4 => {
             // "Deal 4 damage to an enemy"
-            let mut cap = locations.get((target.x * 7 + target.y).into()).deref();
-            let (new_game, new_cap) = handle_damage(ref game, ref cap, 4);
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap));
+            let cap_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_to_damage = keys.get(cap_id.into()).deref();
+            let (new_game, new_cap) = handle_damage(ref game, ref cap_to_damage, 4);
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap.id));
+            keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
             game = new_game;
         },
         5 => {
             // "Heal 5 damage from an ally"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             if cap_at_target.dmg_taken < 5 {
                 cap_at_target.dmg_taken = 0;
             }
             else {
                 cap_at_target.dmg_taken -= 5;
             }
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target));
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target.id));
+            keys.insert(cap_at_target.id.into(), NullableTrait::new(cap_at_target));
         },
         6 => {
             // "Shield an ally for 5"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             cap_at_target.shield_amt += 5;
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target));
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target.id));
+            keys.insert(cap_at_target.id.into(), NullableTrait::new(cap_at_target));
         },
         7 => {
             // "Target unit's next ability use costs 1 less energy"
-            let cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -480,11 +489,13 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         9 => {
             // "Fully heal this unit, then damage an enemy unit equal to the amount healed"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let (new_game, new_cap) = handle_damage(ref game, ref cap_at_target, cap.dmg_taken.into());
             cap_at_target = new_cap;
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target.id));
+            keys.insert(cap_at_target.id.into(), NullableTrait::new(cap_at_target));
             game = new_game;
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target));
         },
         10 => {
             // "Gain free attacks equal to the strength of this cards shield"
@@ -512,16 +523,18 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             new_effects.append(energy_effect);
             game.effect_ids.append(energy_effect.effect_id);
             cap.shield_amt += 2;
-            locations.insert(cap.id.into(), NullableTrait::new(cap));
+            locations.insert(cap.id.into(), NullableTrait::new(cap.id));
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
         },
         12 => {
             // "Deal 1 damage to an ally to make its next attack deal 3 more damage"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let target_cap_type = get_cap_type(cap_at_target.cap_type);
 
             if target_cap_type.unwrap().base_health - cap_at_target.dmg_taken == 1 {
                 game.remove_cap(cap_at_target.id.try_into().unwrap());
-                locations.insert((target.x * 7 + target.y).into(), Default::default());
+                locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(0));
             }
             else {
                 cap_at_target.dmg_taken += 1;
@@ -534,7 +547,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
                 };
                 new_effects.append(effect);
                 game.effect_ids.append(effect.effect_id);
-                locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target));
+                locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target.id));
+                keys.insert(cap_at_target.id.into(), NullableTrait::new(cap_at_target));
             }
         },
         13 => {
@@ -552,7 +566,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         14 => {
             // "Target unit gains move range equal to its shield health"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let new_effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -565,7 +580,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         15 => {
             // "Repeat the effect of the ally's next ability (if possible)"
-            let cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let mut effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -578,7 +594,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         16 => {
             // "Inflict target with burn that deals 3 damage each turn for 3 turns"
-            let cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let mut effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -591,7 +608,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         17 => {
             // "Target unit heals 2 health per turn at the end of the next 3 turns"
-            let cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let mut effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -605,7 +623,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         18 => {
             // "Double the strength of this unit's shield"
             cap.shield_amt *= 2;
-            locations.insert(cap.id.into(), NullableTrait::new(cap));
+            locations.insert(cap.id.into(), NullableTrait::new(cap.id));
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
         },
         19 => {
             // "Next attack deals 1 more damage for each extra energy you started this turn with"
@@ -624,17 +643,21 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             if self_health < 5 {
                 panic!("Not enough health, ability would kill self");
             }
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let (new_game, new_cap) = handle_damage(ref game, ref cap_at_target, 7);
             game = new_game;
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap));
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap.id));
+            keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
             let (new_game, new_cap) = handle_damage(ref game, ref cap, 4);
             game = new_game;
-            locations.insert(cap.id.into(), NullableTrait::new(new_cap));
+            locations.insert(cap.id.into(), NullableTrait::new(new_cap.id));
+            keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
         },
         21 => {
             // "Deal 8 damage to an enemy, but stun this unit next turn"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let (new_game, new_cap) = handle_damage(ref game, ref cap_at_target, 9);
             game = new_game;
             let stun_effect = Effect {
@@ -646,15 +669,18 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             };
             new_effects.append(stun_effect);
             game.effect_ids.append(stun_effect.effect_id);
-            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap));
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(new_cap.id));
+            keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
         },
         22 => {
             // "Gain shield equal to target unit's shield"
-            let mut cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let mut cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let mut ally_shield = cap_at_target.shield_amt.try_into().unwrap();
            
             cap.shield_amt += ally_shield;
-            locations.insert(cap.id.into(), NullableTrait::new(cap));
+            locations.insert(cap.id.into(), NullableTrait::new(cap.id));
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
         },
         23 => {
             // "Heal all allies for 2 health"
@@ -665,7 +691,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         _ => panic!("Not yet implemented"),
     }
 
+    let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
 
 
-    (game.clone(), new_effects, locations)
+    (new_game, new_effects, new_locations, new_keys)
 }
