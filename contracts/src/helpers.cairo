@@ -26,19 +26,20 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     pieces
 }
 
-pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<Nullable<Cap>> {
-    let mut locations: Felt252Dict<Nullable<Cap>> = Default::default();
-
+pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> (Felt252Dict<Nullable<Cap>>, Felt252Dict<Nullable<u64>>) {
+    let mut locations: Felt252Dict<Nullable<u64>> = Default::default();
+    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
     let mut i = 0;
 
     while i < game.caps_ids.len() {
         let cap: Cap = world.read_model(*game.caps_ids[i]);
         let index = cap.position.x * 7 + cap.position.y;
-        locations.insert(index.into(), NullableTrait::new(cap));
+        locations.insert(index.into(), NullableTrait::new(cap.id));
+        keys.insert(cap.id.into(), NullableTrait::new(cap));
         i += 1;
     };
 
-    locations
+    (locations, keys)
 }
 
 pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
@@ -198,4 +199,20 @@ pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
         i += 1;
     };
     return found;
+}
+
+pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Felt252Dict<Nullable<Cap>>, Felt252Dict<Nullable<u64>>) {
+    let mut new_locations: Felt252Dict<Nullable<u64>> = Default::default();
+    let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
+
+    let mut i = 0;
+    while i < game.caps_ids.len() {
+        let cap: Cap = keys.get((*game.caps_ids[i]).into()).deref();
+        let index = cap.position.x * 7 + cap.position.y;
+        new_locations.insert(index.into(), NullableTrait::new(cap.id));
+        new_keys.insert(cap.id.into(), NullableTrait::new(cap));
+        i += 1;
+    };
+
+    (game.clone(), new_keys, new_locations)
 }

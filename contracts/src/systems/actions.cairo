@@ -25,8 +25,7 @@ use super::{IActions};
     use caps::helpers::handle_damage;
     use caps::helpers::{
         check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects,
-        get_piece_locations_from_caps, simulate_start_of_turn_effects, get_active_effects_from_array, simulate_damage,
-        update_end_of_turn_effects_simulated
+        get_active_effects_from_array, clone_dicts
     };
     use core::dict::{Felt252DictTrait,};
 
@@ -258,12 +257,12 @@ use super::{IActions};
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
+            let (mut keys, mut locations) = get_piece_locations(ref game, @world);
 
             let mut i = 0;
             while i < turn.len() {
 
                 let action = turn.at(i);
-                let mut locations = get_piece_locations(ref game, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
@@ -309,8 +308,11 @@ use super::{IActions};
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
+                        let old_position_index = cap.position.x * 7 + cap.position.y;
+                        locations.insert(old_position_index.into(), NullableTrait::new(0));
                         cap.move(cap_type, *dir.x, *dir.y, move_bonus);
-                        locations.insert((cap.position.x * 7 + cap.position.y).into(), NullableTrait::new(cap));
+                        locations.insert((cap.position.x * 7 + cap.position.y).into(), NullableTrait::new(cap.id));
+                        keys.insert(cap.id.into(), NullableTrait::new(cap));
 
                     },
                     ActionType::Attack(target) => {
@@ -362,8 +364,7 @@ use super::{IActions};
                         }
                         let (new_game, new_cap) = handle_damage(ref game, ref piece_at_location, attack_dmg.try_into().unwrap());
                         game = new_game;
-                        locations.insert((new_cap.position.x * 7 + new_cap.position.y).into(), NullableTrait::new(new_cap));
-
+                        keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
                         
                     },
                     ActionType::Ability(target) => {
@@ -451,6 +452,11 @@ use super::{IActions};
                         _ => {}
                     }
                 };
+
+                let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
+                game = new_game;
+                keys = new_keys;
+                locations = new_locations;
                 i+=1;
                 
             };
