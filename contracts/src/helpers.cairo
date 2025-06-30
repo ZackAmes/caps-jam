@@ -216,3 +216,19 @@ pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<u64>, ref keys: Felt2
 
     (game.clone(), new_locations, new_keys)
 }
+
+pub fn get_dicts_from_array(caps: @Array<Cap>) -> (Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    let mut locations: Felt252Dict<u64> = Default::default();
+    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
+
+    let mut i = 0;
+    while i < caps.len() {
+        let cap: Cap = *caps.at(i);
+        let index = cap.position.x * 7 + cap.position.y;
+        locations.insert(index.into(), cap.id);
+        keys.insert(cap.id.into(), NullableTrait::new(cap));
+        i += 1;
+    };
+
+    (locations, keys)
+}

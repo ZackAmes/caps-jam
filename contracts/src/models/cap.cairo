@@ -1,4 +1,4 @@
-use caps::helpers::{get_piece_locations, clone_dicts};
+use caps::helpers::{get_piece_locations, clone_dicts, get_dicts_from_array};
 use caps::models::effect::{Effect};
 use caps::models::game::{Game, Vec2};
 use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
@@ -160,10 +160,19 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, locations: Felt252Dict<u64>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
-        dispatcher.activate_ability(self, target, game_clone, locations, keys)
+        let mut caps_array: Array<Cap> = ArrayTrait::new();
+        let mut i = 0;
+        while i < game.caps_ids.len() {
+            let cap = keys.get((*game.caps_ids[i]).into()).deref();
+            caps_array.append(cap);
+            i += 1;
+        };
+        let (new_game, new_effects, new_caps) = dispatcher.activate_ability(self, target, game_clone, caps_array);
+        let (new_locations, new_keys) = get_dicts_from_array(@new_caps);
+        (new_game, new_effects, new_locations, new_keys)
     }
 
 }

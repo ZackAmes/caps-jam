@@ -25,7 +25,7 @@ use super::{IActions};
     use caps::helpers::handle_damage;
     use caps::helpers::{
         check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects,
-        get_active_effects_from_array, clone_dicts
+        get_active_effects_from_array, clone_dicts, get_dicts_from_array
     };
     use core::dict::{Felt252DictTrait,};
 
@@ -414,8 +414,7 @@ use super::{IActions};
                         let set: Set = world.read_model(cap.set_id);
                         
 
-                        let (mut game, mut created_effects, mut new_locations, mut new_keys) = cap.use_ability(*target, ref game, @set, locations, keys);
-
+                        let (mut game, mut created_effects, new_locations, new_keys) = cap.use_ability(*target, ref game, @set, ref locations, ref keys);
                         locations = new_locations;
                         keys = new_keys;
                         
@@ -429,7 +428,7 @@ use super::{IActions};
                             locations = new_locations;
                             keys = new_keys;
                             if valid {
-                                let (mut game, new_double_effects, mut new_locations, mut new_keys) = cap.use_ability(*target, ref game, @set, locations, keys);
+                                let (mut game, new_double_effects, new_locations, new_keys) = cap.use_ability(*target, ref game, @set, ref locations, ref keys);
                                 locations = new_locations;
                                 keys = new_keys;
                                 for effect in new_double_effects {

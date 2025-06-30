@@ -16,6 +16,7 @@ pub mod set_zero {
     use core::dict::Felt252Dict;
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use dojo::model::{ModelStorage};
+    use caps::helpers::get_dicts_from_array;
 
     fn dojo_init(ref self: ContractState) {
         let mut world: WorldStorage = self.world(@"caps");
@@ -32,14 +33,13 @@ pub mod set_zero {
             get_cap_type(id)
         }
 
-        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<u64>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, caps: Array<Cap>) -> (Game, Array<Effect>, Array<Cap>) {
             // Ideally we should change this so it doesn't need to write to the world. 
             // Which mostly means returning the updated caps instead of writing them
             let mut cap = cap;
             let mut game = game;
             let mut cap_type = get_cap_type(cap.cap_type).unwrap();
-            let mut locations = locations;
-            let mut keys = keys;
+            let (mut locations, mut keys) = get_dicts_from_array(@caps);
             use_ability(ref cap, ref cap_type, target, ref game, ref locations, ref keys)
         }
     }
@@ -414,7 +414,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     res
 }
 
-fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Array<Cap>) {
     let mut new_effects: Array<Effect> = ArrayTrait::new();
     let mut new_locations: Felt252Dict<u64> = Default::default();
     let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
@@ -694,8 +694,13 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         _ => panic!("Not yet implemented"),
     }
 
-    let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
+    let mut caps: Array<Cap> = ArrayTrait::new();
+    let mut i = 0;
+    while i < game.caps_ids.len() {
+        let cap = keys.get((*game.caps_ids[i]).into()).deref();
+        caps.append(cap);
+        i += 1;
+    };
 
-
-    (new_game, new_effects, new_keys, new_locations)
+    (game.clone(), new_effects, caps)
 }
