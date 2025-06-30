@@ -160,7 +160,7 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, locations: Felt252Dict<Nullable<Cap>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
+    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, locations: Felt252Dict<Nullable<u64>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
         dispatcher.activate_ability(self, target, game_clone, locations, keys)
@@ -209,12 +209,12 @@ pub enum TargetType {
 
 #[generate_trait]
 pub impl TargetTypeImpl of TargetTypeTrait {
-    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (bool, Game) {
+    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (bool, Game, Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
         let mut valid = false;
         
         match *self {
             TargetType::None => {
-                
+
             },
             TargetType::SelfCap => {
                 valid = true;
@@ -262,7 +262,7 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 valid = cap.check_in_range(target, @cap_type.ability_range);
             },
         }
-        let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
-        (valid, new_game, new_keys, new_locations)
+        let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+        (valid, new_game, new_locations, new_keys)
     }
 }

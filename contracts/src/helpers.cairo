@@ -26,7 +26,7 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     pieces
 }
 
-pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> (Felt252Dict<Nullable<Cap>>, Felt252Dict<Nullable<u64>>) {
+pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> (Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
     let mut locations: Felt252Dict<Nullable<u64>> = Default::default();
     let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
     let mut i = 0;
@@ -201,7 +201,7 @@ pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
     return found;
 }
 
-pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Felt252Dict<Nullable<Cap>>, Felt252Dict<Nullable<u64>>) {
+pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<Nullable<u64>>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
     let mut new_locations: Felt252Dict<Nullable<u64>> = Default::default();
     let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
 
@@ -214,5 +214,5 @@ pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<Nullable<u64>>, ref k
         i += 1;
     };
 
-    (game.clone(), new_keys, new_locations)
+    (game.clone(), new_locations, new_keys)
 }

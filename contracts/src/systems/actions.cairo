@@ -370,8 +370,10 @@ use super::{IActions};
                     ActionType::Ability(target) => {
                         let mut cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, locations);
+                        let (valid, new_game, new_keys, new_locations) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
                         game = new_game;
+                        keys = new_keys;
+                        locations = new_locations;
                         assert!(valid, "Ability is not valid");
                         let mut ability_cost = cap_type.ability_cost;
                         let mut ability_discount = 0;

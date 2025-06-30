@@ -32,7 +32,7 @@ pub mod set_zero {
             get_cap_type(id)
         }
 
-        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<Cap>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<Cap>>) {
+        fn activate_ability(ref self: ContractState, cap: Cap, target: Vec2, game: Game, locations: Felt252Dict<Nullable<u64>>, keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<Nullable<u64>>, Felt252Dict<Nullable<Cap>>) {
             // Ideally we should change this so it doesn't need to write to the world. 
             // Which mostly means returning the updated caps instead of writing them
             let mut cap = cap;
@@ -553,7 +553,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
         },
         13 => {
             // "Stun a target enemy unit"
-            let cap_at_target = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target_id = locations.get((target.x * 7 + target.y).into()).deref();
+            let cap_at_target = keys.get(cap_at_target_id.into()).deref();
             let stun_effect = Effect {
                 game_id: game.id,
                 effect_id: game.effect_ids.len().into(),
@@ -563,6 +564,8 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
             };
             new_effects.append(stun_effect);
             game.effect_ids.append(stun_effect.effect_id);
+            locations.insert((target.x * 7 + target.y).into(), NullableTrait::new(cap_at_target.id));
+            keys.insert(cap_at_target.id.into(), NullableTrait::new(cap_at_target));
         },
         14 => {
             // "Target unit gains move range equal to its shield health"
@@ -694,5 +697,5 @@ fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game
     let (new_game, new_keys, new_locations) = clone_dicts(@game, ref locations, ref keys);
 
 
-    (new_game, new_effects, new_locations, new_keys)
+    (new_game, new_effects, new_keys, new_locations)
 }
