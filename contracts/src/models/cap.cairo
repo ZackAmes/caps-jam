@@ -1,11 +1,9 @@
-use caps::helpers::{get_piece_locations};
+use caps::helpers::{clone_dicts, get_dicts_from_array};
 use caps::models::effect::{Effect};
 use caps::models::game::{Game, Vec2};
 use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
 
-use dojo::world::WorldStorage;
-
-use dojo::model::{ModelStorage};
+use core::dict::Felt252Dict;
 use starknet::ContractAddress;
 
 #[derive(Copy, Drop, Serde, Debug)]
@@ -159,10 +157,19 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set) -> (Game, Array<Effect>) {
+    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
-        dispatcher.activate_ability(self, target, game_clone)
+        let mut caps_array: Array<Cap> = ArrayTrait::new();
+        let mut i = 0;
+        while i < game.caps_ids.len() {
+            let cap = keys.get((*game.caps_ids[i]).into()).deref();
+            caps_array.append(cap);
+            i += 1;
+        };
+        let (new_game, new_effects, new_caps) = dispatcher.activate_ability(self, target, game_clone, caps_array);
+        let (new_locations, new_keys) = get_dicts_from_array(@new_caps);
+        (new_game, new_effects, new_locations, new_keys)
     }
 
 }
@@ -208,58 +215,60 @@ pub enum TargetType {
 
 #[generate_trait]
 pub impl TargetTypeImpl of TargetTypeTrait {
-    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, world: @WorldStorage) -> (bool, Game) {
+    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (bool, Game, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+        let mut valid = false;
+        
         match *self {
-            TargetType::None => (false, game.clone()),
+            TargetType::None => {
+
+            },
             TargetType::SelfCap => {
-                (true, game.clone())
+                valid = true;
             },
             TargetType::TeamCap => {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location_id = locations.get((target.x * 7 + target.y).into());
+                let mut at_location = keys.get(at_location_id.into()).deref();
+                assert!(at_location_id != 0, "No cap at location");
                 //Must be player
                 assert!(at_location.owner == *cap.owner, "Cap is not owned by player");
                 if in_range && at_location.owner == *cap.owner {
-                    return (true, game.clone());
+                    valid = true;
                 }
-                (false, game.clone())
             },
             TargetType::OpponentCap => {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                assert!(at_location_index != 0, "No cap at location");
-                let at_location: Cap = world.read_model(at_location_index);
+                let at_location_id = locations.get((target.x * 7 + target.y).into());
+                let mut at_location = keys.get(at_location_id.into()).deref();
+                assert!(at_location_id != 0, "No cap at location");
                 assert!(*cap.owner != starknet::contract_address_const::<0x0>(), "Cap owner 0?");
                 assert!(at_location.owner != *cap.owner, "Cap is owned by player");
                 //Must be opponent
                 if in_range && at_location.owner != *cap.owner {
-                    return (true, game.clone());
+                    valid = true;
                 }
-                (false, game.clone())
             },
             TargetType::AnyCap => {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
                 assert!(in_range, "Target not in range");
-                let mut locations = get_piece_locations(ref game, world);
-                let at_location_index = locations.get((target.x * 7 + target.y).into());
-                if at_location_index != 0 && in_range {
-                    return (true, game.clone());
+                let at_location_id = locations.get((target.x * 7 + target.y).into());
+                let mut at_location = keys.get(at_location_id.into());
+                assert!(at_location_id != 0, "No cap at location");
+                if at_location.owner != *cap.owner && in_range {
+                    valid = true;
                 }
-                (false, game.clone())
             },
             TargetType::AnySquare => {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
-                (cap.check_in_range(target, @cap_type.ability_range), game.clone())
+                valid = cap.check_in_range(target, @cap_type.ability_range);
             },
         }
+        let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+        (valid, new_game, new_locations, new_keys)
     }
 }

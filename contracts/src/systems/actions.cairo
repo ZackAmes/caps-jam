@@ -9,6 +9,7 @@ pub trait IActions<T> {
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
     fn get_cap_data(self: @T, set_id: u64, cap_type: u16) -> Option<CapType>;
+  //  fn simulate_turn(self: @T, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>) -> (Game, Array<Effect>, Array<Cap>);
 }
 
 
@@ -22,7 +23,10 @@ use super::{IActions};
     use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
     use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
     use caps::helpers::handle_damage;
-    use caps::helpers::{check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects};
+    use caps::helpers::{
+        check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects,
+        clone_dicts
+    };
     use core::dict::{Felt252DictTrait,};
 
     use dojo::model::{ModelStorage};
@@ -248,17 +252,17 @@ use super::{IActions};
             let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects(ref game, @world);
 
             //handle start of turn effects
-            let (mut game, extra_energy, stunned_pieces, mut new_start_of_turn_effects) = handle_start_of_turn_effects(ref game, ref start_of_turn_effects, ref world);
+            let (extra_energy, stunned_pieces, mut new_start_of_turn_effects) = handle_start_of_turn_effects(@start_of_turn_effects);
             start_of_turn_effects = new_start_of_turn_effects;
 
             let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
 
+            let (mut locations, mut keys) = get_piece_locations(ref game, @world);
 
             let mut i = 0;
             while i < turn.len() {
 
                 let action = turn.at(i);
-                let mut locations = get_piece_locations(ref game, @world);
                 let mut cap: Cap = world.read_model(*action.cap_id);
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
@@ -304,8 +308,11 @@ use super::{IActions};
                         let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
                         assert!(piece_at_location_id == 0, "There is a piece at the new location");
+                        let old_position_index = cap.position.x * 7 + cap.position.y;
+                        locations.insert(old_position_index.into(), 0);
                         cap.move(cap_type, *dir.x, *dir.y, move_bonus);
-                        world.write_model(@cap);
+                        locations.insert((cap.position.x * 7 + cap.position.y).into(), cap.id);
+                        keys.insert(cap.id.into(), NullableTrait::new(cap));
 
                     },
                     ActionType::Attack(target) => {
@@ -355,15 +362,18 @@ use super::{IActions};
                         if(!cap.check_in_range(*target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }
-                        game = handle_damage(ref game, piece_at_location.id, ref world, attack_dmg.try_into().unwrap());
-
+                        let (new_game, new_cap) = handle_damage(ref game, ref piece_at_location, attack_dmg.try_into().unwrap());
+                        game = new_game;
+                        keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
                         
                     },
                     ActionType::Ability(target) => {
                         let mut cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                         assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
-                        let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
+                        let (valid, new_game, new_locations, new_keys) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
                         game = new_game;
+                        keys = new_keys;
+                        locations = new_locations;
                         assert!(valid, "Ability is not valid");
                         let mut ability_cost = cap_type.ability_cost;
                         let mut ability_discount = 0;
@@ -404,17 +414,23 @@ use super::{IActions};
                         let set: Set = world.read_model(cap.set_id);
                         
 
-                        let (mut game, mut created_effects) = cap.use_ability(*target, ref game, @set);
-
+                        let (mut game, mut created_effects, new_locations, new_keys) = cap.use_ability(*target, ref game, @set, ref locations, ref keys);
+                        locations = new_locations;
+                        keys = new_keys;
+                        
                         for effect in created_effects {
                             new_effects.append(effect);
                         };
 
                         while double_count > 0 {
-                            let (valid, new_game) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, @world);
+                            let (valid, new_game, new_locations, new_keys) = cap_type.ability_target.is_valid(@cap, ref cap_type, *target, ref game, ref locations, ref keys);
                             game = new_game;
+                            locations = new_locations;
+                            keys = new_keys;
                             if valid {
-                                let (mut game, new_double_effects) = cap.use_ability(*target, ref game, @set);
+                                let (mut game, new_double_effects, new_locations, new_keys) = cap.use_ability(*target, ref game, @set, ref locations, ref keys);
+                                locations = new_locations;
+                                keys = new_keys;
                                 for effect in new_double_effects {
                                     new_effects.append(effect);
                                 };
@@ -443,12 +459,34 @@ use super::{IActions};
                         _ => {}
                     }
                 };
+
+                let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+                game = new_game;
+                keys = new_keys;
+                locations = new_locations;
                 i+=1;
                 
             };
 
-            let (mut game, mut new_end_of_turn_effects) = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref world);
+            let (mut game, mut new_end_of_turn_effects, new_locations, new_keys) = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref locations, ref keys);
             end_of_turn_effects = new_end_of_turn_effects;
+            locations = new_locations;
+            keys = new_keys;
+
+            let mut i = 0;
+            while i < game.caps_ids.len() {
+                let cap_id = *game.caps_ids[i];
+                let cap = keys.get(cap_id.into()).deref();
+                let cap_type = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
+                if cap.dmg_taken >= cap_type.base_health {
+                    game.remove_cap(cap_id);
+                    world.erase_model(@cap);
+                }
+                else {
+                    world.write_model(@cap);
+                }
+                i += 1;
+            };
 
             let mut new_effect_ids: Array<u64> = ArrayTrait::new();
             for effect in new_start_of_turn_effects {
@@ -512,6 +550,7 @@ use super::{IActions};
             let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
             dispatcher.get_cap_type(cap_type)
         }
+
     }
 
     #[generate_trait]
