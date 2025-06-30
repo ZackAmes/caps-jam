@@ -523,6 +523,7 @@ use super::{IActions};
         fn simulate_turn(self: @ContractState, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>, set: Set) -> (Game, Span<Effect>, Span<Cap>) {
 
             let mut game = game;
+            let mut set = set;
             if game.turn_count % 2 == 0 {
                 assert!(get_caller_address() == game.player1, "You are not the turn player, 1s turn");
             }
@@ -646,6 +647,11 @@ use super::{IActions};
                         let (new_game, new_cap) = handle_damage(ref game, ref piece_at_location, attack_dmg.try_into().unwrap());
                         game = new_game;
                         keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
+                        let cap_type = cap.get_cap_type(ref set);
+                        if cap.dmg_taken >= cap_type.base_health {
+                            game.remove_cap(cap.id);
+                            locations.insert((target.x * 7 + target.y).into(), 0);
+                        }
                         
                     },
                     ActionType::Ability(target) => {

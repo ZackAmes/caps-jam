@@ -157,6 +157,12 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
+    fn get_cap_type(self: @Cap, ref set: Set) -> CapType {
+        let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
+        let cap_type = dispatcher.get_cap_type(*self.cap_type).unwrap();
+        cap_type
+    }
+
     fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
