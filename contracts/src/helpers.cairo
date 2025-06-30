@@ -122,7 +122,9 @@ pub fn handle_start_of_turn_effects(start_of_turn_effects: @Array<Effect>) -> (u
     (extra_energy, stunned_pieces, new_effects)
 }
 
-pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref world: WorldStorage) -> (Game, Array<Effect>) {
+// This is the only function that writes to the world
+// Probably should make a separate simulate fn that doesn't write
+pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
     let mut i = 0;
     let mut new_effects: Array<Effect> = ArrayTrait::new();
     while i < end_of_turn_effects.len() {
@@ -135,10 +137,10 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
             EffectType::DOT(dmg) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let mut cap: Cap = world.read_model(cap_id);
+                        let mut cap: Cap = keys.get(cap_id.into()).deref();
                         let (new_game, new_cap) = handle_damage(ref game, ref cap, dmg.into());
                         game = new_game;
-                        world.write_model(@new_cap);
+                        keys.insert(cap_id.into(), NullableTrait::new(new_cap));
                     },
                     _ => {}
                 }
@@ -146,14 +148,14 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
             EffectType::Heal(heal) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let mut cap: Cap = world.read_model(cap_id);
+                        let mut cap: Cap = keys.get(cap_id.into()).deref();
                         if heal.into() > cap.dmg_taken {
                             cap.dmg_taken = 0;
                         }
                         else {
                             cap.dmg_taken -= heal.into();
                         }
-                        world.write_model(@cap);
+                        keys.insert(cap_id.into(), NullableTrait::new(cap));
                     },
                     _ => {}
                 }
@@ -162,7 +164,8 @@ pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array
         };
         i += 1;
     };
-    (game.clone(), new_effects)
+    let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+    (new_game, new_effects, new_locations, new_keys)
 }
 
 pub fn handle_damage(ref game: Game, ref target: Cap, amount: u64) -> (Game, Cap) {

@@ -1,10 +1,8 @@
 use caps::models::cap::{Cap,CapType, TargetType};
 use caps::models::effect::{Effect, EffectType, EffectTarget};
-use caps::helpers::{get_piece_locations, handle_damage, clone_dicts};
+use caps::helpers::{handle_damage};
 use caps::models::game::{Vec2, Game, GameTrait};
-use dojo::world::WorldStorage;
-use dojo::model::{ModelStorage};
-use core::dict::{Felt252Dict, Felt252DictTrait, SquashedFelt252Dict};
+use core::dict::{Felt252Dict, Felt252DictTrait};
 
 #[dojo::contract]
 pub mod set_zero {
@@ -13,7 +11,6 @@ pub mod set_zero {
     use caps::models::cap::{Cap, CapType};
     use caps::models::game::{Game, Vec2};
     use caps::models::effect::Effect;
-    use core::dict::Felt252Dict;
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use dojo::model::{ModelStorage};
     use caps::helpers::get_dicts_from_array;
@@ -416,8 +413,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
 
 fn use_ability(ref cap: Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Array<Cap>) {
     let mut new_effects: Array<Effect> = ArrayTrait::new();
-    let mut new_locations: Felt252Dict<u64> = Default::default();
-    let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
     match cap_type.id {
         0 => {
             // "None"

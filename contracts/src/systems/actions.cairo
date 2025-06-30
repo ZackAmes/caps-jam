@@ -25,7 +25,7 @@ use super::{IActions};
     use caps::helpers::handle_damage;
     use caps::helpers::{
         check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects, handle_start_of_turn_effects,
-        get_active_effects_from_array, clone_dicts, get_dicts_from_array
+        clone_dicts
     };
     use core::dict::{Felt252DictTrait,};
 
@@ -468,8 +468,25 @@ use super::{IActions};
                 
             };
 
-            let (mut game, mut new_end_of_turn_effects) = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref world);
+            let (mut game, mut new_end_of_turn_effects, new_locations, new_keys) = update_end_of_turn_effects(ref game, ref end_of_turn_effects, ref locations, ref keys);
             end_of_turn_effects = new_end_of_turn_effects;
+            locations = new_locations;
+            keys = new_keys;
+
+            let mut i = 0;
+            while i < game.caps_ids.len() {
+                let cap_id = *game.caps_ids[i];
+                let cap = keys.get(cap_id.into()).deref();
+                let cap_type = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
+                if cap.dmg_taken >= cap_type.base_health {
+                    game.remove_cap(cap_id);
+                    world.erase_model(@cap);
+                }
+                else {
+                    world.write_model(@cap);
+                }
+                i += 1;
+            };
 
             let mut new_effect_ids: Array<u64> = ArrayTrait::new();
             for effect in new_start_of_turn_effects {

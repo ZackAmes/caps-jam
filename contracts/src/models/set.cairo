@@ -3,8 +3,6 @@ use caps::models::cap::CapType;
 use caps::models::cap::Cap;
 use caps::models::game::{Game, Vec2};
 use caps::models::effect::Effect;
-use core::dict::Felt252Dict;
-
 #[derive(Drop, Copy, Serde, Introspect)]
 #[dojo::model]
 pub struct Set {

@@ -1,11 +1,8 @@
-use caps::helpers::{get_piece_locations, clone_dicts, get_dicts_from_array};
+use caps::helpers::{clone_dicts, get_dicts_from_array};
 use caps::models::effect::{Effect};
 use caps::models::game::{Game, Vec2};
 use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
 
-use dojo::world::WorldStorage;
-
-use dojo::model::{ModelStorage};
 use core::dict::Felt252Dict;
 use starknet::ContractAddress;
 
