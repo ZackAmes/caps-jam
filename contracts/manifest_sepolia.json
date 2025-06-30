@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x25865ed23b858c00ec3f5bc583129bc8aa5a6d474c7b6038e39b3b9cc910b8d",
-    "seed": "1asdf2fssdfr",
+    "address": "0xdef8f977981213eb1975224896fdd9c60e69da326b888729c13419d6098a04",
+    "seed": "asd1asdf2fssdfr",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0xef429f38b23b97dfe2bed8997b2e1a2906eb89efc6815cff1738721399a122",
-      "class_hash": "0x40e33a16e1643a4cce47155f397a72d3b01085e322a4de658da39e669858e83",
+      "address": "0x87d572a0b073f86c340f582e1d0caae94aa9a6a2465e8f65ebfdd3d3a449ce",
+      "class_hash": "0x37b3e168c1af430424c4b5a6745f36c91c2df707cedded5ccd9aac176feb694",
       "abi": [
         {
           "type": "impl",
@@ -1753,6 +1753,20 @@
           ]
         },
         {
+          "type": "struct",
+          "name": "caps::models::set::Set",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ]
+        },
+        {
           "type": "interface",
           "name": "caps::systems::actions::IActions",
           "items": [
@@ -1832,6 +1846,38 @@
               "outputs": [
                 {
                   "type": "core::option::Option::<caps::models::cap::CapType>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "simulate_turn",
+              "inputs": [
+                {
+                  "name": "game",
+                  "type": "caps::models::game::Game"
+                },
+                {
+                  "name": "effects",
+                  "type": "core::array::Array::<caps::models::effect::Effect>"
+                },
+                {
+                  "name": "caps",
+                  "type": "core::array::Array::<caps::models::cap::Cap>"
+                },
+                {
+                  "name": "turn",
+                  "type": "core::array::Array::<caps::models::game::Action>"
+                },
+                {
+                  "name": "set",
+                  "type": "caps::models::set::Set"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "(caps::models::game::Game, core::array::Span::<caps::models::effect::Effect>, core::array::Span::<caps::models::cap::Cap>)"
                 }
               ],
               "state_mutability": "view"
@@ -1963,8 +2009,8 @@
       ]
     },
     {
-      "address": "0x7fd1f97122b82748def9da281b0e9da4a4f6e051b7386e73fe6370cd16211dd",
-      "class_hash": "0xb5546474a57c1f2b3051cfb91ffc1cf37a42e0b501d4649e35b160cd535747",
+      "address": "0x5653c3fb79fb70cd78c88197ff803e552b63e7939968372182f4e1b8e29c6e7",
+      "class_hash": "0x2d57051fcff0d2bc86ca3d87dedeeff278770ce936d2d432e0d1d835d912188",
       "abi": [
         {
           "type": "impl",
@@ -2363,11 +2409,15 @@
                 {
                   "name": "game",
                   "type": "caps::models::game::Game"
+                },
+                {
+                  "name": "caps",
+                  "type": "core::array::Array::<caps::models::cap::Cap>"
                 }
               ],
               "outputs": [
                 {
-                  "type": "(caps::models::game::Game, core::array::Array::<caps::models::effect::Effect>)"
+                  "type": "(caps::models::game::Game, core::array::Array::<caps::models::effect::Effect>, core::array::Array::<caps::models::cap::Cap>)"
                 }
               ],
               "state_mutability": "external"
@@ -2492,7 +2542,7 @@
       ]
     },
     {
-      "address": "0x676d3db66aaf5b79e262c4ea6ef17aa5e28676afb408003ff49dd4338352a0e",
+      "address": "0x67d60ab24021a7b29d13eb0b7a8470ffd64bff3451dea5cd27560ce96bdc256",
       "class_hash": "0x1afbc1f25a9f70d5859f86d1484ab20a87a7dc3dff45c05b2660e29bcc1a2bc",
       "abi": [
         {
