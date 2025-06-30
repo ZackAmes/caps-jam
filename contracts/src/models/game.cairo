@@ -144,13 +144,13 @@ pub impl GameImpl of GameTrait {
 }
 
 
-#[derive(Drop, Serde, Clone, Introspect)]
+#[derive(Drop, Serde, Copy, Introspect)]
 pub struct Action {
     pub cap_id: u64,
     pub action_type: ActionType,
 }
 
-#[derive(Drop, Serde, Clone, Introspect)]
+#[derive(Drop, Serde, Copy, Introspect)]
 pub enum ActionType {
     Move: Vec2,
     Attack: Vec2,

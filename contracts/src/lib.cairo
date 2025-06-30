@@ -19,4 +19,5 @@ pub mod tests {
 }
 
 pub mod helpers;
+pub mod simulate_helpers;
 pub mod planetelo;
