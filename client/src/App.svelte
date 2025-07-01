@@ -13,14 +13,8 @@
     import Popup from './lib/ui/popup.svelte';
     import Profile from './lib/ui/Profile.svelte';
     import TeamSelector from './lib/ui/TeamSelector.svelte';
-    import { simulateTurn } from './lib/dojo/simulate';
     import { onMount } from 'svelte';
 
-    onMount(async () => {
-      const result = await simulateTurn();
-      console.log(result);
-    });
-    
 </script>
 
 <main>
