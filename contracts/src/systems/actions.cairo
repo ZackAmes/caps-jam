@@ -264,7 +264,7 @@ use super::{IActions};
             while i < turn.len() {
 
                 let action = turn.at(i);
-                let mut cap: Cap = world.read_model(*action.cap_id);
+                let mut cap = keys.get((*action.cap_id).into()).deref();
                 assert!(cap.owner == get_caller_address(), "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();

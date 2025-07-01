@@ -75,19 +75,25 @@ mod tests {
 
         let game_id = actions_system.create_game(p1, p2, 1, 1);
 
-        let game: Game = world.read_model(game_id);
+        let mut game: Game = world.read_model(game_id);
+        game.turn_count = 2;
+        world.write_model(@game);
 
         assert!(game.player1 == p1, "p1 is wrong");
         assert!(game.player2 == p2, "p2 is wrong");
 
         set_contract_address(p1);
 
-        let turn : Array<Action> = array! [ {
+        let turn : Array<Action> = array! [ 
+            Action {
+                cap_id: 6,
+                action_type: ActionType::Move(Vec2 {x: 0, y: 1}),
+            },
             Action {
                 cap_id: 6,
                 action_type: ActionType::Move(Vec2 {x: 0, y: 1}),
             }
-        }];
+        ];
 
         actions_system.take_turn(game_id, turn);
 
