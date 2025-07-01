@@ -1,7 +1,6 @@
 use caps::models::game::{Game, Action};
 use caps::models::cap::{Cap, CapType};
 use caps::models::effect::{Effect};
-use caps::models::set::Set;
 use starknet::ContractAddress;
 // define the interface
 #[starknet::interface]
@@ -10,7 +9,7 @@ pub trait IActions<T> {
     fn take_turn(ref self: T, game_id: u64, turn: Array<Action>);
     fn get_game(self: @T, game_id: u64) -> Option<(Game, Span<Cap>, Span<Effect>)>;
     fn get_cap_data(self: @T, set_id: u64, cap_type: u16) -> Option<CapType>;
-    fn simulate_turn(self: @T, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>, set: Set) -> (Game, Span<Effect>, Span<Cap>);
+    fn simulate_turn(self: @T, game: Game, caps: Array<Cap>, effects: Option<Array<Effect>>, turn: Array<Action>) -> (Game, Span<Effect>, Span<Cap>);
 }
 
 
@@ -519,17 +518,13 @@ use super::{IActions};
             world.emit_event(@Moved { player: get_caller_address(), game_id: game_id, turn_number: game.turn_count-1, turn: clone.span() });
         }
 
-        fn simulate_turn(self: @ContractState, game: Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>, set: Set) -> (Game, Span<Effect>, Span<Cap>) {
+        fn simulate_turn(self: @ContractState, game: Game, caps: Array<Cap>, effects: Option<Array<Effect>>, turn: Array<Action>) -> (Game, Span<Effect>, Span<Cap>) {
 
+            let mut world = self.world(@"caps");
+            let mut set = world.read_model(*caps[0].set_id);
+            let mut effects = effects.unwrap_or(ArrayTrait::new());
             let mut game = game;
-            let mut set = set;
-            if game.turn_count % 2 == 0 {
-                assert!(get_caller_address() == game.player1, "You are not the turn player, 1s turn");
-            }
-            else {
-                assert!(get_caller_address() == game.player2, "You are not the turn player, 2s turn");
-            }
-
+            
             let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) = get_active_effects_from_array(@game, @effects);
 
             //handle start of turn effects
@@ -545,7 +540,6 @@ use super::{IActions};
 
                 let action = *turn.at(i);
                 let mut cap: Cap = keys.get(action.cap_id.into()).deref();
-                assert!(cap.owner == game.player1, "You are not the owner of this piece");
                 assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
                 let cap_type: CapType = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
                 let mut new_effects: Array<Effect> = ArrayTrait::new();
@@ -639,7 +633,6 @@ use super::{IActions};
                         let piece_at_location_id = locations.get((target.x * 7 + target.y).into());
                         let mut piece_at_location: Cap = keys.get(piece_at_location_id.into()).deref();
                         assert!(piece_at_location_id != 0, "There is no piece at the target location");
-                        assert!(piece_at_location.owner != game.player1, "You cannot attack your own piece");
                         if(!cap.check_in_range(target, @cap_type.attack_range)) {
                             panic!("Attack is not valid");
                         }

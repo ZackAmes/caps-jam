@@ -9,7 +9,7 @@ import {
     validateEnv,
     action,
     Agent,
-  } from "../../daydreams/packages/core/src";
+  } from "../../../daydreams/packages/core/src";
   import { z } from "zod";
   import { google } from "@ai-sdk/google";
   import { discord } from "@daydreamsai/discord";

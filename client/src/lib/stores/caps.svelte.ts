@@ -1,5 +1,5 @@
 import { account } from "./account.svelte";
-import { CairoCustomEnum, CallData, Contract, type Abi } from "starknet";
+import { CairoOption, CairoCustomEnum, CallData, Contract, type Abi, CairoOptionVariant } from "starknet";
 import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
@@ -167,6 +167,27 @@ let energy = max_energy
 
 let selected_team = $state<number | null>(null)
 
+const get_simulated_state = async () => {
+    console.log(game_state)
+    console.log(game_state.game)
+    console.log(game_state.caps)
+    console.log(game_state.effects)
+    console.log(current_move)
+
+    let new_state;
+    if (game_state.effects) {
+        let effects_arg = new CairoOption<Array<Effect>>(CairoOptionVariant.Some, game_state.effects)
+        new_state = await caps_contract.simulate_turn(game_state.game, game_state.caps, effects_arg, current_move)
+    }
+    else {
+        let effects_arg = new CairoOption<Array<Effect>>(CairoOptionVariant.None)
+        new_state = await caps_contract.simulate_turn(game_state.game, game_state.caps, effects_arg, current_move)
+    }
+    new_state = new_state.unwrap()
+    console.log(new_state)
+    return new_state
+}
+
 
 const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec2> | undefined) => {
     if (!range) {
@@ -223,6 +244,8 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect',
     }
 
     if (!selected_cap) return
+
+    console.log(game_state)
     
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
     let move_cost = Number(cap_type?.move_cost)
@@ -275,7 +298,6 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect',
         energy -= ability_cost
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
-    
     // Close popup after action
     popup_state.visible = false
     popup_state.position = null
@@ -382,8 +404,9 @@ export const caps = {
         popup_state.available_actions = []
     },
 
-    add_action: (action: Action) => {
+    add_action: async (action: Action) => {
         current_move.push(action)
+        await get_simulated_state();
         console.log(current_move)
     },
 

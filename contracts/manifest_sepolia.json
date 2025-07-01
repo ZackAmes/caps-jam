@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x3888a41d9d2c72e704b72b682c5476678b75e9497473997ffdc9adb607d0333",
-      "class_hash": "0x502e2f82d0063acb6a954bc1cf0e62d07caea53b582d77c690c52b60315222f",
+      "class_hash": "0x3ff5bab1636845c47aa2aebbe1312a247c98ff094490ab96e042ef5fd8f5846",
       "abi": [
         {
           "type": "impl",
@@ -1753,16 +1753,16 @@
           ]
         },
         {
-          "type": "struct",
-          "name": "caps::models::set::Set",
-          "members": [
+          "type": "enum",
+          "name": "core::option::Option::<core::array::Array::<caps::models::effect::Effect>>",
+          "variants": [
             {
-              "name": "id",
-              "type": "core::integer::u64"
+              "name": "Some",
+              "type": "core::array::Array::<caps::models::effect::Effect>"
             },
             {
-              "name": "address",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "name": "None",
+              "type": "()"
             }
           ]
         },
@@ -1859,20 +1859,16 @@
                   "type": "caps::models::game::Game"
                 },
                 {
-                  "name": "effects",
-                  "type": "core::array::Array::<caps::models::effect::Effect>"
-                },
-                {
                   "name": "caps",
                   "type": "core::array::Array::<caps::models::cap::Cap>"
                 },
                 {
-                  "name": "turn",
-                  "type": "core::array::Array::<caps::models::game::Action>"
+                  "name": "effects",
+                  "type": "core::option::Option::<core::array::Array::<caps::models::effect::Effect>>"
                 },
                 {
-                  "name": "set",
-                  "type": "caps::models::set::Set"
+                  "name": "turn",
+                  "type": "core::array::Array::<caps::models::game::Action>"
                 }
               ],
               "outputs": [
