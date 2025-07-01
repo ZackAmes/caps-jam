@@ -14,6 +14,8 @@ mod tests {
     use caps::models::set::{Set, m_Set, ISetInterface};
     use caps::sets::set_zero::{set_zero};
 
+    use starknet::testing::{set_contract_address};
+
     fn namespace_def() -> NamespaceDef {
         let ndef = NamespaceDef {
             namespace: "caps",
@@ -26,6 +28,7 @@ mod tests {
                 TestResource::Model(m_Set::TEST_CLASS_HASH),
                 TestResource::Contract(actions::TEST_CLASS_HASH),
                 TestResource::Contract(set_zero::TEST_CLASS_HASH),
+                TestResource::Event(actions::e_Moved::TEST_CLASS_HASH),
             ]
                 .span(),
         };
@@ -58,16 +61,35 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(30000000)]
+    #[available_gas(30000000000)]
     fn test_move() {
-        let caller = starknet::contract_address_const::<0x0>();
-
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
 
         let (contract_address, _) = world.dns(@"actions").unwrap();
         let actions_system = IActionsDispatcher { contract_address };
+
+        let p1 = starknet::contract_address_const::<0x1>();
+        let p2 = starknet::contract_address_const::<0x2>();
+
+        let game_id = actions_system.create_game(p1, p2, 1, 1);
+
+        let game: Game = world.read_model(game_id);
+
+        assert!(game.player1 == p1, "p1 is wrong");
+        assert!(game.player2 == p2, "p2 is wrong");
+
+        set_contract_address(p1);
+
+        let turn : Array<Action> = array! [ {
+            Action {
+                cap_id: 6,
+                action_type: ActionType::Move(Vec2 {x: 0, y: 1}),
+            }
+        }];
+
+        actions_system.take_turn(game_id, turn);
 
 
     }
