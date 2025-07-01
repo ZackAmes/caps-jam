@@ -243,7 +243,6 @@ use super::{IActions};
             }
 
 
-
             if game.turn_count % 2 == 0 {
                 assert!(get_caller_address() == game.player1, "You are not the turn player, 1s turn");
             }
@@ -589,7 +588,7 @@ use super::{IActions};
                         energy -= move_cost;
                         let new_location_index = cap.get_new_index_from_dir(dir.x, dir.y);
                         let piece_at_location_id = locations.get(new_location_index.into());
-                        assert!(piece_at_location_id == 0, "There is a piece at the new location");
+                        assert!(piece_at_location_id == 0, "There is a piece at the new location, piece_at_location_id: {}", piece_at_location_id);
                         let old_position_index = cap.position.x * 7 + cap.position.y;
                         locations.insert(old_position_index.into(), 0);
                         cap.move(cap_type, dir.x, dir.y, move_bonus);
