@@ -18,10 +18,10 @@ let plantelo_contract = new Contract(
 ).typedv2(planetelo_manifest.contracts[0].abi as Abi)
 
 let caps_planetelo_contract = new Contract(
-    caps_planetelo_manifest.contracts[1].abi,
-    caps_planetelo_manifest.contracts[1].address,
+    caps_planetelo_manifest.contracts[2].abi,
+    caps_planetelo_manifest.contracts[2].address,
     rpc
-).typedv2(caps_planetelo_manifest.contracts[1].abi as Abi)
+).typedv2(caps_planetelo_manifest.contracts[2].abi as Abi)
 
 let game_id = shortString.encodeShortString("caps");
 

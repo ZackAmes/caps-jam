@@ -1,10 +1,12 @@
 
 use dojo::model::{ModelStorage};
-use caps::models::{Game, Cap, GameTrait, EffectType, EffectTrait, TargetType, TargetTypeTrait, EffectTarget, Timing };
+use caps::models::game::{Game, GameTrait};
+use caps::models::cap::{Cap};
+use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+use caps::sets::set_zero::get_cap_type;
 use starknet::ContractAddress;
 use dojo::world::WorldStorage;
 use core::dict::Felt252Dict;
-use caps::models::{Effect, handle_damage};
 
 pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldStorage) -> Array<u64> {
     let mut game: Game = world.read_model(game_id);
@@ -24,19 +26,20 @@ pub fn get_player_pieces(game_id: u64, player: ContractAddress, world: @WorldSto
     pieces
 }
 
-pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> Felt252Dict<u64> {
+pub fn get_piece_locations(ref game: Game, world: @WorldStorage) -> (Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
     let mut locations: Felt252Dict<u64> = Default::default();
-
+    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
     let mut i = 0;
 
     while i < game.caps_ids.len() {
         let cap: Cap = world.read_model(*game.caps_ids[i]);
         let index = cap.position.x * 7 + cap.position.y;
         locations.insert(index.into(), cap.id);
+        keys.insert(cap.id.into(), NullableTrait::new(cap));
         i += 1;
     };
 
-    locations
+    (locations, keys)
 }
 
 pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
@@ -67,45 +70,77 @@ pub fn get_active_effects(ref game: Game, world: @WorldStorage) -> (Array<Effect
     (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
-pub fn update_start_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
+pub fn get_active_effects_from_array(effects: @Array<Effect>) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
+    let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
+    let mut move_step_effects: Array<Effect> = ArrayTrait::new();
+    let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
+    
     let mut i = 0;
-    let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.active_start_of_turn_effects.len() {
-        let mut effect: Effect = world.read_model((game.id, i).into());
-        if effect.remaining_triggers == 1 {
-            world.erase_model(@effect);
-        }
-        else if effect.remaining_triggers > 1 {
-            effect.remaining_triggers -= 1;
-            new_ids.append(effect.effect_id);
-            world.write_model(@effect);
+    while i < effects.len() {
+        let effect = *effects.at(i);
+        match effect.get_timing() {
+            Timing::StartOfTurn => {
+                start_of_turn_effects.append(effect);
+            },
+            Timing::MoveStep => {
+                move_step_effects.append(effect);
+            },
+            Timing::EndOfTurn => {
+                end_of_turn_effects.append(effect);
+            },
+            _ => {}
         }
         i += 1;
     };
-    game.active_start_of_turn_effects = new_ids;
-    game.clone()
+
+    (start_of_turn_effects, move_step_effects, end_of_turn_effects)
 }
 
-pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Game {
+// Returns (game, extra_energy, stunned_pieces)
+pub fn handle_start_of_turn_effects(start_of_turn_effects: @Array<Effect>) -> (u8, Array<u64>, Array<Effect>) {
     let mut i = 0;
-    let mut new_ids: Array<u64> = ArrayTrait::new();
-    while i < game.active_end_of_turn_effects.len().into() {
-        let effect_id = i;
-        let mut effect: Effect = world.read_model((game.id, effect_id).into());
-        if effect.remaining_triggers == 1 {
-            world.erase_model(@effect);
-            continue;
+    let mut extra_energy: u8 = 0;
+    let mut stunned_pieces: Array<u64> = ArrayTrait::new();
+    let mut new_effects: Array<Effect> = ArrayTrait::new();
+    while i < start_of_turn_effects.len() {
+        let mut effect = *start_of_turn_effects.at(i);
+        effect.trigger();
+        if effect.remaining_triggers > 0 {
+            new_effects.append(effect);
         }
-        else {
-            effect.remaining_triggers -= 1;
-            new_ids.append(effect_id);
-            world.write_model(@effect);
+        match effect.effect_type {
+            EffectType::ExtraEnergy(x) => {
+                extra_energy += x;
+            },
+            EffectType::Stun(x) => {
+                stunned_pieces.append(x.into());
+            },
+            _ => {}
+        }
+        i += 1;
+    };
+    (extra_energy, stunned_pieces, new_effects)
+}
+
+// This is the only function that writes to the world
+// Probably should make a separate simulate fn that doesn't write
+pub fn update_end_of_turn_effects(ref game: Game, ref end_of_turn_effects: Array<Effect>, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    let mut i = 0;
+    let mut new_effects: Array<Effect> = ArrayTrait::new();
+    while i < end_of_turn_effects.len() {
+        let mut effect = *end_of_turn_effects.at(i);
+        effect.trigger();
+        if effect.remaining_triggers > 0 {
+            new_effects.append(effect);
         }
         match effect.effect_type {
             EffectType::DOT(dmg) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        game = handle_damage(ref game, cap_id, ref world, dmg.into());
+                        let mut cap: Cap = keys.get(cap_id.into()).deref();
+                        let (new_game, new_cap) = handle_damage(ref game, ref cap, dmg.into());
+                        game = new_game;
+                        keys.insert(cap_id.into(), NullableTrait::new(new_cap));
                     },
                     _ => {}
                 }
@@ -113,34 +148,90 @@ pub fn update_end_of_turn_effects(ref game: Game, ref world: WorldStorage) -> Ga
             EffectType::Heal(heal) => {
                 match effect.target {
                     EffectTarget::Cap(cap_id) => {
-                        let mut cap: Cap = world.read_model(cap_id);
+                        let mut cap: Cap = keys.get(cap_id.into()).deref();
                         if heal.into() > cap.dmg_taken {
                             cap.dmg_taken = 0;
                         }
-                        cap.dmg_taken -= heal.into();
-                        world.write_model(@cap);
+                        else {
+                            cap.dmg_taken -= heal.into();
+                        }
+                        keys.insert(cap_id.into(), NullableTrait::new(cap));
                     },
                     _ => {}
                 }
             },
             _ => {}
         };
-        match effect.get_timing() {
-            Timing::EndOfTurn => {
-                
-                if effect.remaining_triggers == 1 {
-                    world.erase_model(@effect);
-                }
-                else {
-                    effect.remaining_triggers -= 1;
-                    new_ids.append(effect_id);
-                    world.write_model(@effect);
-                }
-            }, 
-            _ => {}
+        i += 1;
+    };
+    let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+    (new_game, new_effects, new_locations, new_keys)
+}
+
+pub fn handle_damage(ref game: Game, ref target: Cap, amount: u64) -> (Game, Cap) {
+    let cap_type = get_cap_type(target.cap_type).unwrap();
+
+    let remaining_health = cap_type.base_health - target.dmg_taken;
+
+    if target.shield_amt.into() > amount {
+        target.shield_amt -= amount.try_into().unwrap();
+    }
+    else if amount > target.shield_amt.into() + remaining_health.into() {
+        target.dmg_taken = cap_type.base_health;
+        target.shield_amt = 0;
+        game.remove_cap(target.id.try_into().unwrap());
+
+    }
+    else {
+        target.dmg_taken += (amount - target.shield_amt.try_into().unwrap()).try_into().unwrap();
+        target.shield_amt = 0;
+    }
+
+    return (game.clone(), target);
+
+}
+
+pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
+    let mut i = 0;
+    let mut found = false;
+    while i < array.len() {
+        if *array.at(i) == id {
+            found = true;
+            break;
         }
         i += 1;
     };
-    game.active_end_of_turn_effects = new_ids;
-    game.clone()
+    return found;
+}
+
+pub fn clone_dicts(game: @Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    let mut new_locations: Felt252Dict<u64> = Default::default();
+    let mut new_keys: Felt252Dict<Nullable<Cap>> = Default::default();
+
+    let mut i = 0;
+    while i < game.caps_ids.len() {
+        let cap: Cap = keys.get((*game.caps_ids[i]).into()).deref();
+        let index = cap.position.x * 7 + cap.position.y;
+        new_locations.insert(index.into(), cap.id);
+        new_keys.insert(cap.id.into(), NullableTrait::new(cap));
+        i += 1;
+    };
+
+    (game.clone(), new_locations, new_keys)
+}
+
+pub fn get_dicts_from_array(caps: @Array<Cap>) -> (Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    let mut locations: Felt252Dict<u64> = Default::default();
+    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
+
+    let mut i = 0;
+    while i < caps.len() {
+        let cap: Cap = *caps.at(i);
+        let index = cap.position.x * 7 + cap.position.y;
+        locations.insert(index.into(), cap.id);
+        keys.insert(cap.id.into(), NullableTrait::new(cap));
+        i += 1;
+    };
+
+    (locations, keys)
 }

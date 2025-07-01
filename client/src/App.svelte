@@ -13,8 +13,8 @@
     import Popup from './lib/ui/popup.svelte';
     import Profile from './lib/ui/Profile.svelte';
     import TeamSelector from './lib/ui/TeamSelector.svelte';
+    import { onMount } from 'svelte';
 
-    
 </script>
 
 <main>

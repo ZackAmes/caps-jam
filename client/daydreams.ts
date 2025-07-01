@@ -40,10 +40,10 @@ let caps_actions_contract = new Contract(
 ).typedv2(caps_manifest.contracts[0].abi as Abi)
 
 let caps_planetelo_contract = new Contract(
-    caps_manifest.contracts[1].abi,
-    caps_manifest.contracts[1].address,
+    caps_manifest.contracts[2].abi,
+    caps_manifest.contracts[2].address,
     rpc
-).typedv2(caps_manifest.contracts[1].abi as Abi)
+).typedv2(caps_manifest.contracts[2].abi as Abi)
 
 let planetelo_contract = new Contract(
     planetelo_manifest.contracts[0].abi,
@@ -300,7 +300,7 @@ const capsContext = context({
         let cap_types: Array<CapType> = []
         for (let cap of game_state.caps) {
                 if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
-                    let cap_type = (await caps_actions_contract.get_cap_data(cap.cap_type)).unwrap()
+                    let cap_type = (await caps_actions_contract.get_cap_data(0,cap.cap_type)).unwrap()
                     cap_types.push(cap_type)
                 }
             }
@@ -314,7 +314,7 @@ const capsContext = context({
           return cap.owner != env.STARKNET_ADDRESS
         })
         let capsDetails = '\nYour Caps Details. Rememer that these are the only pieces you can move and attack with:\n';
-        let all_cap_types= await Promise.all(game_state.caps.map(async cap => (await caps_actions_contract.get_cap_data(cap.cap_type)).unwrap()))
+        let all_cap_types= await Promise.all(game_state.caps.map(async cap => (await caps_actions_contract.get_cap_data(0,cap.cap_type)).unwrap()))
         capsDetails += (owned_caps.map(cap => {
           let cap_type_id = cap.cap_type;
           let cap_type = cap_types.find(cap_type => cap_type.id == cap.cap_type);
