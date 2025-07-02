@@ -45,23 +45,8 @@ fn main() {
             }
         })?;
 
-    let mut cairo_runner = cairo_run::cairo_run(
-        &program_content,
-        &cairo_run::CairoRunConfig {
-            layout: LayoutName::all_cairo,
-            ..cairo_run::CairoRunConfig::default()
-        },
-        &mut hint_processor,
-    )
     .expect("Cairo run failed");
 
     println!("Executable ran successfully.");
 
-    // You can inspect the VM state or return values here if needed.
-    // The 'cairo_runner' variable is mutable and currently unused, which will
-    // cause compiler warnings. This is intentional so you can uncomment the
-    // following lines to inspect the execution results.
-    //
-    // let return_values = cairo_runner.get_return_values(2).expect("Failed to get return values");
-    // println!("Return values: {:?}", return_values);
 }
