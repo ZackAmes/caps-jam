@@ -248,11 +248,8 @@ pub fn process_actions(
         handle_start_of_turn_effects(
         @start_of_turn_effects,
     );
-    start_of_turn_effects = new_start_of_turn_effects;
-
+    
     let mut energy: u8 = game.turn_count.try_into().unwrap() + 2 + extra_energy;
-
-    let mut new_start_of_turn_effects: Array<Effect> = ArrayTrait::new();
 
     let mut i = 0;
     while i < turn.len() {
@@ -452,6 +449,7 @@ pub fn process_actions(
     };
 
     let (new_game, new_locations, new_keys) = clone_dicts(@game, ref locations, ref keys);
+
     (
         new_game,
         new_locations,

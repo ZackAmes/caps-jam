@@ -22,14 +22,13 @@ pub trait IActions<T> {
 pub mod actions {
     use super::{IActions};
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
-    use caps::models::game::{Vec2, Game, Global, GameTrait, Action, ActionType};
-    use caps::models::effect::{Effect, EffectTrait, EffectType, Timing};
-    use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
+    use caps::models::game::{Vec2, Game, Global, GameTrait, Action};
+    use caps::models::effect::{Effect};
+    use caps::models::cap::{Cap, CapType};
     use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
-    use caps::helpers::handle_damage;
     use caps::helpers::{
-        check_includes, get_piece_locations, get_active_effects, update_end_of_turn_effects,
-        handle_start_of_turn_effects, clone_dicts, get_dicts_from_array, process_actions,
+        get_piece_locations, get_active_effects, update_end_of_turn_effects,
+        get_dicts_from_array, process_actions,
     };
     use caps::simulate_helpers::get_active_effects_from_array;
     use core::dict::{Felt252DictTrait};
@@ -420,7 +419,7 @@ pub mod actions {
                 update_end_of_turn_effects(
                 ref game, ref end_of_turn_effects, ref locations, ref keys,
             );
-            
+
             end_of_turn_effects = new_end_of_turn_effects;
             locations = new_locations;
             keys = new_keys;
