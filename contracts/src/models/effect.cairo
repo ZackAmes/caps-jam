@@ -37,15 +37,14 @@ pub enum EffectTarget {
 
 #[generate_trait]
 pub impl EffectImpl of EffectTrait {
-
-    fn new(game_id: u64, effect_id: u64, effect_type: EffectType, target: EffectTarget, remaining_triggers: u8) -> Effect {
-        Effect {
-            game_id,
-            effect_id,
-            effect_type,
-            target,
-            remaining_triggers,
-        }
+    fn new(
+        game_id: u64,
+        effect_id: u64,
+        effect_type: EffectType,
+        target: EffectTarget,
+        remaining_triggers: u8,
+    ) -> Effect {
+        Effect { game_id, effect_id, effect_type, target, remaining_triggers }
     }
 
     fn trigger(ref self: Effect) {

@@ -57,7 +57,6 @@ mod tests {
 
         // Ensures permissions and initializations are synced.
         world.sync_perms_and_inits(contract_defs());
-
     }
 
     #[test]
@@ -84,19 +83,11 @@ mod tests {
 
         set_contract_address(p1);
 
-        let turn : Array<Action> = array! [ 
-            Action {
-                cap_id: 6,
-                action_type: ActionType::Move(Vec2 {x: 0, y: 1}),
-            },
-            Action {
-                cap_id: 6,
-                action_type: ActionType::Move(Vec2 {x: 0, y: 1}),
-            }
+        let turn: Array<Action> = array![
+            Action { cap_id: 6, action_type: ActionType::Move(Vec2 { x: 0, y: 1 }) },
+            Action { cap_id: 6, action_type: ActionType::Move(Vec2 { x: 0, y: 1 }) },
         ];
 
         actions_system.take_turn(game_id, turn);
-
-
     }
 }

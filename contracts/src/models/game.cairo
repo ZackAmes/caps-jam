@@ -31,7 +31,16 @@ pub struct Game {
 #[generate_trait]
 pub impl GameImpl of GameTrait {
     fn new(id: u64, player1: ContractAddress, player2: ContractAddress) -> Game {
-        Game { id, player1, player2, caps_ids: ArrayTrait::new(), turn_count: 0, over: false, effect_ids: ArrayTrait::new(), last_action_timestamp: 0 }
+        Game {
+            id,
+            player1,
+            player2,
+            caps_ids: ArrayTrait::new(),
+            turn_count: 0,
+            over: false,
+            effect_ids: ArrayTrait::new(),
+            last_action_timestamp: 0,
+        }
     }
 
     fn add_cap(ref self: Game, cap_id: u64) {
@@ -52,7 +61,13 @@ pub impl GameImpl of GameTrait {
         self.caps_ids = new_ids;
     }
 
-    fn update_effects(ref self: Game, ref world: WorldStorage, ref start_of_turn_effects: Array<Effect>, ref move_step_effects: Array<Effect>, ref end_of_turn_effects: Array<Effect>) {
+    fn update_effects(
+        ref self: Game,
+        ref world: WorldStorage,
+        ref start_of_turn_effects: Array<Effect>,
+        ref move_step_effects: Array<Effect>,
+        ref end_of_turn_effects: Array<Effect>,
+    ) {
         let mut i = 0;
         let mut new_ids: Array<u64> = ArrayTrait::new();
         while i < start_of_turn_effects.len() {
@@ -60,8 +75,7 @@ pub impl GameImpl of GameTrait {
             if effect.remaining_triggers > 0 {
                 new_ids.append(effect.effect_id);
                 world.write_model(@effect);
-            }
-            else {
+            } else {
                 world.erase_model(@effect);
             }
             i += 1;
@@ -72,8 +86,7 @@ pub impl GameImpl of GameTrait {
             if effect.remaining_triggers > 0 {
                 new_ids.append(effect.effect_id);
                 world.write_model(@effect);
-            }
-            else {
+            } else {
                 world.erase_model(@effect);
             }
             i += 1;
@@ -84,8 +97,7 @@ pub impl GameImpl of GameTrait {
             if effect.remaining_triggers > 0 {
                 new_ids.append(effect.effect_id);
                 world.write_model(@effect);
-            }
-            else {
+            } else {
                 world.erase_model(@effect);
             }
             i += 1;
@@ -101,7 +113,7 @@ pub impl GameImpl of GameTrait {
             let cap: Cap = world.read_model(*self.caps_ids[i]);
             let cap_type = get_cap_type(cap.cap_type).unwrap();
             if cap.dmg_taken >= cap_type.base_health {
-                i+=1;
+                i += 1;
                 continue;
             }
             if cap.owner == *self.player1 {
@@ -136,11 +148,10 @@ pub impl GameImpl of GameTrait {
                 winner = *self.player2;
                 break;
             }
-            i+=1;
+            i += 1;
         };
         (one_found && two_found, winner)
     }
-
 }
 
 

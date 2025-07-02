@@ -3,7 +3,9 @@ use starknet::ContractAddress;
 //planetelo 1on1 interface
 #[starknet::interface]
 pub trait IOneOnOne<TState> {
-    fn create_match(ref self: TState, p1: ContractAddress, p2: ContractAddress, playlist_id: u128) -> u128;
+    fn create_match(
+        ref self: TState, p1: ContractAddress, p2: ContractAddress, playlist_id: u128,
+    ) -> u128;
     fn settle_match(ref self: TState, match_id: u128) -> Status;
 }
 
@@ -80,7 +82,7 @@ trait IPlanetelo<T> {
 mod planetelo {
     use super::{IPlanetelo, Status, IOneOnOne, AgentGames, Player, GlobalStats, CustomGames};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use dojo::world::{WorldStorage, WorldStorageTrait};    
+    use dojo::world::{WorldStorage, WorldStorageTrait};
     use dojo::model::{ModelStorage};
 
     use caps::models::game::{Game, GameTrait};
@@ -97,7 +99,6 @@ mod planetelo {
 
     #[abi(embed_v0)]
     impl PlaneteloInterfaceImpl of IPlanetelo<ContractState> {
-
         fn get_result(self: @ContractState, session_id: u32) -> (bool, ContractAddress) {
             let mut world: WorldStorage = self.world(@"caps");
             let game: Game = world.read_model(session_id);
@@ -114,14 +115,18 @@ mod planetelo {
             let mut player: Player = world.read_model(get_caller_address());
             assert!(!player.in_game, "You are already in a game");
             let mut agent_games: AgentGames = world.read_model(0);
-            let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: _caps_world.dns_address(@"actions").unwrap() };
+            let dispatcher: IActionsDispatcher = IActionsDispatcher {
+                contract_address: _caps_world.dns_address(@"actions").unwrap(),
+            };
 
             let mut agent_team = (get_block_timestamp() % 4).try_into().unwrap();
             if agent_team == player.team {
                 agent_team = (agent_team + 1) % 4;
             }
             let player_team = player.team;
-            let id: u128 = dispatcher.create_game(get_caller_address(), agent_games.address, player_team, agent_team).into();
+            let id: u128 = dispatcher
+                .create_game(get_caller_address(), agent_games.address, player_team, agent_team)
+                .into();
 
             agent_games.game_ids.append(id);
             world.write_model(@agent_games);
@@ -130,7 +135,6 @@ mod planetelo {
             world.write_model(@player);
 
             id
-            
         }
 
         fn settle_agent_game(ref self: ContractState) {
@@ -150,13 +154,12 @@ mod planetelo {
                 let game: Game = caps_world.read_model(*game_id);
                 if player.game_id == *game_id && game.over {
                     found = true;
-                    i+=1;
+                    i += 1;
                     continue;
-                }
-                else{
+                } else {
                     new_ids.append(*game_id);
                 }
-                i+=1;
+                i += 1;
             };
 
             if found {
@@ -165,8 +168,7 @@ mod planetelo {
                 if *winner == player_address {
                     player.agent_wins += 1;
                     agent_games.losses += 1;
-                }
-                else if *winner == agent_games.address {
+                } else if *winner == agent_games.address {
                     agent_games.wins += 1;
                     player.agent_losses += 1;
                 } else {
@@ -180,8 +182,7 @@ mod planetelo {
                 player.in_game = false;
                 player.game_id = 0;
                 world.write_model(@player);
-            }
-            else{
+            } else {
                 panic!("Game not found");
             }
         }
@@ -257,7 +258,9 @@ mod planetelo {
             let mut p1: Player = world.read_model(invite.player1);
             let mut p2: Player = world.read_model(invite.player2);
 
-            let mut dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
+            let mut dispatcher: IActionsDispatcher = IActionsDispatcher {
+                contract_address: world.dns_address(@"actions").unwrap(),
+            };
             let id: u128 = dispatcher.create_game(p1.address, p2.address, p1.team, p2.team).into();
             invite.game_id = id;
             world.write_model(@invite);
@@ -306,11 +309,9 @@ mod planetelo {
             if *over {
                 if *winner == game.player1 {
                     res = Status::Winner(game.player1);
-                }
-                else if *winner == game.player2 {
+                } else if *winner == game.player2 {
                     res = Status::Winner(game.player2);
-                }
-                else {
+                } else {
                     res = Status::None;
                 }
             }
@@ -340,10 +341,11 @@ mod planetelo {
             p2.custom_game_ids = new_p2_ids;
             world.write_model(@p1);
             world.write_model(@p2);
-            
         }
 
-        fn get_player_custom_games(self: @ContractState, address: ContractAddress) -> Array<CustomGames> {
+        fn get_player_custom_games(
+            self: @ContractState, address: ContractAddress,
+        ) -> Array<CustomGames> {
             let mut world = self.world(@"planetelo");
             let mut player: Player = world.read_model(address);
             let mut custom_games: Array<CustomGames> = ArrayTrait::new();
@@ -371,10 +373,13 @@ mod planetelo {
 
     #[abi(embed_v0)]
     impl OneOnOneImpl of IOneOnOne<ContractState> {
-        fn create_match(ref self: ContractState, p1: ContractAddress, p2: ContractAddress, playlist_id: u128) -> u128{
-
+        fn create_match(
+            ref self: ContractState, p1: ContractAddress, p2: ContractAddress, playlist_id: u128,
+        ) -> u128 {
             let mut world = self.world(@"caps");
-            let dispatcher: IActionsDispatcher = IActionsDispatcher { contract_address: world.dns_address(@"actions").unwrap() };
+            let dispatcher: IActionsDispatcher = IActionsDispatcher {
+                contract_address: world.dns_address(@"actions").unwrap(),
+            };
 
             let p1: Player = world.read_model(p1);
             let p2: Player = world.read_model(p2);
@@ -389,21 +394,16 @@ mod planetelo {
 
             if !*over {
                 return Status::Active;
-            }
-            else {
+            } else {
                 if *winner == game.player1 {
                     return Status::Winner(game.player1);
-                }
-                else if *winner == game.player2 {
+                } else if *winner == game.player2 {
                     return Status::Winner(game.player2);
-                }
-                else {
+                } else {
                     return Status::None;
                 }
             }
-
         }
     }
 }
-
 

@@ -16,9 +16,8 @@ pub struct Cap {
     pub set_id: u64,
     pub cap_type: u16,
     pub dmg_taken: u16,
-    pub shield_amt: u16
+    pub shield_amt: u16,
 }
-
 
 
 #[generate_trait]
@@ -31,22 +30,42 @@ pub impl CapImpl of CapTrait {
         let mut new_position = *self.position;
         match direction {
             0 => if new_position.x + amt > 6 {
-                panic!("Move out of bounds: would move to x: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.x + amt, new_position.x, amt);
+                panic!(
+                    "Move out of bounds: would move to x: {} (start: {}, amt: {}) (get_new_index_from_dir)",
+                    new_position.x + amt,
+                    new_position.x,
+                    amt,
+                );
             } else {
                 new_position.x += amt
             },
             1 => if amt > new_position.x {
-                panic!("Move out of bounds: would move to x: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.x, new_position.x, amt);
+                panic!(
+                    "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (get_new_index_from_dir)",
+                    amt - new_position.x,
+                    new_position.x,
+                    amt,
+                );
             } else {
                 new_position.x -= amt
             },
             2 => if new_position.y + amt > 6 {
-                panic!("Move out of bounds: would move to y: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.y + amt, new_position.y, amt);
+                panic!(
+                    "Move out of bounds: would move to y: {} (start: {}, amt: {}) (get_new_index_from_dir)",
+                    new_position.y + amt,
+                    new_position.y,
+                    amt,
+                );
             } else {
                 new_position.y += amt
             },
             3 => if amt > new_position.y {
-                panic!("Move out of bounds: would move to y: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.y, new_position.y, amt  );
+                panic!(
+                    "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (get_new_index_from_dir)",
+                    amt - new_position.y,
+                    new_position.y,
+                    amt,
+                );
             } else {
                 new_position.y -= amt
             },
@@ -55,12 +74,17 @@ pub impl CapImpl of CapTrait {
         (new_position.x * 7 + new_position.y).into()
     }
 
-    fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8, bonus_range: u8){
+    fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8, bonus_range: u8) {
         let mut new_position = self.position;
         match direction {
             0 => {
                 if new_position.x + amount > 6 {
-                    panic!("Move out of bounds: would move to x: {} (start: {}, amt: {}) (Move)", new_position.x + amount, new_position.x, amount);
+                    panic!(
+                        "Move out of bounds: would move to x: {} (start: {}, amt: {}) (Move)",
+                        new_position.x + amount,
+                        new_position.x,
+                        amount,
+                    );
                 }
                 if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
@@ -69,7 +93,12 @@ pub impl CapImpl of CapTrait {
             },
             1 => {
                 if amount > new_position.x {
-                    panic!("Move out of bounds: would move to x: -{} (start: {}, amt: {}) (Move)", amount - new_position.x, new_position.x, amount);
+                    panic!(
+                        "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (Move)",
+                        amount - new_position.x,
+                        new_position.x,
+                        amount,
+                    );
                 }
                 if amount > cap_type.move_range.x + bonus_range {
                     panic!("Move out of range");
@@ -78,7 +107,12 @@ pub impl CapImpl of CapTrait {
             },
             2 => {
                 if new_position.y + amount > 6 {
-                    panic!("Move out of bounds: would move to y: {} (start: {}, amt: {}) (Move)", new_position.y + amount, new_position.y, amount);
+                    panic!(
+                        "Move out of bounds: would move to y: {} (start: {}, amt: {}) (Move)",
+                        new_position.y + amount,
+                        new_position.y,
+                        amount,
+                    );
                 }
                 if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");
@@ -87,7 +121,12 @@ pub impl CapImpl of CapTrait {
             },
             3 => {
                 if amount > new_position.y {
-                    panic!("Move out of bounds: would move to y: -{} (start: {}, amt: {}) (Move)", amount - new_position.y, new_position.y, amount);
+                    panic!(
+                        "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (Move)",
+                        amount - new_position.y,
+                        new_position.y,
+                        amount,
+                    );
                 }
                 if amount > cap_type.move_range.y + bonus_range {
                     panic!("Move out of range");
@@ -105,52 +144,41 @@ pub impl CapImpl of CapTrait {
         while i < range.len() {
             let to_check: Vec2 = *range[i];
             if target.x >= *self.position.x && target.y >= *self.position.y {
-                if to_check.x + *self.position.x > 6 {
-                }
-                if to_check.y + *self.position.y > 6 {
-                }
-                if *self.position.x + to_check.x == target.x && *self.position.y + to_check.y == target.y {
+                if to_check.x + *self.position.x > 6 {}
+                if to_check.y + *self.position.y > 6 {}
+                if *self.position.x
+                    + to_check.x == target.x && *self.position.y
+                    + to_check.y == target.y {
                     valid = true;
                     break;
-                }
-                else {
-                }
-            }
-            else if target.x <= *self.position.x && target.y <= *self.position.y {
-                if to_check.x > *self.position.x {
-                }
-                if to_check.y > *self.position.y {
-                }
-                if *self.position.x - to_check.x == target.x && *self.position.y - to_check.y == target.y {
+                } else {}
+            } else if target.x <= *self.position.x && target.y <= *self.position.y {
+                if to_check.x > *self.position.x {}
+                if to_check.y > *self.position.y {}
+                if *self.position.x
+                    - to_check.x == target.x && *self.position.y
+                    - to_check.y == target.y {
                     valid = true;
                     break;
-                }
-                else {
-                }
-            }
-            else if target.x <= *self.position.x && target.y >= *self.position.y {
-                if to_check.x > *self.position.x  {
-                }
-                if to_check.y + *self.position.y > 6 {
-                }
-                if *self.position.x - to_check.x == target.x && *self.position.y + to_check.y == target.y {
+                } else {}
+            } else if target.x <= *self.position.x && target.y >= *self.position.y {
+                if to_check.x > *self.position.x {}
+                if to_check.y + *self.position.y > 6 {}
+                if *self.position.x
+                    - to_check.x == target.x && *self.position.y
+                    + to_check.y == target.y {
                     valid = true;
                     break;
-                }
-                else {
-                }
-            }
-            else if target.x >= *self.position.x && target.y <= *self.position.y {
-                if to_check.x + *self.position.x > 6 {
-                }
-                if to_check.y > *self.position.y {
-                }
-                if *self.position.x + to_check.x == target.x && *self.position.y - to_check.y == target.y {
+                } else {}
+            } else if target.x >= *self.position.x && target.y <= *self.position.y {
+                if to_check.x + *self.position.x > 6 {}
+                if to_check.y > *self.position.y {}
+                if *self.position.x
+                    + to_check.x == target.x && *self.position.y
+                    - to_check.y == target.y {
                     valid = true;
                     break;
-                }
-                else {
-                }
+                } else {}
             }
             i += 1;
         };
@@ -163,7 +191,14 @@ pub impl CapImpl of CapTrait {
         cap_type
     }
 
-    fn use_ability(ref self: Cap, target: Vec2, ref game: Game, set: @Set, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    fn use_ability(
+        ref self: Cap,
+        target: Vec2,
+        ref game: Game,
+        set: @Set,
+        ref locations: Felt252Dict<u64>,
+        ref keys: Felt252Dict<Nullable<Cap>>,
+    ) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
         let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
         let game_clone = game.clone();
         let mut caps_array: Array<Cap> = ArrayTrait::new();
@@ -173,13 +208,12 @@ pub impl CapImpl of CapTrait {
             caps_array.append(cap);
             i += 1;
         };
-        let (new_game, new_effects, new_caps) = dispatcher.activate_ability(self, target, game_clone, caps_array);
+        let (new_game, new_effects, new_caps) = dispatcher
+            .activate_ability(self, target, game_clone, caps_array);
         let (new_locations, new_keys) = get_dicts_from_array(@new_caps);
         (new_game, new_effects, new_locations, new_keys)
     }
-
 }
-
 
 
 //This is never getting stored. It's just a model to generate the bindings
@@ -205,10 +239,6 @@ pub struct CapType {
 }
 
 
-
-
-
-
 #[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
 pub enum TargetType {
     None,
@@ -221,16 +251,20 @@ pub enum TargetType {
 
 #[generate_trait]
 pub impl TargetTypeImpl of TargetTypeTrait {
-    fn is_valid(self: @TargetType, cap: @Cap, ref cap_type: CapType, target: Vec2, ref game: Game, ref locations: Felt252Dict<u64>, ref keys: Felt252Dict<Nullable<Cap>>) -> (bool, Game, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    fn is_valid(
+        self: @TargetType,
+        cap: @Cap,
+        ref cap_type: CapType,
+        target: Vec2,
+        ref game: Game,
+        ref locations: Felt252Dict<u64>,
+        ref keys: Felt252Dict<Nullable<Cap>>,
+    ) -> (bool, Game, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
         let mut valid = false;
-        
-        match *self {
-            TargetType::None => {
 
-            },
-            TargetType::SelfCap => {
-                valid = true;
-            },
+        match *self {
+            TargetType::None => {},
+            TargetType::SelfCap => { valid = true; },
             TargetType::TeamCap => {
                 assert!(cap_type.ability_range.len() > 0, "Ability range is empty");
                 let in_range = cap.check_in_range(target, @cap_type.ability_range);
