@@ -1,15 +1,10 @@
-use caps::helpers::{clone_dicts, get_dicts_from_array};
-use caps::models::effect::{Effect};
-use caps::models::game::{Game, Vec2};
-use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
-
 use core::dict::Felt252Dict;
-use starknet::ContractAddress;
-
-#[derive(Copy, Drop, Serde, Debug)]
-#[dojo::model]
+use caps_wasm::set_zero::{get_cap_type, use_ability};
+use caps_wasm::helpers::{get_dicts_from_array, clone_dicts};
+use caps_wasm::types::game::{Game, Vec2};
+use caps_wasm::types::effect::{Effect, EffectTrait};
+#[derive(Copy, Drop, Debug)]
 pub struct Cap {
-    #[key]
     pub id: u64,
     pub owner: felt252,
     pub position: Vec2,
@@ -18,7 +13,6 @@ pub struct Cap {
     pub dmg_taken: u16,
     pub shield_amt: u16,
 }
-
 
 #[generate_trait]
 pub impl CapImpl of CapTrait {
@@ -185,22 +179,17 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn get_cap_type(self: @Cap, ref set: Set) -> CapType {
-        let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
-        let cap_type = dispatcher.get_cap_type(*self.cap_type).unwrap();
-        cap_type
+    fn get_cap_type(self: @Cap) -> CapType {
+        get_cap_type(*self.cap_type).unwrap()
     }
 
     fn use_ability(
         ref self: Cap,
         target: Vec2,
         ref game: Game,
-        set: @Set,
         ref locations: Felt252Dict<u64>,
         ref keys: Felt252Dict<Nullable<Cap>>,
     ) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
-        let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
-        let game_clone = game.clone();
         let mut caps_array: Array<Cap> = ArrayTrait::new();
         let mut i = 0;
         while i < game.caps_ids.len() {
@@ -208,19 +197,16 @@ pub impl CapImpl of CapTrait {
             caps_array.append(cap);
             i += 1;
         };
-        let (new_game, new_effects, new_caps) = dispatcher
-            .activate_ability(self, target, game_clone, caps_array);
+        let mut cap_type = self.get_cap_type();
+        let (new_game, new_effects, new_caps) = use_ability(ref self, ref cap_type, target, ref game, ref locations, ref keys);
         let (new_locations, new_keys) = get_dicts_from_array(@new_caps);
         (new_game, new_effects, new_locations, new_keys)
     }
 }
 
 
-//This is never getting stored. It's just a model to generate the bindings
-#[derive(Drop, Serde, Debug, Clone, Introspect)]
-#[dojo::model]
+#[derive(Drop, Serde, Debug, Clone)]
 pub struct CapType {
-    #[key]
     pub id: u16,
     pub name: ByteArray,
     pub description: ByteArray,
@@ -239,7 +225,9 @@ pub struct CapType {
 }
 
 
-#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
+
+
+#[derive(Copy, Drop, Serde, Debug, PartialEq)]
 pub enum TargetType {
     None,
     SelfCap,
@@ -285,7 +273,7 @@ pub impl TargetTypeImpl of TargetTypeTrait {
                 let at_location_id = locations.get((target.x * 7 + target.y).into());
                 let mut at_location = keys.get(at_location_id.into()).deref();
                 assert!(at_location_id != 0, "No cap at location");
-                assert!(*cap.owner != starknet::contract_address_const::<0x0>(), "Cap owner 0?");
+                assert!(*cap.owner != 0, "Cap owner 0?");
                 assert!(at_location.owner != *cap.owner, "Cap is owned by player");
                 //Must be opponent
                 if in_range && at_location.owner != *cap.owner {
