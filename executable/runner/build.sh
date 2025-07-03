@@ -1,0 +1,1 @@
+RUSTFLAGS='--cfg getrandom_backend="linux_getrandom"' cargo build
