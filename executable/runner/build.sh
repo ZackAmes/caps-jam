@@ -1,1 +1,1 @@
-RUSTFLAGS='--cfg getrandom_backend="linux_getrandom"' cargo build
+RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack build --target web
