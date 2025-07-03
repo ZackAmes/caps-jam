@@ -33,24 +33,23 @@ fn main() -> Result<()> {
         .entrypoints
         .iter()
         .find(|e| matches!(e.kind, EntryPointKind::Standalone))
-        .context("No `Standalone` entrypoint found in executable.")?;
+        .with_context(|| "no `Standalone` entrypoint found")?;
 
     let program = Program::new(
         entrypoint.builtins.clone(),
         data,
         Some(entrypoint.offset),
         hints,
-        Default::default(), // reference_manager
-        Default::default(), // identifiers
-        vec![],             // error_message_attributes
-        None,               // instruction_locations
-    )
-    .context("Failed to build program from executable.")?;
+        Default::default(),
+        Default::default(),
+        vec![],
+        None,
+    ).with_context(|| "failed to build program from executable")?;
 
     // 4. Setup the hint processor.
     let mut hint_processor = CairoHintProcessor {
         runner: None,
-        user_args: vec![vec![Arg::Array(vec![])]],
+        user_args: vec![vec![Arg::Value(Felt252::from(0))]],
         string_to_hint,
         starknet_state: Default::default(),
         run_resources: Default::default(),
