@@ -24,7 +24,7 @@ pub mod actions {
     use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use caps::models::game::{Vec2, Game, Global, GameTrait, Action};
     use caps::models::effect::{Effect};
-    use caps::models::cap::{Cap, CapType};
+    use caps::models::cap::{Cap, CapType, Location};
     use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
     use caps::helpers::{
         get_piece_locations, get_active_effects, update_end_of_turn_effects,
@@ -68,8 +68,8 @@ pub mod actions {
 
             let mut game = Game {
                 id: game_id,
-                player1: p1,
-                player2: p2,
+                player1: p1.into(),
+                player2: p2.into(),
                 caps_ids: ArrayTrait::new(),
                 turn_count: 0,
                 over: false,
@@ -86,8 +86,8 @@ pub mod actions {
 
             let p1_cap1 = Cap {
                 id: global.cap_counter + 1,
-                owner: p1,
-                position: Vec2 { x: 2, y: 0 },
+                owner: p1.into(),
+                location: Location::Board(Vec2 { x: 2, y: 0 }),
                 set_id: 0,
                 cap_type: *p1_types[0],
                 dmg_taken: 0,
@@ -95,8 +95,8 @@ pub mod actions {
             };
             let p1_cap2 = Cap {
                 id: global.cap_counter + 2,
-                owner: p1,
-                position: Vec2 { x: 4, y: 0 },
+                owner: p1.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p1_types[1],
                 dmg_taken: 0,
@@ -105,8 +105,8 @@ pub mod actions {
 
             let p1_cap3 = Cap {
                 id: global.cap_counter + 3,
-                owner: p1,
-                position: Vec2 { x: 3, y: 0 },
+                owner: p1.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p1_types[2],
                 dmg_taken: 0,
@@ -115,8 +115,8 @@ pub mod actions {
 
             let p1_cap4 = Cap {
                 id: global.cap_counter + 4,
-                owner: p1,
-                position: Vec2 { x: 1, y: 0 },
+                owner: p1.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p1_types[3],
                 dmg_taken: 0,
@@ -124,8 +124,8 @@ pub mod actions {
             };
             let p1_cap5 = Cap {
                 id: global.cap_counter + 5,
-                owner: p1,
-                position: Vec2 { x: 5, y: 0 },
+                owner: p1.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p1_types[4],
                 dmg_taken: 0,
@@ -134,8 +134,8 @@ pub mod actions {
 
             let p1_cap6 = Cap {
                 id: global.cap_counter + 6,
-                owner: p1,
-                position: Vec2 { x: 3, y: 1 },
+                owner: p1.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p1_types[5],
                 dmg_taken: 0,
@@ -144,8 +144,8 @@ pub mod actions {
 
             let p2_cap1 = Cap {
                 id: global.cap_counter + 7,
-                owner: p2,
-                position: Vec2 { x: 2, y: 6 },
+                owner: p2.into(),
+                location: Location::Board(Vec2 { x: 2, y: 6 }),
                 set_id: 0,
                 cap_type: *p2_types[0],
                 dmg_taken: 0,
@@ -154,8 +154,8 @@ pub mod actions {
 
             let p2_cap2 = Cap {
                 id: global.cap_counter + 8,
-                owner: p2,
-                position: Vec2 { x: 4, y: 6 },
+                owner: p2.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p2_types[1],
                 dmg_taken: 0,
@@ -164,8 +164,8 @@ pub mod actions {
 
             let p2_cap3 = Cap {
                 id: global.cap_counter + 9,
-                owner: p2,
-                position: Vec2 { x: 3, y: 6 },
+                owner: p2.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p2_types[2],
                 dmg_taken: 0,
@@ -174,8 +174,8 @@ pub mod actions {
 
             let p2_cap4 = Cap {
                 id: global.cap_counter + 10,
-                owner: p2,
-                position: Vec2 { x: 1, y: 6 },
+                owner: p2.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p2_types[3],
                 dmg_taken: 0,
@@ -184,8 +184,8 @@ pub mod actions {
 
             let p2_cap5 = Cap {
                 id: global.cap_counter + 11,
-                owner: p2,
-                position: Vec2 { x: 5, y: 6 },
+                owner: p2.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p2_types[4],
                 dmg_taken: 0,
@@ -194,8 +194,8 @@ pub mod actions {
 
             let p2_cap6 = Cap {
                 id: global.cap_counter + 12,
-                owner: p2,
-                position: Vec2 { x: 3, y: 5 },
+                owner: p2.into(),
+                location: Location::Bench,
                 set_id: 0,
                 cap_type: *p2_types[5],
                 dmg_taken: 0,
@@ -435,9 +435,9 @@ pub mod actions {
                 if cap.dmg_taken >= cap_type.base_health {
                     game.remove_cap(cap_id);
                 } else {
-                    if cap.owner == game.player1 {
+                    if cap.owner == (game.player1).into() {
                         one_found = true;
-                    } else if cap.owner == game.player2 {
+                    } else if cap.owner == (game.player2).into() {
                         two_found = true;
                     }
                     final_caps.append(cap);
