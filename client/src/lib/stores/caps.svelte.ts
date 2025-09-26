@@ -8,7 +8,7 @@ import { push } from 'svelte-spa-router'
 
 
 let rpc = new RpcProvider({
-    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
+    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
 })
 let caps_contract = new Contract(
     manifest.contracts[0].abi,

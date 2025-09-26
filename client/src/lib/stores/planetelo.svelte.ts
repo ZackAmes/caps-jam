@@ -10,7 +10,7 @@ import type { CustomGames } from "../dojo/models.gen";
 import { push } from 'svelte-spa-router'
 
 let rpc = new RpcProvider({
-    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
+    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
 })
 let plantelo_contract = new Contract(
     planetelo_manifest.contracts[0].abi,
