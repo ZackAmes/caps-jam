@@ -4,6 +4,7 @@
   import Game from "./Game.svelte";
   import { caps } from "./stores/caps.svelte";
   import Profile from "./ui/Profile.svelte";
+  import { push } from 'svelte-spa-router'
   
 </script>
 
@@ -13,5 +14,5 @@
   <Profile />
 {/if}
 {#if account.account && planetelo.queue_status == 2 && planetelo.current_game_id}
-  <button onclick={() => caps.get_game(planetelo.current_game_id!)}>Refresh Game</button>
+  <button onclick={() => push(`/game/${planetelo.current_game_id}`)}>View Current Game</button>
 {/if}

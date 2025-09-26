@@ -3,6 +3,7 @@
   import { account } from "./stores/account.svelte";
   import { caps } from "./stores/caps.svelte";
   import { onMount, onDestroy } from "svelte";
+  import { push } from 'svelte-spa-router'
 
   let statusInterval: NodeJS.Timeout;
   let queueInterval: NodeJS.Timeout;
@@ -72,10 +73,7 @@
       {:else if planetelo.current_game_id == planetelo.planetelo_game_id}
         <button disabled>Active</button>
       {:else}
-        <button onclick={() => {
-          planetelo.set_current_game_id(planetelo.planetelo_game_id!);
-          caps.get_game(planetelo.planetelo_game_id!);
-        }}>Switch</button>
+        <button onclick={() => push(`/game/${planetelo.planetelo_game_id}`)}>Switch</button>
       {/if}
     {:else}
       <p>Connect wallet to queue</p>
@@ -96,10 +94,7 @@
       {:else if planetelo.current_game_id == planetelo.agent_game_id}
         <button disabled>Active</button>
       {:else}
-        <button onclick={() => {
-          planetelo.set_current_game_id(planetelo.agent_game_id!);
-          caps.get_game(planetelo.agent_game_id!);
-        }}>Switch</button>
+        <button onclick={() => push(`/game/${planetelo.agent_game_id}`)}>Switch</button>
       {/if}
     {:else}
       <p>Connect wallet to play</p>

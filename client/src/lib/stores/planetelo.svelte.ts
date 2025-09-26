@@ -7,6 +7,7 @@ import { caps } from "./caps.svelte";
 import caps_planetelo_manifest from "../../../../contracts/manifest_sepolia.json";
 import { get } from "svelte/store";
 import type { CustomGames } from "../dojo/models.gen";
+import { push } from 'svelte-spa-router'
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
@@ -61,9 +62,7 @@ export const planetelo = {
         }
         invites = await planetelo.get_player_invites();
         custom_games = await planetelo.get_player_custom_games();
-        if (current_game_id) {
-            caps.get_game(current_game_id);
-        }
+        // Don't auto-navigate to game - let user choose when to view game
         console.log(res)
         return res;
     },
@@ -182,6 +181,7 @@ export const planetelo = {
         current_game_id = id;
     },
 
+    // Navigate to the other available game - surfing the URL waves! 🐙
     switch_current_game: () => {
         console.log('switching current game')
         console.log(planetelo_game_id)
@@ -192,14 +192,11 @@ export const planetelo = {
             return;
         }
         if (current_game_id == agent_game_id) {
-            current_game_id = planetelo_game_id;
+            push(`/game/${planetelo_game_id}`)
         }
         else {
-            current_game_id = agent_game_id;
+            push(`/game/${agent_game_id}`)
         }
-        caps.get_game(current_game_id);
-        planetelo.update_status();
-        console.log(caps.game_state)
     },
 
     get_player_invites: async () => {

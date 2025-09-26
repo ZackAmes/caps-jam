@@ -4,6 +4,7 @@ import manifest from "../../../../contracts/manifest_sepolia.json";
 import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
 import type { Game, Cap, Action, ActionType, CapType, Vec2, Effect } from "./../dojo/models.gen"
+import { push } from 'svelte-spa-router'
 
 
 let rpc = new RpcProvider({
@@ -306,40 +307,46 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect',
 
 export const caps = {
 
+    // Navigate to game instead of setting state directly - the tentacles guide the way! 🐙
+    go_to_game: (id: number) => {
+        push(`/game/${id}`)
+    },
+    
+    // Load game data when viewing a specific game (called from GameView component)
     get_game: async (id: number) => {
         console.log('getting game', id)
-            let res = (await caps_contract.get_game(id)).unwrap()
-            if (game_state != initial_state) {
-                initial_state = { game: res[0], caps: res[1], effects: res[2] }
-            }
-            else {
-                initial_state = { game: res[0], caps: res[1], effects: res[2] }
-            }
+        let res = (await caps_contract.get_game(id)).unwrap()
+        if (game_state != initial_state) {
+            initial_state = { game: res[0], caps: res[1], effects: res[2] }
+        }
+        else {
+            initial_state = { game: res[0], caps: res[1], effects: res[2] }
+        }
 
-            if (!game_state || initial_state.game.turn_count > game_state.game.turn_count) {
-                game_state = initial_state
-            }
+        if (!game_state || initial_state.game.turn_count > game_state.game.turn_count) {
+            game_state = initial_state
+        }
 
-            if (id == planetelo.planetelo_game_id) {
-                planetelo_game_state = game_state
-            }
-            
-            if (planetelo.agent_game_id) {
-                let agent_game_state = await caps_contract.get_game(planetelo.agent_game_id)
-                agent_game_state = agent_game_state.unwrap()
-                agent_game_state = { game: agent_game_state[0], caps: agent_game_state[1], effects: agent_game_state[2] }
-            }
+        if (id == planetelo.planetelo_game_id) {
+            planetelo_game_state = game_state
+        }
+        
+        if (planetelo.agent_game_id) {
+            let agent_game_state = await caps_contract.get_game(planetelo.agent_game_id)
+            agent_game_state = agent_game_state.unwrap()
+            agent_game_state = { game: agent_game_state[0], caps: agent_game_state[1], effects: agent_game_state[2] }
+        }
 
-            planetelo.set_current_game_id(id);
-            console.log(game_state)
-            for (let cap of game_state?.caps || []) {
-                if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
-                    let cap_type = (await caps_contract.get_cap_data(0, cap.cap_type)).unwrap()
-                    cap_types.push(cap_type)
-                }
+        planetelo.set_current_game_id(id);
+        console.log(game_state)
+        for (let cap of game_state?.caps || []) {
+            if (!cap_types.find(cap_type => cap_type.id == cap.cap_type)) {
+                let cap_type = (await caps_contract.get_cap_data(0, cap.cap_type)).unwrap()
+                cap_types.push(cap_type)
             }
-            energy = max_energy;
-            selected_team = await caps_planetelo_contract.get_player_team(account.account!.address);
+        }
+        energy = max_energy;
+        selected_team = await caps_planetelo_contract.get_player_team(account.account!.address);
     },
 
     select_team: async (team: number) => {
