@@ -1,5 +1,5 @@
 import { DojoProvider, DojoCall } from "@dojoengine/core";
-import { Account, AccountInterface, BigNumberish, CairoOption, CairoCustomEnum, ByteArray } from "starknet";
+import { Account, AccountInterface, BigNumberish, CairoOption, CairoCustomEnum } from "starknet";
 import * as models from "./models.gen";
 
 export function setupWorld(provider: DojoProvider) {
@@ -17,7 +17,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_actions_createGame_calldata(p1, p2, p1Team, p2Team),
-				"dojo_starter",
+				"caps",
 			);
 		} catch (error) {
 			console.error(error);
@@ -35,7 +35,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const actions_getCapData = async (setId: BigNumberish, capType: BigNumberish) => {
 		try {
-			return await provider.call("dojo_starter", build_actions_getCapData_calldata(setId, capType));
+			return await provider.call("caps", build_actions_getCapData_calldata(setId, capType));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -52,24 +52,24 @@ export function setupWorld(provider: DojoProvider) {
 
 	const actions_getGame = async (gameId: BigNumberish) => {
 		try {
-			return await provider.call("dojo_starter", build_actions_getGame_calldata(gameId));
+			return await provider.call("caps", build_actions_getGame_calldata(gameId));
 		} catch (error) {
 			console.error(error);
 			throw error;
 		}
 	};
 
-	const build_actions_simulateTurn_calldata = (game: models.Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>, set: models.Set): DojoCall => {
+	const build_actions_simulateTurn_calldata = (game: models.Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>): DojoCall => {
 		return {
 			contractName: "actions",
 			entrypoint: "simulate_turn",
-			calldata: [game, effects, caps, turn, set],
+			calldata: [game, caps, effects, turn],
 		};
 	};
 
-	const actions_simulateTurn = async (game: models.Game, effects: Array<Effect>, caps: Array<Cap>, turn: Array<Action>, set: models.Set) => {
+	const actions_simulateTurn = async (game: models.Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>) => {
 		try {
-			return await provider.call("dojo_starter", build_actions_simulateTurn_calldata(game, effects, caps, turn, set));
+			return await provider.call("caps", build_actions_simulateTurn_calldata(game, caps, effects, turn));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -89,7 +89,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_actions_takeTurn_calldata(gameId, turn),
-				"dojo_starter",
+				"caps",
 			);
 		} catch (error) {
 			console.error(error);
@@ -110,7 +110,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_acceptInvite_calldata(inviteId),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -131,7 +131,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_createMatch_calldata(p1, p2, playlistId),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -152,7 +152,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_declineInvite_calldata(inviteId),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -170,7 +170,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getAgentGames = async () => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getAgentGames_calldata());
+			return await provider.call("planetelo", build_planetelo_getAgentGames_calldata());
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -187,7 +187,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getPlayerCustomGames = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getPlayerCustomGames_calldata(address));
+			return await provider.call("planetelo", build_planetelo_getPlayerCustomGames_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -204,7 +204,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getPlayerGameId = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getPlayerGameId_calldata(address));
+			return await provider.call("planetelo", build_planetelo_getPlayerGameId_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -221,7 +221,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getPlayerInvites = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getPlayerInvites_calldata(address));
+			return await provider.call("planetelo", build_planetelo_getPlayerInvites_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -238,7 +238,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getPlayerStats = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getPlayerStats_calldata(address));
+			return await provider.call("planetelo", build_planetelo_getPlayerStats_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -255,7 +255,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getPlayerTeam = async (address: string) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getPlayerTeam_calldata(address));
+			return await provider.call("planetelo", build_planetelo_getPlayerTeam_calldata(address));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -272,7 +272,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const planetelo_getResult = async (sessionId: BigNumberish) => {
 		try {
-			return await provider.call("dojo_starter", build_planetelo_getResult_calldata(sessionId));
+			return await provider.call("planetelo", build_planetelo_getResult_calldata(sessionId));
 		} catch (error) {
 			console.error(error);
 			throw error;
@@ -292,7 +292,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_invite_calldata(player2),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -313,7 +313,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_playAgent_calldata(),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -334,7 +334,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_selectTeam_calldata(team),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -355,7 +355,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_settleAgentGame_calldata(),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -376,7 +376,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_settleCustomGame_calldata(gameId),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -397,7 +397,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_planetelo_settleMatch_calldata(matchId),
-				"dojo_starter",
+				"planetelo",
 			);
 		} catch (error) {
 			console.error(error);
@@ -418,7 +418,7 @@ export function setupWorld(provider: DojoProvider) {
 			return await provider.execute(
 				snAccount,
 				build_set_zero_activateAbility_calldata(cap, target, game, caps),
-				"dojo_starter",
+				"caps",
 			);
 		} catch (error) {
 			console.error(error);
@@ -436,7 +436,7 @@ export function setupWorld(provider: DojoProvider) {
 
 	const set_zero_getCapType = async (id: BigNumberish) => {
 		try {
-			return await provider.call("dojo_starter", build_set_zero_getCapType_calldata(id));
+			return await provider.call("caps", build_set_zero_getCapType_calldata(id));
 		} catch (error) {
 			console.error(error);
 			throw error;
