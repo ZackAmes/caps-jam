@@ -1,8 +1,8 @@
 {
   "world": {
-    "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x7c37820f857cbb75d109b8b0fd51fa84a1c12e47f360c25449e8ea5c0a6155",
-    "seed": "gkjasfsasd1asdf2fssdfr",
+    "class_hash": "0x13d92333361bb7049c1232c0a5404e2c19082ededc3a73d75cb33fa952adec7",
+    "address": "0x3386f42474eaa3f6bf8410524b22fdd69beb12ce772e9e6d3cc964e2c3f46de",
+    "seed": "gkjasfsasd1asdf2fssdfrfsd",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x3888a41d9d2c72e704b72b682c5476678b75e9497473997ffdc9adb607d0333",
-      "class_hash": "0x436306f50cc8e4e5765b146119cdda773fffd453d4bf2f537d0a2440ddfc814",
+      "address": "0x315c608c996621b2b8351204109f5c67fe03ca9325be214bbee1fa71f7a50ab",
+      "class_hash": "0x28bf79d799bfc944b1b76412933c3ca475ec7321b73672b82ac35226192f4b1",
       "abi": [
         {
           "type": "impl",
@@ -1404,6 +1404,10 @@
           "type": "enum",
           "name": "caps::models::game::ActionType",
           "variants": [
+            {
+              "name": "Play",
+              "type": "(core::integer::u64, caps::models::game::Vec2)"
+            },
             {
               "name": "Move",
               "type": "caps::models::game::Vec2"
@@ -1485,6 +1489,28 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "caps::models::cap::Location",
+          "variants": [
+            {
+              "name": "Bench",
+              "type": "()"
+            },
+            {
+              "name": "Board",
+              "type": "caps::models::game::Vec2"
+            },
+            {
+              "name": "Hidden",
+              "type": "core::felt252"
+            },
+            {
+              "name": "Dead",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "caps::models::cap::Cap",
           "members": [
@@ -1494,11 +1520,11 @@
             },
             {
               "name": "owner",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "type": "core::felt252"
             },
             {
-              "name": "position",
-              "type": "caps::models::game::Vec2"
+              "name": "location",
+              "type": "caps::models::cap::Location"
             },
             {
               "name": "set_id",
@@ -1695,6 +1721,10 @@
             {
               "name": "description",
               "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "play_cost",
+              "type": "core::integer::u8"
             },
             {
               "name": "move_cost",
@@ -2005,8 +2035,8 @@
       ]
     },
     {
-      "address": "0x69e088c1d46718ce759b841ffeddcd3d6d1d18afec8b04c40630e44281e25ea",
-      "class_hash": "0x2d57051fcff0d2bc86ca3d87dedeeff278770ce936d2d432e0d1d835d912188",
+      "address": "0x55bf65ff794ae268576e95601c68670eaaa4affc684cf2309d13b81fbbd97c5",
+      "class_hash": "0x7579b4bc78adda3b2dff3029d9e1eee73fea758fef5c2dbcc01ccdf4caa3da9",
       "abi": [
         {
           "type": "impl",
@@ -2131,6 +2161,10 @@
               "type": "core::byte_array::ByteArray"
             },
             {
+              "name": "play_cost",
+              "type": "core::integer::u8"
+            },
+            {
               "name": "move_cost",
               "type": "core::integer::u8"
             },
@@ -2187,6 +2221,28 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "caps::models::cap::Location",
+          "variants": [
+            {
+              "name": "Bench",
+              "type": "()"
+            },
+            {
+              "name": "Board",
+              "type": "caps::models::game::Vec2"
+            },
+            {
+              "name": "Hidden",
+              "type": "core::felt252"
+            },
+            {
+              "name": "Dead",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "caps::models::cap::Cap",
           "members": [
@@ -2196,11 +2252,11 @@
             },
             {
               "name": "owner",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "type": "core::felt252"
             },
             {
-              "name": "position",
-              "type": "caps::models::game::Vec2"
+              "name": "location",
+              "type": "caps::models::cap::Location"
             },
             {
               "name": "set_id",
@@ -2538,8 +2594,8 @@
       ]
     },
     {
-      "address": "0x51f9964b2c541560cf12e44d6db40a008d8caeac32e89a14ef9be67d63f2434",
-      "class_hash": "0x1afbc1f25a9f70d5859f86d1484ab20a87a7dc3dff45c05b2660e29bcc1a2bc",
+      "address": "0x1bdc3967451a69bcc9c91f9c6f147ae8397968ef223fd0544185b39919da853",
+      "class_hash": "0x3c5a3d519aadd42ff983ed2defec668e355dbf65ce0bfa9eb2aec2642921e46",
       "abi": [
         {
           "type": "impl",
@@ -3040,13 +3096,13 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x1b1d359fb6447f2f0f377ac41d80b51ad224ae7d1cb18e81b71e0b29296c4ca",
+      "class_hash": "0x703f095d37385bd557dc0bce6d144dbcd72c1769e09c73c90c3dbb628907fa4",
       "tag": "caps-Cap",
       "selector": "0x4666b6027dbc8acd7fcac4489890ab6bb23d5b080ad517c26a6f8b3b551c37f"
     },
     {
       "members": [],
-      "class_hash": "0x916a203646b1c63fa642171f73e6329eeb26e73f93f89924f56522003655a",
+      "class_hash": "0x6189a333cb79567b3c20c0ab813a685b7ddf29d267977aafbec09a63280c9d8",
       "tag": "caps-CapType",
       "selector": "0x62e5bf0e713996728b2c966c81e5c8a7a1b8346c1ba1a3a35c80ea4200f818c"
     },
@@ -3102,7 +3158,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x33ea998bd1592a8e31cdd78af69d3725d80de9e81d1fdf8c44454dd6c7aa5d3",
+      "class_hash": "0x30080ac4dbeb5acd2aaab50ef6cc30449ad17bf695abe9be05898c714bbbfa8",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }
