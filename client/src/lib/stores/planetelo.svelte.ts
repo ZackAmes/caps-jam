@@ -15,7 +15,7 @@ let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
 })
 let dojoProvider = new DojoProvider(
-    caps_planetelo_manifest, "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
+    caps_planetelo_manifest, "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_9"
 )
 let caps_client = setupWorld(dojoProvider)
 let plantelo_contract = new Contract(
