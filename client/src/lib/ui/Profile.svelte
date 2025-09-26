@@ -2,6 +2,7 @@
     import { account } from '../stores/account.svelte';
     import { planetelo } from '../stores/planetelo.svelte';
     import { caps } from '../stores/caps.svelte';
+    import { push } from 'svelte-spa-router'
 
     let isOpen = $state(false);
     let inviteAddress = $state('');
@@ -44,8 +45,8 @@
         const currentPlayerAddress = account.account?.address;
         
         if (Number(game.game_id) !== 0) {
-            // Game has started, load it
-            caps.get_game(Number(game.game_id));
+            // Game has started, navigate to it - riding the tentacle highways! 🐙
+            push(`/game/${game.game_id}`);
             isOpen = false;
         } else if (game.player2 === currentPlayerAddress) {
             // Current player is player2, they can accept the invite
