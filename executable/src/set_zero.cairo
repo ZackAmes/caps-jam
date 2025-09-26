@@ -1,47 +1,8 @@
-use caps::models::cap::{Cap, CapType, TargetType};
-use caps::models::effect::{Effect, EffectType, EffectTarget};
-use caps::helpers::{handle_damage};
-use caps::models::game::{Vec2, Game, GameTrait};
-use core::dict::{Felt252Dict, Felt252DictTrait};
-
-#[dojo::contract]
-pub mod set_zero {
-    use caps::models::set::{ISetInterface, Set};
-    use super::{get_cap_type, use_ability};
-    use caps::models::cap::{Cap, CapType};
-    use caps::models::game::{Game, Vec2};
-    use caps::models::effect::Effect;
-    use dojo::world::{WorldStorage, WorldStorageTrait};
-    use dojo::model::{ModelStorage};
-    use caps::helpers::get_dicts_from_array;
-
-    fn dojo_init(ref self: ContractState) {
-        let mut world: WorldStorage = self.world(@"caps");
-        let set = Set { id: 0, address: world.dns_address(@"set_zero").unwrap() };
-        world.write_model(@set);
-    }
-
-    #[abi(embed_v0)]
-    impl SetZeroImpl of ISetInterface<ContractState> {
-        fn get_cap_type(self: @ContractState, id: u16) -> Option<CapType> {
-            get_cap_type(id)
-        }
-
-        fn activate_ability(
-            ref self: ContractState, cap: Cap, target: Vec2, game: Game, caps: Array<Cap>,
-        ) -> (Game, Array<Effect>, Array<Cap>) {
-            // Ideally we should change this so it doesn't need to write to the world.
-            // Which mostly means returning the updated caps instead of writing them
-            let mut cap = cap;
-            let mut game = game;
-            let mut cap_type = get_cap_type(cap.cap_type).unwrap();
-            let (mut locations, mut keys) = get_dicts_from_array(@caps);
-            use_ability(ref cap, ref cap_type, target, ref game, ref locations, ref keys)
-        }
-    }
-}
-
-
+use caps_wasm::types::cap::{Cap,CapType, TargetType};
+use caps_wasm::types::effect::{Effect, EffectType, EffectTarget, Timing};
+use caps_wasm::types::game::{Game,GameTrait, Vec2};
+use caps_wasm::helpers::{get_dicts_from_array, handle_damage};
+use core::dict::Felt252Dict;
 pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     let res = match cap_type {
         0 => Option::Some(
@@ -49,7 +10,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 0,
                 name: "Red Tower",
                 description: "Red Tower",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -69,7 +29,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 1,
                 name: "Blue Tower",
                 description: "Blue Tower",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -89,7 +48,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 2,
                 name: "Yellow Tower",
                 description: "Yellow Tower",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -109,7 +67,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 3,
                 name: "Green Tower",
                 description: "Green Tower",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -129,7 +86,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 4,
                 name: "Red Basic",
                 description: "Cap 3",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![
@@ -157,7 +113,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 5,
                 name: "Blue Basic",
                 description: "Cap 4",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 2,
                 attack_range: array![
@@ -188,7 +143,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 6,
                 name: "Yellow Basic",
                 description: "Cap 5",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 3,
                 attack_range: array![Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 2 }],
@@ -212,7 +166,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 7,
                 name: "Green Basic",
                 description: "Cap 6",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 3,
                 attack_range: array![
@@ -237,7 +190,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 8,
                 name: "Red Elite",
                 description: "Cap 8",
-                play_cost: 1,
                 move_cost: 2,
                 attack_cost: 3,
                 attack_range: array![Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
@@ -255,7 +207,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 9,
                 name: "Blue Elite",
                 description: "Cap 9",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 2,
                 attack_range: array![
@@ -286,7 +237,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 10,
                 name: "Yellow Elite",
                 description: "Cap 10",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 2 }, Vec2 { x: 2, y: 1 }],
@@ -304,7 +254,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 11,
                 name: "Green Elite",
                 description: "Cap 11",
-                play_cost: 1,
                 move_cost: 3,
                 attack_cost: 5,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 1, y: 1 }],
@@ -322,7 +271,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 12,
                 name: "Red Mage",
                 description: "Red Mage",
-                play_cost: 1,
                 move_cost: 2,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -346,7 +294,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 13,
                 name: "Blue Mage",
                 description: "Blue Mage",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -369,7 +316,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 14,
                 name: "Yellow Mage",
                 description: "Yellow Mage",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -393,7 +339,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 15,
                 name: "Green Mage",
                 description: "Green Mage",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 1,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 }],
@@ -411,7 +356,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 16,
                 name: "Red Dragon",
                 description: "Cap 3",
-                play_cost: 1,
                 move_cost: 5,
                 attack_cost: 6,
                 attack_range: array![
@@ -438,7 +382,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 17,
                 name: "Blue Mermaid",
                 description: "Blue Mermaid",
-                play_cost: 1,
                 move_cost: 3,
                 attack_cost: 3,
                 attack_range: array![
@@ -469,7 +412,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 18,
                 name: "Yellow Trickster",
                 description: "Yellow Trickster",
-                play_cost: 1,
                 move_cost: 2,
                 attack_cost: 2,
                 attack_range: array![
@@ -492,7 +434,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 19,
                 name: "Green Tank",
                 description: "Green Tank",
-                play_cost: 1,
                 move_cost: 6,
                 attack_cost: 7,
                 attack_range: array![
@@ -523,7 +464,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 20,
                 name: "Red Knight",
                 description: "Red Knight",
-                play_cost: 1,
                 move_cost: 2,
                 attack_cost: 2,
                 attack_range: array![Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }],
@@ -546,7 +486,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 21,
                 name: "Blue Elite",
                 description: "Cap 9",
-                play_cost: 1,
                 move_cost: 1,
                 attack_cost: 2,
                 attack_range: array![
@@ -580,7 +519,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 22,
                 name: "Yellow Elite",
                 description: "Cap 10",
-                play_cost: 1,
                 move_cost: 3,
                 attack_cost: 5,
                 attack_range: array![
@@ -611,7 +549,6 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
                 id: 23,
                 name: "Green Elite",
                 description: "Cap 11",
-                play_cost: 1,
                 move_cost: 3,
                 attack_cost: 5,
                 attack_range: array![
@@ -642,7 +579,7 @@ pub fn get_cap_type(cap_type: u16) -> Option<CapType> {
     res
 }
 
-fn use_ability(
+pub fn use_ability(
     ref cap: Cap,
     ref cap_type: CapType,
     target: Vec2,

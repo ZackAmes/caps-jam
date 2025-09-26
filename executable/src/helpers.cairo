@@ -1,77 +1,8 @@
-use dojo::model::{ModelStorage};
-use caps::models::game::{Game, GameTrait, Action, ActionType};
-use caps::models::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait, Location};
-use caps::models::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
-use caps::models::set::Set;
-use caps::sets::set_zero::get_cap_type;
-use starknet::ContractAddress;
-use dojo::world::WorldStorage;
+use caps_wasm::types::game::{Game, GameTrait, Action, ActionType};
+use caps_wasm::types::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait};
+use caps_wasm::types::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+use caps_wasm::set_zero::get_cap_type;
 use core::dict::Felt252Dict;
-
-pub fn get_player_pieces(
-    game_id: u64, player: ContractAddress, world: @WorldStorage,
-) -> Array<u64> {
-    let mut game: Game = world.read_model(game_id);
-    let mut pieces: Array<u64> = ArrayTrait::new();
-    let mut i = 0;
-
-    assert!(game.player1 == player || game.player2 == player, "Not in game");
-
-    while i < game.caps_ids.len() {
-        let cap: Cap = world.read_model(*game.caps_ids[i]);
-        if cap.owner == player.into() {
-            pieces.append(cap.id);
-        }
-        i += 1;
-    };
-
-    pieces
-}
-
-pub fn get_piece_locations(
-    ref game: Game, world: @WorldStorage,
-) -> (Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
-    let mut locations: Felt252Dict<u64> = Default::default();
-    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
-    let mut i = 0;
-
-    while i < game.caps_ids.len() {
-        let cap: Cap = world.read_model(*game.caps_ids[i]);
-        let position = cap.get_position();
-        if position.is_none() {
-            continue;
-        }
-        let position = position.unwrap();
-        let index = position.x * 7 + position.y;
-        locations.insert(index.into(), cap.id);
-        keys.insert(cap.id.into(), NullableTrait::new(cap));
-        i += 1;
-    };
-
-    (locations, keys)
-}
-
-pub fn get_active_effects(
-    ref game: Game, world: @WorldStorage,
-) -> (Array<Effect>, Array<Effect>, Array<Effect>) {
-    let mut start_of_turn_effects: Array<Effect> = ArrayTrait::new();
-    let mut move_step_effects: Array<Effect> = ArrayTrait::new();
-    let mut end_of_turn_effects: Array<Effect> = ArrayTrait::new();
-
-    let mut i = 0;
-    while i < game.effect_ids.len() {
-        let effect: Effect = world.read_model((game.id, i).into());
-        match effect.get_timing() {
-            Timing::StartOfTurn => { start_of_turn_effects.append(effect); },
-            Timing::MoveStep => { move_step_effects.append(effect); },
-            Timing::EndOfTurn => { end_of_turn_effects.append(effect); },
-            _ => {},
-        }
-        i += 1;
-    };
-
-    (start_of_turn_effects, move_step_effects, end_of_turn_effects)
-}
 
 // Returns (game, extra_energy, stunned_pieces)
 pub fn handle_start_of_turn_effects(
@@ -186,12 +117,7 @@ pub fn clone_dicts(
     let mut i = 0;
     while i < game.caps_ids.len() {
         let cap: Cap = keys.get((*game.caps_ids[i]).into()).deref();
-        let position = cap.get_position();
-        if position.is_none() {
-            continue;
-        }
-        let position = position.unwrap();
-        let index = position.x * 7 + position.y;
+        let index = cap.position.x * 7 + cap.position.y;
         new_locations.insert(index.into(), cap.id);
         new_keys.insert(cap.id.into(), NullableTrait::new(cap));
         i += 1;
@@ -207,12 +133,7 @@ pub fn get_dicts_from_array(caps: @Array<Cap>) -> (Felt252Dict<u64>, Felt252Dict
     let mut i = 0;
     while i < caps.len() {
         let cap: Cap = *caps.at(i);
-        let position = cap.get_position();
-        if position.is_none() {
-            continue;
-        }
-        let position = position.unwrap();
-        let index = position.x * 7 + position.y;
+        let index = cap.position.x * 7 + cap.position.y;
         locations.insert(index.into(), cap.id);
         keys.insert(cap.id.into(), NullableTrait::new(cap));
         i += 1;
@@ -229,8 +150,7 @@ pub fn process_actions(
     ref start_of_turn_effects: Array<Effect>,
     ref move_step_effects: Array<Effect>,
     ref end_of_turn_effects: Array<Effect>,
-    ref set: Set,
-    caller: ContractAddress,
+    caller: felt252,
 ) -> (
     Game, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>, Array<Effect>, Array<Effect>, Array<Effect>,
 ) {
@@ -246,9 +166,9 @@ pub fn process_actions(
     while i < turn.len() {
         let action = turn.at(i);
         let mut cap = keys.get((*action.cap_id).into()).deref();
-        assert!(cap.owner == caller.into(), "You are not the owner of this piece");
+        assert!(cap.owner == caller, "You are not the owner of this piece");
         assert!(!check_includes(@stunned_pieces, cap.id), "Piece is stunned");
-        let cap_type: CapType = cap.get_cap_type(ref set);
+        let cap_type: CapType = cap.get_cap_type();
         let mut new_effects: Array<Effect> = ArrayTrait::new();
         let mut new_move_step_effects: Array<Effect> = ArrayTrait::new();
 
@@ -291,13 +211,11 @@ pub fn process_actions(
                 energy -= move_cost;
                 let new_location_index = cap.get_new_index_from_dir(*dir.x, *dir.y);
                 let piece_at_location_id = locations.get(new_location_index.into());
-                assert!(cap.get_position().is_some(), "Cap is not on the board");
-                let cap_position = cap.get_position().unwrap();
                 assert!(piece_at_location_id == 0, "There is a piece at the new location, id: {}", piece_at_location_id);
-                let old_position_index = cap_position.x * 7 + cap_position.y;
+                let old_position_index = cap.position.x * 7 + cap.position.y;
                 locations.insert(old_position_index.into(), 0);
                 cap.move(cap_type, *dir.x, *dir.y, move_bonus);
-                locations.insert((cap_position.x * 7 + cap_position.y).into(), cap.id);
+                locations.insert((cap.position.x * 7 + cap.position.y).into(), cap.id);
                 keys.insert(cap.id.into(), NullableTrait::new(cap));
             },
             ActionType::Attack(target) => {
@@ -339,7 +257,7 @@ pub fn process_actions(
                 let piece_at_location_id = locations.get((*target.x * 7 + *target.y).into());
                 let mut piece_at_location: Cap = keys.get(piece_at_location_id.into()).deref();
                 assert!(piece_at_location_id != 0, "There is no piece at the target location");
-                assert!(piece_at_location.owner != caller.into(), "You cannot attack your own piece");
+                assert!(piece_at_location.owner != caller, "You cannot attack your own piece");
                 if (!cap.check_in_range(*target, @cap_type.attack_range)) {
                     panic!("Attack is not valid");
                 }
@@ -350,7 +268,7 @@ pub fn process_actions(
                 keys.insert(new_cap.id.into(), NullableTrait::new(new_cap));
             },
             ActionType::Ability(target) => {
-                let mut cap_type: CapType = cap.get_cap_type(ref set);
+                let mut cap_type: CapType = cap.get_cap_type();
                 assert!(cap_type.ability_target != TargetType::None, "Ability should not be none");
                 let (valid, new_game, new_locations, new_keys) = cap_type
                     .ability_target
@@ -360,7 +278,7 @@ pub fn process_actions(
                 locations = new_locations;
                 assert!(valid, "Ability is not valid");
                 let mut ability_cost = cap_type.ability_cost;
-                let mut ability_discount = 0;
+                let mut ability_discount: u8 = 0;
                 let mut double_count: u8 = 0;
 
                 for mut effect in move_step_effects {
@@ -393,7 +311,7 @@ pub fn process_actions(
                 energy -= ability_cost;
 
                 let (mut game, mut created_effects, new_locations, new_keys) = cap
-                    .use_ability(*target, ref game, @set, ref locations, ref keys);
+                    .use_ability(*target, ref game, ref locations, ref keys);
                 locations = new_locations;
                 keys = new_keys;
 
@@ -410,7 +328,7 @@ pub fn process_actions(
                     keys = new_keys;
                     if valid {
                         let (mut game, new_double_effects, new_locations, new_keys) = cap
-                            .use_ability(*target, ref game, @set, ref locations, ref keys);
+                            .use_ability(*target, ref game, ref locations, ref keys);
                         locations = new_locations;
                         keys = new_keys;
                         for effect in new_double_effects {
@@ -422,17 +340,6 @@ pub fn process_actions(
                         double_count = 0;
                     }
                 }
-            },
-            ActionType::Play((cap_id, location)) => {
-                let mut cap = keys.get((*cap_id).into()).deref();
-                let cap_type: CapType = cap.get_cap_type(ref set);
-                assert!(cap.owner == caller.into(), "You are not the owner of this piece");
-                assert!(cap.location == Location::Bench, "Piece is not on the bench");
-                assert!(cap_type.play_cost <= energy, "Not enough energy, play cost: {}, energy: {}", cap_type.play_cost, energy);
-                energy -= cap_type.play_cost;
-                cap.location = Location::Board(*location);
-                keys.insert(cap.id.into(), NullableTrait::new(cap));
-                locations.insert((*location.x * 7 + *location.y).into(), cap.id);
             },
         };
 

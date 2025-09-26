@@ -1,41 +1,27 @@
-use caps::helpers::{clone_dicts, get_dicts_from_array};
-use caps::models::effect::{Effect};
-use caps::models::game::{Game, Vec2};
-use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
-
 use core::dict::Felt252Dict;
-use starknet::ContractAddress;
-
-#[derive(Copy, Drop, Serde, Debug)]
-#[dojo::model]
+use caps_wasm::set_zero::{get_cap_type, use_ability};
+use caps_wasm::helpers::{get_dicts_from_array, clone_dicts};
+use caps_wasm::types::game::{Game, Vec2};
+use caps_wasm::types::effect::{Effect, EffectTrait};
+#[derive(Copy, Drop, Debug)]
 pub struct Cap {
-    #[key]
     pub id: u64,
     pub owner: felt252,
-    pub location: Location,
+    pub position: Vec2,
     pub set_id: u64,
     pub cap_type: u16,
     pub dmg_taken: u16,
     pub shield_amt: u16,
 }
 
-
 #[generate_trait]
 pub impl CapImpl of CapTrait {
-    fn new(id: u64, owner: felt252, location: Location, set_id: u64, cap_type: u16) -> Cap {
-        Cap { id, owner, location, set_id, cap_type, dmg_taken: 0, shield_amt: 0 }
+    fn new(id: u64, owner: felt252, position: Vec2, set_id: u64, cap_type: u16) -> Cap {
+        Cap { id, owner, position, set_id, cap_type, dmg_taken: 0, shield_amt: 0 }
     }
 
     fn get_new_index_from_dir(self: @Cap, direction: u8, amt: u8) -> felt252 {
-        let mut new_position = Vec2 { x: 0, y: 0 };
-        match self.location {
-            Location::Board(vec) => {
-                new_position = Vec2 { x: *vec.x, y: *vec.y };
-            },
-            _ => {
-                panic!("Cap is not on the board");
-            },
-        }
+        let mut new_position = *self.position;
         match direction {
             0 => if new_position.x + amt > 6 {
                 panic!(
@@ -83,11 +69,7 @@ pub impl CapImpl of CapTrait {
     }
 
     fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8, bonus_range: u8) {
-        let mut new_position = self.get_position();
-        if new_position.is_none() {
-            panic!("Cap is not on the board");
-        }
-        let mut new_position = new_position.unwrap();
+        let mut new_position = self.position;
         match direction {
             0 => {
                 if new_position.x + amount > 6 {
@@ -147,55 +129,46 @@ pub impl CapImpl of CapTrait {
             },
             _ => (),
         };
-        self.location = Location::Board(new_position);
+        self.position = new_position;
     }
 
     fn check_in_range(self: @Cap, target: Vec2, range: @Array<Vec2>) -> bool {
         let mut valid = false;
         let mut i = 0;
-        let mut position = Vec2 { x: 0, y: 0 };
-        match self.location {
-            Location::Board(vec) => {
-                position = Vec2 { x: *vec.x, y: *vec.y };
-            },
-            _ => {
-                panic!("Cap is not on the board");
-            },
-        }
         while i < range.len() {
             let to_check: Vec2 = *range[i];
-            if target.x >= position.x && target.y >= position.y {
-                if to_check.x + position.x > 6 {}
-                if to_check.y + position.y > 6 {}
-                if position.x
-                    + to_check.x == target.x && position.y
+            if target.x >= *self.position.x && target.y >= *self.position.y {
+                if to_check.x + *self.position.x > 6 {}
+                if to_check.y + *self.position.y > 6 {}
+                if *self.position.x
+                    + to_check.x == target.x && *self.position.y
                     + to_check.y == target.y {
                     valid = true;
                     break;
                 } else {}
-            } else if target.x <= position.x && target.y <= position.y {
-                if to_check.x > position.x {}
-                if to_check.y > position.y {}
-                if position.x
-                    - to_check.x == target.x && position.y
+            } else if target.x <= *self.position.x && target.y <= *self.position.y {
+                if to_check.x > *self.position.x {}
+                if to_check.y > *self.position.y {}
+                if *self.position.x
+                    - to_check.x == target.x && *self.position.y
                     - to_check.y == target.y {
                     valid = true;
                     break;
                 } else {}
-            } else if target.x <= position.x && target.y >= position.y {
-                if to_check.x > position.x {}
-                if to_check.y + position.y > 6 {}
-                if position.x
-                    - to_check.x == target.x && position.y
+            } else if target.x <= *self.position.x && target.y >= *self.position.y {
+                if to_check.x > *self.position.x {}
+                if to_check.y + *self.position.y > 6 {}
+                if *self.position.x
+                    - to_check.x == target.x && *self.position.y
                     + to_check.y == target.y {
                     valid = true;
                     break;
                 } else {}
-            } else if target.x >= position.x && target.y <= position.y {
-                if to_check.x + position.x > 6 {}
-                if to_check.y > position.y {}
-                if position.x
-                    + to_check.x == target.x && position.y
+            } else if target.x >= *self.position.x && target.y <= *self.position.y {
+                if to_check.x + *self.position.x > 6 {}
+                if to_check.y > *self.position.y {}
+                if *self.position.x
+                    + to_check.x == target.x && *self.position.y
                     - to_check.y == target.y {
                     valid = true;
                     break;
@@ -206,33 +179,17 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn get_cap_type(self: @Cap, ref set: Set) -> CapType {
-        let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
-        let cap_type = dispatcher.get_cap_type(*self.cap_type).unwrap();
-        cap_type
-    }
-
-    fn get_position(self: @Cap) -> Option<Vec2> {
-        match self.location {
-            Location::Board(vec) => {
-                Option::Some(*vec)
-            },
-            _ => {
-                Option::None
-            },
-        }
+    fn get_cap_type(self: @Cap) -> CapType {
+        get_cap_type(*self.cap_type).unwrap()
     }
 
     fn use_ability(
         ref self: Cap,
         target: Vec2,
         ref game: Game,
-        set: @Set,
         ref locations: Felt252Dict<u64>,
         ref keys: Felt252Dict<Nullable<Cap>>,
     ) -> (Game, Array<Effect>, Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
-        let dispatcher = ISetInterfaceDispatcher { contract_address: *set.address };
-        let game_clone = game.clone();
         let mut caps_array: Array<Cap> = ArrayTrait::new();
         let mut i = 0;
         while i < game.caps_ids.len() {
@@ -240,23 +197,19 @@ pub impl CapImpl of CapTrait {
             caps_array.append(cap);
             i += 1;
         };
-        let (new_game, new_effects, new_caps) = dispatcher
-            .activate_ability(self, target, game_clone, caps_array);
+        let mut cap_type = self.get_cap_type();
+        let (new_game, new_effects, new_caps) = use_ability(ref self, ref cap_type, target, ref game, ref locations, ref keys);
         let (new_locations, new_keys) = get_dicts_from_array(@new_caps);
         (new_game, new_effects, new_locations, new_keys)
     }
 }
 
 
-//This is never getting stored. It's just a model to generate the bindings
-#[derive(Drop, Serde, Debug, Clone, Introspect)]
-#[dojo::model]
+#[derive(Drop, Serde, Debug, Clone)]
 pub struct CapType {
-    #[key]
     pub id: u16,
     pub name: ByteArray,
     pub description: ByteArray,
-    pub play_cost: u8,
     pub move_cost: u8,
     pub attack_cost: u8,
     // Attack range is the squares relative to the cap's position that can be attacked
@@ -272,7 +225,9 @@ pub struct CapType {
 }
 
 
-#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
+
+
+#[derive(Copy, Drop, Serde, Debug, PartialEq)]
 pub enum TargetType {
     None,
     SelfCap,
@@ -280,14 +235,6 @@ pub enum TargetType {
     OpponentCap,
     AnyCap,
     AnySquare,
-}
-
-#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
-pub enum Location {
-    Bench,
-    Board: Vec2,
-    Hidden: felt252, // hash if hidden
-    Dead
 }
 
 #[generate_trait]

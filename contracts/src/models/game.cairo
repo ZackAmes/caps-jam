@@ -116,9 +116,9 @@ pub impl GameImpl of GameTrait {
                 i += 1;
                 continue;
             }
-            if cap.owner == *self.player1 {
+            if cap.owner == (*self.player1).into() {
                 one_found = true;
-            } else if cap.owner == *self.player2 {
+            } else if cap.owner == (*self.player2).into() {
                 two_found = true;
             }
             i += 1;
@@ -138,12 +138,12 @@ pub impl GameImpl of GameTrait {
         let mut winner = starknet::contract_address_const::<0>();
         while i < caps.len() {
             let cap: Cap = *caps.at(i);
-            if cap.owner == *self.player1 {
+            if cap.owner == (*self.player1).into() {
                 one_found = true;
                 winner = *self.player1;
                 break;
             }
-            if cap.owner == *self.player2 {
+            if cap.owner == (*self.player2).into() {
                 two_found = true;
                 winner = *self.player2;
                 break;
@@ -163,6 +163,7 @@ pub struct Action {
 
 #[derive(Drop, Serde, Copy, Introspect)]
 pub enum ActionType {
+    Play: (u64, Vec2),
     Move: Vec2,
     Attack: Vec2,
     Ability: Vec2,

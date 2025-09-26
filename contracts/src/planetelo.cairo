@@ -308,9 +308,9 @@ mod planetelo {
             let mut res = Status::Active;
             if *over {
                 if *winner == game.player1 {
-                    res = Status::Winner(game.player1);
+                    res = Status::Winner(game.player1.into());
                 } else if *winner == game.player2 {
-                    res = Status::Winner(game.player2);
+                    res = Status::Winner(game.player2.into());
                 } else {
                     res = Status::None;
                 }
@@ -396,9 +396,9 @@ mod planetelo {
                 return Status::Active;
             } else {
                 if *winner == game.player1 {
-                    return Status::Winner(game.player1);
+                    return Status::Winner(game.player1.into());
                 } else if *winner == game.player2 {
-                    return Status::Winner(game.player2);
+                    return Status::Winner(game.player2.into());
                 } else {
                     return Status::None;
                 }
