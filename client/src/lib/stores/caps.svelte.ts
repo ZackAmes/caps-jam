@@ -8,9 +8,9 @@ import { push } from 'svelte-spa-router'
 import { DojoProvider } from "@dojoengine/core"
 import { setupWorld } from "../dojo/contracts.gen"
 
-let dojoProvider = new DojoProvider({
-    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
-})
+let dojoProvider = new DojoProvider(
+    manifest, "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
+)
 
 let client = setupWorld(dojoProvider)
 
