@@ -8,10 +8,16 @@ import caps_planetelo_manifest from "../../../../contracts/manifest_sepolia.json
 import { get } from "svelte/store";
 import type { CustomGames } from "../dojo/models.gen";
 import { push } from 'svelte-spa-router'
+import { setupWorld } from "../dojo/contracts.gen";
+import { DojoProvider } from "@dojoengine/core";
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
 })
+let dojoProvider = new DojoProvider({
+    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
+})
+let caps_client = setupWorld(dojoProvider)
 let plantelo_contract = new Contract(
     planetelo_manifest.contracts[0].abi,
     planetelo_manifest.contracts[0].address,
@@ -83,13 +89,7 @@ export const planetelo = {
 
     play_agent: async () => {
         if (account.account) {
-            let res = await account.account?.execute(
-                [{
-                    contractAddress: caps_planetelo_contract.address,
-                    entrypoint: 'play_agent',
-                    calldata: []
-                }]
-            );
+            let res = await caps_client.planetelo.playAgent(account.account!);
             console.log(res);
             planetelo.update_status();
         }
@@ -97,13 +97,7 @@ export const planetelo = {
 
     settle_agent_game: async () => {
         if (account.account) {
-            let res = await account.account?.execute(
-                [{
-                    contractAddress: caps_planetelo_contract.address,
-                    entrypoint: 'settle_agent_game',
-                    calldata: []
-                }]
-            );
+            let res = await caps_client.planetelo.settleAgentGame(account.account!);
             console.log(res);
             planetelo.update_status();
         }
@@ -212,37 +206,19 @@ export const planetelo = {
     },
 
     accept_invite: async (invite_id: number) => {
-        let res = await account.account?.execute(
-            [{
-                contractAddress: caps_planetelo_contract.address,
-                entrypoint: 'accept_invite',
-                calldata: [invite_id]
-            }]
-        );
+        let res = await caps_client.planetelo.acceptInvite(account.account!, invite_id);
         console.log(res);
         planetelo.update_status();
     },
 
     decline_invite: async (invite_id: number) => {
-        let res = await account.account?.execute(
-            [{
-                contractAddress: caps_planetelo_contract.address,
-                entrypoint: 'decline_invite',
-                calldata: [invite_id]
-            }]
-        );
+            let res = await caps_client.planetelo.declineInvite(account.account!, invite_id);
         console.log(res);
         planetelo.update_status();
     },
 
     settle_custom_game: async (game_id: number) => {
-        let res = await account.account?.execute(
-            [{
-                contractAddress: caps_planetelo_contract.address,
-                entrypoint: 'settle_custom_game',
-                calldata: [game_id]
-            }]
-        );
+        let res = await caps_client.planetelo.settleCustomGame(account.account!, game_id);
         console.log(res);
         planetelo.update_status();
     },

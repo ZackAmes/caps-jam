@@ -24,6 +24,7 @@
     "@daydreamsai/core": "^0.3.8",
     "@daydreamsai/defai": "^0.3.8",
     "@daydreamsai/discord": "^0.3.8",
+    "@dojoengine/core": "^1.7.3",
     "@threlte/core": "^8.0.5",
     "@threlte/extras": "^9.4.0",
     "@types/three": "^0.177.0",

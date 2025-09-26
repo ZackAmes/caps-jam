@@ -31,7 +31,7 @@ import { shortString } from "starknet";
 import caps_manifest from "../contracts/manifest_sepolia.json";
 
 let rpc = new RpcProvider({
-    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia"
+    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
 })
 let caps_actions_contract = new Contract(
     caps_manifest.contracts[0].abi,

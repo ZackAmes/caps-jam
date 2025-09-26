@@ -5,7 +5,14 @@ import { RpcProvider } from "starknet";
 import { planetelo } from "./planetelo.svelte";
 import type { Game, Cap, Action, ActionType, CapType, Vec2, Effect } from "./../dojo/models.gen"
 import { push } from 'svelte-spa-router'
+import { DojoProvider } from "@dojoengine/core"
+import { setupWorld } from "../dojo/contracts.gen"
 
+let dojoProvider = new DojoProvider({
+    nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
+})
+
+let client = setupWorld(dojoProvider)
 
 let rpc = new RpcProvider({
     nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
@@ -350,13 +357,7 @@ export const caps = {
     },
 
     select_team: async (team: number) => {
-        await account.account?.execute([
-            {
-                contractAddress: manifest.contracts[1].address,
-                entrypoint: "select_team",
-                calldata: [team]
-            }
-        ])
+        await client.planetelo.selectTeam(account.account!, team)
 
         selected_team = team
     },
@@ -372,15 +373,9 @@ export const caps = {
     take_turn: async () => {
         if (game_state && account.account && current_move.length > 0) {
             console.log('sending current_move', current_move)
-            let calldata = CallData.compile([game_state.game.id, current_move])
+            let calldata = client.actions.buildTakeTurnCalldata(game_state.game.id, current_move)
             console.log(calldata)
-            let res = await account.account.execute([
-                {
-                    contractAddress: manifest.contracts[0].address,
-                    entrypoint: "take_turn",
-                    calldata: calldata
-                }
-            ])
+            let res = await client.actions.takeTurn(account.account!, game_state.game.id, current_move)
             console.log(res)
             current_move = []
             selected_cap = null
