@@ -526,6 +526,10 @@ export const caps = {
         return selected_cap
     },
 
+    get selected_cap_position() {
+        return selected_cap_position
+    },
+
     get game_state() {
         return game_state;
     },

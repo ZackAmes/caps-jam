@@ -57,6 +57,7 @@
     let display_cap = $derived(capType === 'inspected' ? caps.inspected_cap : caps.selected_cap);
     let is_opponent = $derived(capType === 'inspected' && caps.inspected_cap && caps.inspected_cap.owner !== caps.selected_cap?.owner);
 
+    let display_cap_position = $derived(display_cap?.location.unwrap());
     let effects = $derived(
         caps.game_state?.effects.filter(effect => {
             if (!display_cap) return false;
@@ -69,8 +70,8 @@
 
             if (target.variant === 'Square') {
                 return (
-                    Number(target.value.x) === Number(display_cap.position.x) &&
-                    Number(target.value.y) === Number(display_cap.position.y)
+                    Number(target.value.x) === Number(display_cap_position?.x) &&
+                    Number(target.value.y) === Number(display_cap_position?.y)
                 );
             }
 
@@ -159,7 +160,7 @@
                                 <div>Move Cost: {cap_type.move_cost}</div>
                                 <div>Attack Cost: {cap_type.attack_cost}</div>
                                 <div>Attack Damage: {cap_type.attack_dmg}</div>
-                                <div>Position: ({display_cap.location.unwrap().position.x}, {display_cap.location.unwrap().position.y})</div>
+                                <div>Position: ({display_cap_position?.x}, {display_cap_position?.y})</div>
                             </div>
 
                             {#if cap_type.ability_description}
