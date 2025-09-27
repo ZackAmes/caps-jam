@@ -13,16 +13,28 @@
   let { camera } = useThrelte()
 
   camera.update(camera => {
-    camera.position.set(3, 3, 5)
+    // Position camera to see both player benches and the board
+    // Board: (0-6), Player1 bench: y=-1, Player2 bench: y=7
+    // Center view around y=3 to see from -1 to 7, with small gaps between board and benches
+    camera.position.set(3, 3, 6)
+    // Look at the center point between both benches and board
+    camera.lookAt(3, 3, 0)
     return camera
   })
 
   let positions = []
   
   // Create bench positions - tentacles would approve of organized storage! 🐙
-  let bench_positions = []
-  for (let i = 0; i < 10; i++) {
-    bench_positions.push({x: i - 2, y: -2}) // Bench below the board
+  // Player 1 bench (bottom) - white pieces, with small gap from board
+  let player1_bench_positions = []
+  for (let i = 0; i < 5; i++) {
+    player1_bench_positions.push({x: i + 1, y: -1.2, player: 'player1'}) // Centered (x=1-5), small gap from board
+  }
+  
+  // Player 2 bench (top) - black pieces, with small gap from board
+  let player2_bench_positions = []
+  for (let i = 0; i < 5; i++) {
+    player2_bench_positions.push({x: i + 1, y: 7.2, player: 'player2'}) // Centered (x=1-5), small gap from board
   }
 
   const get_selected_cap_location = () => {
@@ -72,9 +84,13 @@
     return (position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "#222222" : "#333333";
   }
 
-  const get_bench_color = (index: number) => {
-    // Bench squares are a darker color - where tentacles rest between battles! 🐙
-    return "#444444";
+  const get_bench_color = (player: string) => {
+    // Bench squares are colored by player - where tentacles rest between battles! 🐙
+    if (player === 'player1') {
+      return "#333333"; // Darker for player1 (white pieces)
+    } else {
+      return "#666666"; // Lighter for player2 (black pieces) 
+    }
   }
 
   for (let i = 0; i < 7; i++) {
@@ -100,12 +116,22 @@
     });
   }
 
-  // Helper to get caps on the bench
-  const get_bench_caps = () => {
+  // Helper to get caps on the bench for specific player
+  const get_player_bench_caps = (player_address: string) => {
     return get_all_caps().filter(cap => {
       const location_variant = cap.location.activeVariant();
-      return location_variant === 'Bench';
+      return location_variant === 'Bench' && cap.owner === player_address;
     });
+  }
+  
+  // Helper to get player1's bench caps
+  const get_player1_bench_caps = () => {
+    return get_player_bench_caps(caps.game_state?.game.player1 || '');
+  }
+  
+  // Helper to get player2's bench caps  
+  const get_player2_bench_caps = () => {
+    return get_player_bench_caps(caps.game_state?.game.player2 || '');
   }
 
   $effect(() => {
@@ -126,28 +152,49 @@
     {@const location_variant = cap.location.activeVariant()}
     {#if location_variant === 'Board'}
       {@const board_position = cap.location.unwrap()}
-      <CapModel cap={cap!} position={{x: Number(board_position.x), y: Number(board_position.y)}!} />
+      <CapModel cap={cap} position={{x: Number(board_position.x), y: Number(board_position.y), z: 0.1}!} />
     {/if}
   {/if}
 {/each}
 
-<!-- Bench squares - where tentacles contemplate their next move! 🐙 -->
-{#each bench_positions as bench_position, index}
-  {@const bench_color = get_bench_color(index)}
+<!-- Player 1 Bench squares (bottom) - where tentacles contemplate their next move! 🐙 -->
+{#each player1_bench_positions as bench_position, index}
+  {@const bench_color = get_bench_color('player1')}
     <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e) => {
       // TODO: Handle bench clicks for playing pieces from bench
-      console.log('Clicked bench position:', bench_position)
+      console.log('Clicked Player 1 bench position:', bench_position)
     }}>
     <T.BoxGeometry args={[1, 1, .1]} />
     <T.MeshBasicMaterial color={bench_color} />
   </T.Mesh>
 {/each}
 
-<!-- Bench caps -->
+<!-- Player 2 Bench squares (top) -->
+{#each player2_bench_positions as bench_position, index}
+  {@const bench_color = get_bench_color('player2')}
+    <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e) => {
+      // TODO: Handle bench clicks for playing pieces from bench
+      console.log('Clicked Player 2 bench position:', bench_position)
+    }}>
+    <T.BoxGeometry args={[1, 1, .1]} />
+    <T.MeshBasicMaterial color={bench_color} />
+  </T.Mesh>
+{/each}
+
+<!-- Player 1 Bench caps (bottom) -->
 {#if caps.game_state}
-  {@const bench_caps = get_bench_caps()}
-  {#each bench_caps as cap, index}
-    {@const bench_position = {x: index - 2, y: -2}}
+  {@const player1_bench_caps = get_player1_bench_caps()}
+  {#each player1_bench_caps as cap, index}
+    {@const bench_position = {x: index + 1, y: -1.1, z: 0.1}}
+    <CapModel cap={cap} position={bench_position} />
+  {/each}
+{/if}
+
+<!-- Player 2 Bench caps (top) -->
+{#if caps.game_state}
+  {@const player2_bench_caps = get_player2_bench_caps()}
+  {#each player2_bench_caps as cap, index}
+    {@const bench_position = {x: index + 1, y: 7.1, z: 0.1}}
     <CapModel cap={cap} position={bench_position} />
   {/each}
 {/if}
