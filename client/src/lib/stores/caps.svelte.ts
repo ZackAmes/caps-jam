@@ -44,6 +44,8 @@ let agent_game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effe
 let selected_cap_render_position = $state<{x: number, y: number} | null>(null)
 let inspected_cap_render_position = $state<{x: number, y: number} | null>(null)
 
+let selected_cap_position = $derived(selected_cap?.location.unwrap())
+
 let popup_state = $state<{
     visible: boolean,   
     position: {x: number, y: number} | null,
@@ -67,11 +69,11 @@ const get_valid_ability_targets = (id: number) => {
         return []
     }
     else if (target_type == 'SelfCap') {
-        return [{x: selected_cap?.location.unwrap()!.position.x, y: selected_cap?.location.unwrap()!.position.y}]
+        return [{x: selected_cap_position?.x, y: selected_cap_position?.y}]
     }
     else if (target_type == 'TeamCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap_position?.x), y: Number(selected_cap_position?.y)}, ability_range!)
         console.log(in_range)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
@@ -83,7 +85,7 @@ const get_valid_ability_targets = (id: number) => {
     }
     else if (target_type == 'OpponentCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap_position?.x), y: Number(selected_cap_position?.y)}, ability_range!)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
             if (cap_at && cap_at.owner != account.account?.address) {
@@ -94,7 +96,7 @@ const get_valid_ability_targets = (id: number) => {
     }
     else if (target_type == 'AnyCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap_position?.x), y: Number(selected_cap_position?.y)}, ability_range!)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
             if (cap_at) {
@@ -104,7 +106,7 @@ const get_valid_ability_targets = (id: number) => {
         return res
     }
     else if (target_type == 'AnySquare') {
-        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap_position?.x), y: Number(selected_cap_position?.y)}, ability_range!)
         return in_range
     }
     return []
@@ -156,7 +158,8 @@ const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | unde
 const get_valid_attacks = (id: number) => {
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
     let attack_range = cap_type?.attack_range
-    let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, attack_range!)
+
+    let in_range = get_targets_in_range({x: Number(selected_cap_position?.x), y: Number(selected_cap_position?.y)}, attack_range!)
     in_range = in_range.filter(val => caps.get_cap_at(val.x, val.y) && caps.get_cap_at(val.x, val.y)?.owner != account.account?.address)
     return in_range
 }
