@@ -123,6 +123,7 @@
     {#if cap_type}
         <div 
             role="dialog"
+            tabindex="0"
             aria-label="{cap_type.name} Data"
             class="cap-data-container" 
             class:opponent={is_opponent}
@@ -158,7 +159,7 @@
                                 <div>Move Cost: {cap_type.move_cost}</div>
                                 <div>Attack Cost: {cap_type.attack_cost}</div>
                                 <div>Attack Damage: {cap_type.attack_dmg}</div>
-                                <div>Position: ({display_cap.position.x}, {display_cap.position.y})</div>
+                                <div>Position: ({display_cap.location.unwrap().position.x}, {display_cap.location.unwrap().position.y})</div>
                             </div>
 
                             {#if cap_type.ability_description}

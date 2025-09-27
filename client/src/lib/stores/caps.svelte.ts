@@ -9,7 +9,7 @@ import { DojoProvider } from "@dojoengine/core"
 import { setupWorld } from "../dojo/contracts.gen"
 
 let dojoProvider = new DojoProvider(
-    manifest, "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_8"
+    manifest, "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_9"
 )
 
 let client = setupWorld(dojoProvider)
@@ -67,11 +67,11 @@ const get_valid_ability_targets = (id: number) => {
         return []
     }
     else if (target_type == 'SelfCap') {
-        return [{x: selected_cap?.position.x, y: selected_cap?.position.y}]
+        return [{x: selected_cap?.location.unwrap()!.position.x, y: selected_cap?.location.unwrap()!.position.y}]
     }
     else if (target_type == 'TeamCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
         console.log(in_range)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
@@ -83,7 +83,7 @@ const get_valid_ability_targets = (id: number) => {
     }
     else if (target_type == 'OpponentCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
             if (cap_at && cap_at.owner != account.account?.address) {
@@ -94,7 +94,7 @@ const get_valid_ability_targets = (id: number) => {
     }
     else if (target_type == 'AnyCap') {
         let res = []
-        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
         for (let val of in_range) {
             let cap_at = caps.get_cap_at(val.x, val.y)
             if (cap_at) {
@@ -104,7 +104,7 @@ const get_valid_ability_targets = (id: number) => {
         return res
     }
     else if (target_type == 'AnySquare') {
-        let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, ability_range!)
+        let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, ability_range!)
         return in_range
     }
     return []
@@ -156,7 +156,7 @@ const get_moves_in_range = (position: {x: number, y: number}, range: Vec2 | unde
 const get_valid_attacks = (id: number) => {
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
     let attack_range = cap_type?.attack_range
-    let in_range = get_targets_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, attack_range!)
+    let in_range = get_targets_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, attack_range!)
     in_range = in_range.filter(val => caps.get_cap_at(val.x, val.y) && caps.get_cap_at(val.x, val.y)?.owner != account.account?.address)
     return in_range
 }
@@ -166,7 +166,7 @@ let cap_types = $state<Array<CapType>>([])
 
 let valid_ability_targets = $derived(get_valid_ability_targets(Number(selected_cap?.cap_type)))
 
-let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.position.x), y: Number(selected_cap?.position.y)}, cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)?.move_range!))
+let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)?.move_range!))
 
 let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
@@ -267,22 +267,22 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect',
         }
         
         let cairo_action_type;
-        if (selected_cap.position.x == position.x) {
-            if (BigInt(position.y) > BigInt(selected_cap.position.y)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.position.y)}, Attack: undefined})
+        if (selected_cap.location.unwrap()!.position.x == position.x) {
+            if (BigInt(position.y) > BigInt(selected_cap.location.unwrap()!.position.y)) {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.location.unwrap()!.position.y)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.position.y) - BigInt(position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.location.unwrap()!.position.y) - BigInt(position.y)}, Attack: undefined})
             }
-        } else if (selected_cap.position.y == position.y) {
-            if (BigInt(position.x) > BigInt(selected_cap.position.x)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.position.x)}, Attack: undefined})
+        } else if (selected_cap.location.unwrap()!.position.y == position.y) {
+            if (BigInt(position.x) > BigInt(selected_cap.location.unwrap()!.position.x)) {
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.location.unwrap()!.position.x)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.position.x) - BigInt(position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.location.unwrap()!.position.x) - BigInt(position.x)}, Attack: undefined})
             }
         }
         
         energy -= move_cost
-        selected_cap.position = position;
+        selected_cap.location = new CairoCustomEnum({Board: {x: BigInt(position.x), y: BigInt(position.y)}})
         console.log(selected_cap)
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type!})
     }
@@ -367,7 +367,16 @@ export const caps = {
     },
 
     get_cap_at: (x: number, y: number) => {
-        return game_state?.caps.find(cap => cap.position.x == x && cap.position.y == y)
+        return game_state?.caps.find(cap => {
+            const location_variant = cap.location.activeVariant();
+            if (location_variant === 'Board') {
+                console.log('piece found')
+                const board_position = cap.location.unwrap();
+                console.log(board_position)
+                return board_position.x == x && board_position.y == y;
+            }
+            return false;
+        })
     },
 
     take_turn: async () => {
@@ -414,7 +423,8 @@ export const caps = {
 
     handle_click: (position: {x: number, y: number}, e: any) => {
         // If clicking on selected cap
-        if (selected_cap && selected_cap.position.x == position.x && selected_cap.position.y == position.y) {
+        let selected_cap_location = selected_cap?.location.unwrap();
+        if (selected_cap && selected_cap_location?.x == position.x && selected_cap_location?.y == position.y) {
             const cap_type = cap_types.find(c => c.id === selected_cap!.cap_type);
             const ability_target_type = cap_type?.ability_target.activeVariant();
 
