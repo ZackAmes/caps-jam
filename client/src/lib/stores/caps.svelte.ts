@@ -363,6 +363,8 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
     else if (action_type === 'play') {
+        if (!selected_cap || !game_state) return;
+        
         let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
         let play_cost = Number(cap_type?.play_cost)
         
@@ -371,6 +373,11 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             return
         }
         
+        console.log('Executing play action - tentacles deploy! 🐙');
+        console.log('Selected cap:', selected_cap);
+        console.log('Target position:', position);
+        console.log('Play cost:', play_cost);
+        
         // Play action uses the cap type and position - tentacles emerge from the depths! 🐙
         let cairo_action_type = new CairoCustomEnum({ 
             Play: [BigInt(selected_cap.cap_type), {x: BigInt(position.x), y: BigInt(position.y)}],
@@ -378,12 +385,40 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             Attack: undefined,
             Ability: undefined
         })
+        
+        console.log('Cairo action type:', cairo_action_type);
+        
         energy -= play_cost
         
-        // Update the cap's location to the board
-        selected_cap.location = new CairoCustomEnum({Board: {x: BigInt(position.x), y: BigInt(position.y)}})
+        // Update the cap's location in the game state - find and update the actual cap
+        let cap_in_state = game_state.caps.find(c => c.id === selected_cap!.id);
+        if (cap_in_state) {
+            cap_in_state.location = new CairoCustomEnum({
+                Board: {x: BigInt(position.x), y: BigInt(position.y)},
+                Bench: undefined,
+                Hidden: undefined,
+                Dead: undefined
+            });
+            console.log('Updated cap location in game state:', cap_in_state.location);
+        }
         
+        // Also update selected_cap reference
+        selected_cap.location = new CairoCustomEnum({
+            Board: {x: BigInt(position.x), y: BigInt(position.y)},
+            Bench: undefined,
+            Hidden: undefined,
+            Dead: undefined
+        });
+        
+        console.log('Adding play action to moves list');
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
+        
+        console.log('Current move after play:', current_move);
+        console.log('Energy remaining:', energy);
+        
+        // Deselect the cap after playing it - tentacles rest after deployment! 🐙
+        selected_cap = null;
+        selected_cap_render_position = null;
     }
     // Close popup after action
     popup_state.visible = false
