@@ -265,17 +265,31 @@ const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec
 }
 
 const get_available_actions_at_position = (position: {x: number, y: number}) => {
-    if (!selected_cap) return []
+    console.log('=== get_available_actions_at_position ===');
+    console.log('Position:', position);
+    console.log('Selected cap:', selected_cap);
+    console.log('Selected cap on bench:', selected_cap_on_bench);
+    
+    if (!selected_cap) {
+        console.log('No selected cap, returning empty actions');
+        return []
+    }
     
     let actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect' | 'play', label: string}> = []
     
     // Check if position is a valid move
-    let is_valid_move = valid_moves().some(move => move.x === position.x && move.y === position.y)
+    let valid_moves_list = valid_moves();
+    console.log('Valid moves list:', valid_moves_list);
+    let is_valid_move = valid_moves_list.some(move => move.x === position.x && move.y === position.y)
+    console.log('Is valid move:', is_valid_move);
+    
     if (is_valid_move) {
         // If cap is on bench, use "Play" action instead of "Move" - tentacles deploy strategically! 🐙
         if (selected_cap_on_bench) {
+            console.log('Adding PLAY action');
             actions.push({type: 'play', label: 'Play'})
         } else {
+            console.log('Adding MOVE action');
             actions.push({type: 'move', label: 'Move'})
         }
     }
@@ -290,14 +304,21 @@ const get_available_actions_at_position = (position: {x: number, y: number}) => 
         // Check if position is a valid ability target (only for caps on board, not bench)
         let is_valid_ability = valid_ability_targets.some(target => target.x === position.x && target.y === position.y)
         if (is_valid_ability) {
+            console.log('Adding ABILITY action');
             actions.push({type: 'ability', label: 'Use Ability'})
         }
     }
     
+    console.log('Final actions array:', actions);
     return actions
 }
 
 const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' | 'play', position: {x: number, y: number}) => {
+    console.log('=== execute_action CALLED ===');
+    console.log('Action type:', action_type);
+    console.log('Position:', position);
+    console.log('Selected cap:', selected_cap);
+    
     if (action_type === 'deselect') {
         selected_cap = null
         selected_cap_render_position = null

@@ -124,6 +124,10 @@
                 case 'ability':
                     cost = Number(capType.ability_cost);
                     break;
+                case 'play':
+                    // Tentacles deploy from the depths! 🐙
+                    cost = Number(capType.play_cost);
+                    break;
             }
             
             canAfford = caps.energy >= cost;
@@ -139,15 +143,22 @@
     // Get the cost and availability for each action
     let actionDetails = $derived(get_action_details(caps.selected_cap!));
     
-    // Type guard to check for executable actions
-    function isExecutableAction(action: any): action is {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean} {
-        return action.type === 'move' || action.type === 'attack' || action.type === 'ability';
+    // Type guard to check for executable actions - tentacles support all deployment types! 🐙
+    function isExecutableAction(action: any): action is {type: 'move' | 'attack' | 'ability' | 'play', label: string, cost: number, canAfford: boolean} {
+        return action.type === 'move' || action.type === 'attack' || action.type === 'ability' || action.type === 'play';
     }
 
-    function handleActionClick(action: {type: 'move' | 'attack' | 'ability', label: string, cost: number, canAfford: boolean}) {
+    function handleActionClick(action: {type: 'move' | 'attack' | 'ability' | 'play', label: string, cost: number, canAfford: boolean}) {
+        console.log('=== handleActionClick in popup ===');
+        console.log('Action:', action);
+        console.log('Popup position:', popup.position);
+        
         if (popup.position && action.canAfford) {
+            console.log('Calling caps.execute_action with:', action.type, popup.position);
             caps.execute_action(action.type, popup.position);
             handleClose(); // Close popup after action
+        } else {
+            console.log('Cannot execute - position:', popup.position, 'canAfford:', action.canAfford);
         }
     }
     
