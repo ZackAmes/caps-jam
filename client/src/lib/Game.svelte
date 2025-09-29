@@ -54,7 +54,7 @@
     }
     
     // Check which valid target arrays this position is in
-    const isValidMove = caps.valid_moves?.some(move => move.x === position.x && move.y === position.y) || false;
+    const isValidMove = caps.valid_moves()?.some(move => move.x === position.x && move.y === position.y) || false;
     const isValidAbility = caps.valid_ability_targets?.some(target => target.x === position.x && target.y === position.y) || false;
     const isValidAttack = caps.valid_attacks?.some(attack => attack.x === position.x && attack.y === position.y) || false;
     
@@ -141,7 +141,7 @@
 <!-- Board squares -->
 {#each positions as position}
   {@const color = get_color(position)}
-    <T.Mesh position={[position.x, position.y, 0]} onclick={(e) => {
+    <T.Mesh position={[position.x, position.y, 0]} onclick={(e: any) => {
       caps.handle_click(position, e)
     }}>
     <T.BoxGeometry args={[1, 1, .1]} />
@@ -152,7 +152,7 @@
     {@const location_variant = cap.location.activeVariant()}
     {#if location_variant === 'Board'}
       {@const board_position = cap.location.unwrap()}
-      <CapModel cap={cap} position={{x: Number(board_position.x), y: Number(board_position.y), z: 0.1}!} />
+      <CapModel cap={cap} position={{x: Number(board_position.x), y: Number(board_position.y)}} />
     {/if}
   {/if}
 {/each}
@@ -160,7 +160,7 @@
 <!-- Player 1 Bench squares (bottom) - where tentacles contemplate their next move! 🐙 -->
 {#each player1_bench_positions as bench_position, index}
   {@const bench_color = get_bench_color('player1')}
-    <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e) => {
+    <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e: any) => {
       // TODO: Handle bench clicks for playing pieces from bench
       console.log('Clicked Player 1 bench position:', bench_position)
     }}>
@@ -172,7 +172,7 @@
 <!-- Player 2 Bench squares (top) -->
 {#each player2_bench_positions as bench_position, index}
   {@const bench_color = get_bench_color('player2')}
-    <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e) => {
+    <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e: any) => {
       // TODO: Handle bench clicks for playing pieces from bench
       console.log('Clicked Player 2 bench position:', bench_position)
     }}>
@@ -186,7 +186,9 @@
   {@const player1_bench_caps = get_player1_bench_caps()}
   {#each player1_bench_caps as cap, index}
     {@const bench_position = {x: index + 1, y: -1.1, z: 0.1}}
-    <CapModel cap={cap} position={bench_position} />
+    <CapModel cap={cap} position={bench_position} onclick={(e) => {
+      caps.handle_bench_click(caps.game_state?.game.player1 || '', index, e)
+    }} />
   {/each}
 {/if}
 
@@ -195,6 +197,8 @@
   {@const player2_bench_caps = get_player2_bench_caps()}
   {#each player2_bench_caps as cap, index}
     {@const bench_position = {x: index + 1, y: 7.1, z: 0.1}}
-    <CapModel cap={cap} position={bench_position} />
+    <CapModel cap={cap} position={bench_position} onclick={(e) => {
+      caps.handle_bench_click(caps.game_state?.game.player2 || '', index, e)
+    }} />
   {/each}
 {/if}

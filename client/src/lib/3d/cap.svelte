@@ -7,9 +7,10 @@
   interface Props {
     cap: Cap;
     position: { x: number; y: number };
+    onclick?: (e: any) => void;
   }
 
-  let { cap, position }: Props = $props();
+  let { cap, position, onclick }: Props = $props();
 
   // Get border color based on player
   let accentColor = $derived(cap.owner === caps.game_state?.game.player1 ? "white" : "black");
@@ -18,7 +19,7 @@
 </script>
 
 <!-- Match the original cap positioning exactly -->
-<T.Group position={[position.x, position.y, 0]}>
+<T.Group position={[position.x, position.y, 0]} onclick={onclick}>
   {#if Math.floor(Number(cap.cap_type) / 4) == 0}
     <!-- Main body -->
     <T.Mesh position={[0, 0, 0.000001]} scale={0.22}>

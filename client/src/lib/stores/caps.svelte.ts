@@ -44,13 +44,14 @@ let agent_game_state = $state<{game: Game, caps: Array<Cap>, effects: Array<Effe
 let selected_cap_render_position = $state<{x: number, y: number} | null>(null)
 let inspected_cap_render_position = $state<{x: number, y: number} | null>(null)
 
-let selected_cap_position = $derived(selected_cap?.location.unwrap())
+let selected_cap_position = $derived(selected_cap?.location.activeVariant() === 'Board' ? selected_cap?.location.unwrap() : null)
+let selected_cap_on_bench = $derived(selected_cap?.location.activeVariant() === 'Bench')
 
 let popup_state = $state<{
     visible: boolean,   
     position: {x: number, y: number} | null,
     render_position: {x: number, y: number} | null,
-    available_actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect', label: string}> 
+    available_actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect' | 'play', label: string}> 
 }>({
     visible: false,
     position: null,
@@ -59,6 +60,8 @@ let popup_state = $state<{
 })
 
 const get_valid_ability_targets = (id: number) => {
+    if (!selected_cap || !selected_cap_position || !game_state) return []
+    
     let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
     console.log(cap_type)
     let target_type = cap_type?.ability_target.activeVariant();
@@ -169,7 +172,31 @@ let cap_types = $state<Array<CapType>>([])
 
 let valid_ability_targets = $derived(get_valid_ability_targets(Number(selected_cap?.cap_type)))
 
-let valid_moves = $derived(get_moves_in_range({x: Number(selected_cap?.location.unwrap()!.position.x), y: Number(selected_cap?.location.unwrap()!.position.y)}, cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)?.move_range!))
+let valid_moves = $derived(() => {
+    if (!selected_cap) return []
+    
+    // If cap is on bench, treat the last row (y=6) as valid moves - like tentacles reaching for the deep! 🐙
+    if (selected_cap_on_bench) {
+        let moves = []
+        for (let x = 0; x < 7; x++) {
+            // Only allow placement on empty squares
+            if (!caps.get_cap_at(x, 6)) {
+                moves.push({x, y: 6})
+            }
+        }
+        return moves
+    }
+    
+    // Original logic for caps on the board
+    if (selected_cap_position) {
+        return get_moves_in_range(
+            {x: Number(selected_cap_position.x), y: Number(selected_cap_position.y)}, 
+            cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)?.move_range!
+        )
+    }
+    
+    return []
+})
 
 let valid_attacks = $derived(get_valid_attacks(Number(selected_cap?.cap_type)))
 
@@ -179,6 +206,8 @@ let energy = max_energy
 let selected_team = $state<number | null>(null)
 
 const get_simulated_state = async () => {
+    if (!game_state) return null
+    
     console.log(game_state)
     console.log(game_state.game)
     console.log(game_state.caps)
@@ -221,30 +250,37 @@ const get_targets_in_range = (position: {x: number, y: number}, range: Array<Vec
 const get_available_actions_at_position = (position: {x: number, y: number}) => {
     if (!selected_cap) return []
     
-    let actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect', label: string}> = []
+    let actions: Array<{type: 'move' | 'attack' | 'ability' | 'deselect' | 'play', label: string}> = []
     
     // Check if position is a valid move
-    let is_valid_move = valid_moves.some(move => move.x === position.x && move.y === position.y)
+    let is_valid_move = valid_moves().some(move => move.x === position.x && move.y === position.y)
     if (is_valid_move) {
-        actions.push({type: 'move', label: 'Move'})
+        // If cap is on bench, use "Play" action instead of "Move" - tentacles deploy strategically! 🐙
+        if (selected_cap_on_bench) {
+            actions.push({type: 'play', label: 'Play'})
+        } else {
+            actions.push({type: 'move', label: 'Move'})
+        }
     }
     
-    // Check if position is a valid attack
-    let is_valid_attack = valid_attacks.some(attack => attack.x === position.x && attack.y === position.y)
-    if (is_valid_attack) {
-        actions.push({type: 'attack', label: 'Attack'})
-    }
-    
-    // Check if position is a valid ability target
-    let is_valid_ability = valid_ability_targets.some(target => target.x === position.x && target.y === position.y)
-    if (is_valid_ability) {
-        actions.push({type: 'ability', label: 'Use Ability'})
+    // Check if position is a valid attack (only for caps on board, not bench)
+    if (!selected_cap_on_bench) {
+        let is_valid_attack = valid_attacks.some(attack => attack.x === position.x && attack.y === position.y)
+        if (is_valid_attack) {
+            actions.push({type: 'attack', label: 'Attack'})
+        }
+        
+        // Check if position is a valid ability target (only for caps on board, not bench)
+        let is_valid_ability = valid_ability_targets.some(target => target.x === position.x && target.y === position.y)
+        if (is_valid_ability) {
+            actions.push({type: 'ability', label: 'Use Ability'})
+        }
     }
     
     return actions
 }
 
-const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect', position: {x: number, y: number}) => {
+const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' | 'play', position: {x: number, y: number}) => {
     if (action_type === 'deselect') {
         selected_cap = null
         selected_cap_render_position = null
@@ -307,6 +343,29 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect',
         
         let cairo_action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
         energy -= ability_cost
+        caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
+    }
+    else if (action_type === 'play') {
+        let cap_type = cap_types.find(cap_type => cap_type.id == selected_cap?.cap_type)
+        let play_cost = Number(cap_type?.play_cost)
+        
+        if (energy < play_cost) {
+            alert(`Not enough energy! Need ${play_cost} but only have ${energy}`)
+            return
+        }
+        
+        // Play action uses the cap type and position - tentacles emerge from the depths! 🐙
+        let cairo_action_type = new CairoCustomEnum({ 
+            Play: [BigInt(selected_cap.cap_type), {x: BigInt(position.x), y: BigInt(position.y)}],
+            Move: undefined, 
+            Attack: undefined,
+            Ability: undefined
+        })
+        energy -= play_cost
+        
+        // Update the cap's location to the board
+        selected_cap.location = new CairoCustomEnum({Board: {x: BigInt(position.x), y: BigInt(position.y)}})
+        
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
     // Close popup after action
@@ -380,6 +439,42 @@ export const caps = {
             }
             return false;
         })
+    },
+
+    get_bench_cap_at_position: (player_address: string, bench_index: number) => {
+        let bench_caps = game_state?.caps.filter(cap => {
+            const location_variant = cap.location.activeVariant();
+            return location_variant === 'Bench' && cap.owner === player_address;
+        }) || [];
+        return bench_caps[bench_index] || null;
+    },
+
+    handle_bench_click: (player_address: string, bench_index: number, e: any) => {
+        let bench_cap = caps.get_bench_cap_at_position(player_address, bench_index);
+        
+        if (!bench_cap) return;
+        
+        // Only allow selecting own caps - tentacles respect ownership! 🐙
+        if (BigInt(bench_cap.owner) !== BigInt(account.account?.address || 0)) {
+            return;
+        }
+        
+        // If this bench cap is already selected, deselect it
+        if (selected_cap && selected_cap.id === bench_cap.id) {
+            selected_cap = null;
+            selected_cap_render_position = null;
+            return;
+        }
+        
+        // Select the bench cap
+        selected_cap = bench_cap;
+        selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY};
+        inspected_cap = null;
+        inspected_cap_render_position = null;
+        
+        if (energy === 0) {
+            energy = max_energy;
+        }
     },
 
     take_turn: async () => {
@@ -464,7 +559,7 @@ export const caps = {
             console.log('Ownership check:', BigInt(cap.owner) == BigInt(account.account?.address || 0))
         }
         
-        // If no cap selected and clicking on own cap, select it
+        // If no cap selected and clicking on own cap (on board or bench), select it
         if (!selected_cap && cap && BigInt(cap.owner) == BigInt(account.account?.address || 0)) {
             selected_cap = cap
             selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY}
