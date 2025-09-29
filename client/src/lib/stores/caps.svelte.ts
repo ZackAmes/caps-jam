@@ -173,15 +173,32 @@ let cap_types = $state<Array<CapType>>([])
 let valid_ability_targets = $derived(get_valid_ability_targets(Number(selected_cap?.cap_type)))
 
 let valid_moves = $derived(() => {
-    if (!selected_cap) return []
+    if (!selected_cap || !game_state) return []
     
-    // If cap is on bench, treat the last row (y=6) as valid moves - like tentacles reaching for the deep! 🐙
+    // If cap is on bench, only allow placement in row closest to player's bench - tentacles stay close to home! 🐙
     if (selected_cap_on_bench) {
         let moves = []
+        // Determine which row based on which player owns the cap
+        let target_row = 0; // Default to player 1's deployment row
+        
+        if (BigInt(selected_cap.owner) === BigInt(game_state.game.player2)) {
+            target_row = 6; // Player 2's deployment row (closest to top bench)
+        }
+        
         for (let x = 0; x < 7; x++) {
-            // Only allow placement on empty squares
-            if (!caps.get_cap_at(x, 6)) {
-                moves.push({x, y: 6})
+            // Check if square is empty by directly checking game state (avoid circular reference)
+            let cap_at_position = game_state.caps.find(cap => {
+                const location_variant = cap.location.activeVariant();
+                if (location_variant === 'Board') {
+                    const board_position = cap.location.unwrap();
+                    return board_position.x == x && board_position.y == target_row;
+                }
+                return false;
+            });
+            
+            // Only allow placement on empty squares in the appropriate row
+            if (!cap_at_position) {
+                moves.push({x, y: target_row})
             }
         }
         return moves
@@ -450,6 +467,9 @@ export const caps = {
     },
 
     handle_bench_click: (player_address: string, bench_index: number, e: any) => {
+        // Prevent event bubbling to avoid conflicts
+        e?.stopPropagation?.();
+        
         let bench_cap = caps.get_bench_cap_at_position(player_address, bench_index);
         
         if (!bench_cap) return;
@@ -459,10 +479,13 @@ export const caps = {
             return;
         }
         
-        // If this bench cap is already selected, deselect it
+        // If this bench cap is already selected, deselect it - tentacles retract gracefully! 🐙
         if (selected_cap && selected_cap.id === bench_cap.id) {
             selected_cap = null;
             selected_cap_render_position = null;
+            popup_state.visible = false;
+            popup_state.position = null;
+            popup_state.available_actions = [];
             return;
         }
         
@@ -471,6 +494,11 @@ export const caps = {
         selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY};
         inspected_cap = null;
         inspected_cap_render_position = null;
+        
+        // Close any existing popups when selecting new cap
+        popup_state.visible = false;
+        popup_state.position = null;
+        popup_state.available_actions = [];
         
         if (energy === 0) {
             energy = max_energy;
