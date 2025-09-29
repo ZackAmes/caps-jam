@@ -456,17 +456,27 @@ export const caps = {
     
     // Load game data when viewing a specific game (called from GameView component)
     get_game: async (id: number) => {
-        console.log('getting game', id)
+        console.log('=== LOADING GAME - tentacles initialize! 🐙 ===');
+        console.log('Game ID:', id);
+        
         let res = (await caps_contract.get_game(id)).unwrap()
-        if (game_state != initial_state) {
-            initial_state = { game: res[0], caps: res[1], effects: res[2] }
-        }
-        else {
-            initial_state = { game: res[0], caps: res[1], effects: res[2] }
-        }
+        
+        // Always save the initial state as a clean copy
+        initial_state = { game: res[0], caps: res[1], effects: res[2] }
+        
+        console.log('Initial state loaded:', {
+            turnCount: initial_state.game.turn_count,
+            capsCount: initial_state.caps.length,
+            capsLocations: initial_state.caps.map(c => ({
+                id: c.id,
+                location: c.location.activeVariant()
+            }))
+        });
 
+        // Set game_state if it's new or if we have a newer turn
         if (!game_state || initial_state.game.turn_count > game_state.game.turn_count) {
             game_state = initial_state
+            console.log('Game state initialized from initial state');
         }
 
         if (id == planetelo.planetelo_game_id) {
@@ -576,14 +586,34 @@ export const caps = {
 
     take_turn: async () => {
         if (game_state && account.account && current_move.length > 0) {
-            console.log('sending current_move', current_move)
+            console.log('=== SUBMITTING TURN - tentacles finalize their strategy! 🐙 ===');
+            console.log('Current move actions:', current_move);
+            console.log('Number of actions:', current_move.length);
+            
+            // Log each action type
+            current_move.forEach((action, index) => {
+                const actionType = action.action_type.activeVariant();
+                console.log(`Action ${index + 1}: ${actionType} for cap ${action.cap_id}`);
+            });
+            
             let calldata = client.actions.buildTakeTurnCalldata(game_state.game.id, current_move)
-            console.log(calldata)
+            console.log('Built calldata:', calldata)
+            
             let res = await client.actions.takeTurn(account.account!, game_state.game.id, current_move)
-            console.log(res)
+            console.log('Turn submitted successfully:', res)
+            
+            // Clear state after successful turn
             current_move = []
             selected_cap = null
             energy = max_energy;
+            
+            console.log('Turn complete! State cleared.');
+        } else {
+            console.log('Cannot take turn:', {
+                hasGameState: !!game_state,
+                hasAccount: !!account.account,
+                moveCount: current_move.length
+            });
         }
     },
     
@@ -598,22 +628,77 @@ export const caps = {
     },
 
     reset_move: () => {
+        console.log('=== RESETTING MOVE - tentacles retreat to their starting positions! 🐙 ===');
+        console.log('Current move before reset:', current_move);
+        console.log('Actions being discarded:', current_move.map(a => ({
+            capId: a.cap_id,
+            actionType: a.action_type.activeVariant()
+        })));
+        
+        if (game_state) {
+            console.log('Current game state caps:', game_state.caps.map(c => ({
+                id: c.id,
+                location: c.location.activeVariant()
+            })));
+        }
+        
+        // Clear current move - all actions are discarded
         current_move = []
+        
+        // Clear selections
         selected_cap = null
         selected_cap_render_position = null
         inspected_cap = null
         inspected_cap_render_position = null
+        
+        // Reset energy
         energy = max_energy
-        game_state = initial_state
+        
+        // Restore game state to initial - this puts all pieces back to their original positions (bench/board)
+        // Note: Since game_state and initial_state share object references, we need to create a fresh copy
+        if (initial_state) {
+            game_state = {
+                game: initial_state.game,
+                caps: [...initial_state.caps], // Create a new array to trigger reactivity
+                effects: [...initial_state.effects]
+            }
+            
+            console.log('Initial state caps restored:', initial_state.caps.map(c => ({
+                id: c.id,
+                location: c.location.activeVariant()
+            })));
+            console.log('Game state now:', game_state.caps.map(c => ({
+                id: c.id,
+                location: c.location.activeVariant()
+            })));
+        }
+        
+        // Close popup
         popup_state.visible = false
         popup_state.position = null
         popup_state.available_actions = []
+        
+        console.log('Move reset complete! All pieces returned to starting positions.');
     },
 
     add_action: async (action: Action) => {
+        const actionType = action.action_type.activeVariant();
+        console.log(`=== ADDING ${actionType} ACTION TO MOVES LIST ===`);
+        console.log('Action:', action);
+        console.log('Cap ID:', action.cap_id);
+        
         current_move.push(action)
+        
+        console.log('Current move now has', current_move.length, 'actions');
+        console.log('All actions:', current_move.map((a, i) => ({
+            index: i,
+            capId: a.cap_id,
+            actionType: a.action_type.activeVariant()
+        })));
+        
         await get_simulated_state();
-        console.log(current_move)
+        
+        console.log('Action added and state simulated successfully! 🐙');
     },
 
     handle_click: (position: {x: number, y: number}, e: any) => {

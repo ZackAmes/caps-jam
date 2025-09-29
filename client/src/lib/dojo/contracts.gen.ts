@@ -1,6 +1,6 @@
 import { DojoProvider, type DojoCall } from "@dojoengine/core";
 import { Account, AccountInterface, type BigNumberish, CairoOption, CairoCustomEnum } from "starknet";
-import * as models from "./models.gen";
+import type {Cap, Game, Action, Vec2} from "./models.gen";
 
 export function setupWorld(provider: DojoProvider) {
 
@@ -59,7 +59,7 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
-	const build_actions_simulateTurn_calldata = (game: models.Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>): DojoCall => {
+	const build_actions_simulateTurn_calldata = (game: Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>): DojoCall => {
 		return {
 			contractName: "actions",
 			entrypoint: "simulate_turn",
@@ -67,7 +67,7 @@ export function setupWorld(provider: DojoProvider) {
 		};
 	};
 
-	const actions_simulateTurn = async (game: models.Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>) => {
+	const actions_simulateTurn = async (game: Game, caps: Array<Cap>, effects: CairoOption<[Game, array, array]>, turn: Array<Action>) => {
 		try {
 			return await provider.call("caps", build_actions_simulateTurn_calldata(game, caps, effects, turn));
 		} catch (error) {
@@ -405,7 +405,7 @@ export function setupWorld(provider: DojoProvider) {
 		}
 	};
 
-	const build_set_zero_activateAbility_calldata = (cap: models.Cap, target: models.Vec2, game: models.Game, caps: Array<Cap>): DojoCall => {
+	const build_set_zero_activateAbility_calldata = (cap: Cap, target: Vec2, game: Game, caps: Array<Cap>): DojoCall => {
 		return {
 			contractName: "set_zero",
 			entrypoint: "activate_ability",
@@ -413,7 +413,7 @@ export function setupWorld(provider: DojoProvider) {
 		};
 	};
 
-	const set_zero_activateAbility = async (snAccount: Account | AccountInterface, cap: models.Cap, target: models.Vec2, game: models.Game, caps: Array<Cap>) => {
+	const set_zero_activateAbility = async (snAccount: Account | AccountInterface, cap: Cap, target: Vec2, game: Game, caps: Array<Cap>) => {
 		try {
 			return await provider.execute(
 				snAccount,

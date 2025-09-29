@@ -185,6 +185,7 @@
 />
 
 {#if popup.visible && popup.position && position}
+    <!-- svelte-ignore a11y_interactive_supports_focus -->
     <div 
         class="action-popup"
         class:mobile={typeof window !== 'undefined' && window.innerWidth <= 768}

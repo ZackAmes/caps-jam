@@ -30,6 +30,8 @@
 <svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
 
 {#if caps.selected_cap}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore event_directive_deprecated -->
     <div 
         class="move-data-container"
         class:desktop-popup={typeof window !== 'undefined' && window.innerWidth > 768}
@@ -60,8 +62,9 @@
                                 <span class="move-type">
                                     {#if move.action_type?.activeVariant() === 'Move'}
                                         {@const dir = move.action_type.unwrap()}
-                                        {@const new_x = dir.x == 0 ? Number(caps.selected_cap.position.x) + Number(dir.y) : dir.x == 1 ? Number(caps.selected_cap.position.x) - Number(dir.y) : Number(caps.selected_cap.position.x)}
-                                        {@const new_y = dir.y == 2 ? Number(caps.selected_cap.position.y) + Number(dir.x) : dir.y == 3 ? Number(caps.selected_cap.position.y) - Number(dir.x) : Number(caps.selected_cap.position.y)}
+                                        {@const position = caps.selected_cap.location.unwrap()}
+                                        {@const new_x = dir.x == 0 ? Number(position.x) + Number(dir.y) : dir.x == 1 ? Number(position.x) - Number(dir.y) : Number(position.x)}
+                                        {@const new_y = dir.y == 2 ? Number(position.y) + Number(dir.x) : dir.y == 3 ? Number(position.y) - Number(dir.x) : Number(position.y)}
                                         Move to ({new_x}, {new_y})
                                     {:else if move.action_type?.activeVariant() === 'Attack'}
                                         Attack ({move.action_type.unwrap().x}, {move.action_type.unwrap().y})
