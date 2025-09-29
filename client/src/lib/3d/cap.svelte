@@ -12,8 +12,15 @@
 
   let { cap, position, onclick }: Props = $props();
 
-  // Get border color based on player
-  let accentColor = $derived(cap.owner === caps.game_state?.game.player1 ? "white" : "black");
+  // Get border color based on player and selection state - tentacles glow when chosen! 🐙  
+  let accentColor = $derived(() => {
+    // If this cap is selected, make it glow yellow
+    if (caps.selected_cap && caps.selected_cap.id === cap.id) {
+      return "yellow";
+    }
+    // Default player colors
+    return cap.owner === caps.game_state?.game.player1 ? "white" : "black";
+  });
 
   let baseColor = $derived(getBaseColor(Number(cap.cap_type)));
 </script>
@@ -29,12 +36,12 @@
     <!-- Wireframe Accent -->
     <T.Mesh scale={0.225}>
       <T.BoxGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
     <!-- Crown Accent -->
     <T.Mesh position={[0, 0, 0.1]} rotation.z={Math.PI / 2} scale={0.17}>
       <T.TorusGeometry args={[0.5, 0.1]} />
-      <T.MeshBasicMaterial color={accentColor} />
+      <T.MeshBasicMaterial color={accentColor()} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 1}
     <!-- Main body -->
@@ -45,7 +52,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.SphereGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 2}
     <!-- Main body -->
@@ -56,7 +63,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.ConeGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 3}
     <!-- Main body -->
@@ -67,7 +74,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.CylinderGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 4}
     <!-- Main body -->
@@ -78,7 +85,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.TorusGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {:else if Math.floor(Number(cap.cap_type) / 4) == 5}
     <!-- Main body -->
@@ -89,7 +96,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.DodecahedronGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {:else}
     <!-- Main body -->
@@ -100,7 +107,7 @@
     <!-- Accent -->
     <T.Mesh scale={0.205}>
       <T.OctahedronGeometry />
-      <T.MeshBasicMaterial color={accentColor} wireframe={true} />
+      <T.MeshBasicMaterial color={accentColor()} wireframe={true} />
     </T.Mesh>
   {/if}
 </T.Group>

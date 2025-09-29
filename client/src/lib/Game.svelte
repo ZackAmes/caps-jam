@@ -84,7 +84,19 @@
     return (position.x % 2 == 0 && position.y % 2 == 0) || (position.x % 2 == 1 && position.y % 2 == 1) ? "#222222" : "#333333";
   }
 
-  const get_bench_color = (player: string) => {
+  const get_bench_color = (player: string, bench_index?: number) => {
+    // Check if a bench cap at this position is selected - tentacles glow when chosen! 🐙
+    if (bench_index !== undefined && caps.selected_cap) {
+      const selected_location = caps.selected_cap.location.activeVariant();
+      if (selected_location === 'Bench') {
+        const player_address = player === 'player1' ? caps.game_state?.game.player1 : caps.game_state?.game.player2;
+        const bench_cap = caps.get_bench_cap_at_position(player_address || '', bench_index);
+        if (bench_cap && caps.selected_cap.id === bench_cap.id) {
+          return "yellow"; // Highlight selected bench position
+        }
+      }
+    }
+    
     // Bench squares are colored by player - where tentacles rest between battles! 🐙
     if (player === 'player1') {
       return "#333333"; // Darker for player1 (white pieces)
@@ -159,10 +171,9 @@
 
 <!-- Player 1 Bench squares (bottom) - where tentacles contemplate their next move! 🐙 -->
 {#each player1_bench_positions as bench_position, index}
-  {@const bench_color = get_bench_color('player1')}
+  {@const bench_color = get_bench_color('player1', index)}
     <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e: any) => {
-      // TODO: Handle bench clicks for playing pieces from bench
-      console.log('Clicked Player 1 bench position:', bench_position)
+      caps.handle_bench_click(caps.game_state?.game.player1 || '', index, e)
     }}>
     <T.BoxGeometry args={[1, 1, .1]} />
     <T.MeshBasicMaterial color={bench_color} />
@@ -171,10 +182,9 @@
 
 <!-- Player 2 Bench squares (top) -->
 {#each player2_bench_positions as bench_position, index}
-  {@const bench_color = get_bench_color('player2')}
+  {@const bench_color = get_bench_color('player2', index)}
     <T.Mesh position={[bench_position.x, bench_position.y, 0]} onclick={(e: any) => {
-      // TODO: Handle bench clicks for playing pieces from bench
-      console.log('Clicked Player 2 bench position:', bench_position)
+      caps.handle_bench_click(caps.game_state?.game.player2 || '', index, e)
     }}>
     <T.BoxGeometry args={[1, 1, .1]} />
     <T.MeshBasicMaterial color={bench_color} />

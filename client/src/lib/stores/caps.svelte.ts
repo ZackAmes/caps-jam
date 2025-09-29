@@ -470,17 +470,26 @@ export const caps = {
         // Prevent event bubbling to avoid conflicts
         e?.stopPropagation?.();
         
+        console.log('Bench click:', player_address, bench_index);
+        
         let bench_cap = caps.get_bench_cap_at_position(player_address, bench_index);
         
-        if (!bench_cap) return;
+        console.log('Found bench cap:', bench_cap);
+        
+        if (!bench_cap) {
+            console.log('No bench cap at position');
+            return;
+        }
         
         // Only allow selecting own caps - tentacles respect ownership! 🐙
         if (BigInt(bench_cap.owner) !== BigInt(account.account?.address || 0)) {
+            console.log('Not your cap');
             return;
         }
         
         // If this bench cap is already selected, deselect it - tentacles retract gracefully! 🐙
         if (selected_cap && selected_cap.id === bench_cap.id) {
+            console.log('Deselecting bench cap');
             selected_cap = null;
             selected_cap_render_position = null;
             popup_state.visible = false;
@@ -490,6 +499,7 @@ export const caps = {
         }
         
         // Select the bench cap
+        console.log('Selecting bench cap:', bench_cap);
         selected_cap = bench_cap;
         selected_cap_render_position = {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY};
         inspected_cap = null;
@@ -503,6 +513,9 @@ export const caps = {
         if (energy === 0) {
             energy = max_energy;
         }
+        
+        console.log('Selected cap is now:', selected_cap);
+        console.log('Valid moves should be:', valid_moves());
     },
 
     take_turn: async () => {
@@ -548,31 +561,37 @@ export const caps = {
     },
 
     handle_click: (position: {x: number, y: number}, e: any) => {
-        // If clicking on selected cap
-        let selected_cap_location = selected_cap?.location.unwrap();
-        if (selected_cap && selected_cap_location?.x == position.x && selected_cap_location?.y == position.y) {
-            const cap_type = cap_types.find(c => c.id === selected_cap!.cap_type);
-            const ability_target_type = cap_type?.ability_target.activeVariant();
+        console.log('Board click at position:', position);
+        console.log('Selected cap:', selected_cap);
+        console.log('Selected cap on bench:', selected_cap_on_bench);
+        
+        // If clicking on selected cap (only for board caps, bench caps are handled separately)
+        if (selected_cap && !selected_cap_on_bench) {
+            let selected_cap_location = selected_cap?.location.unwrap();
+            if (selected_cap_location?.x == position.x && selected_cap_location?.y == position.y) {
+                const cap_type = cap_types.find(c => c.id === selected_cap!.cap_type);
+                const ability_target_type = cap_type?.ability_target.activeVariant();
 
-            if (ability_target_type === 'SelfCap') {
-                // Show popup with "Use Ability" and "Deselect"
-                popup_state = {
-                    visible: true,
-                    position: position,
-                    render_position: {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY},
-                    available_actions: [
-                        {type: 'ability', label: 'Use Ability'},
-                        {type: 'deselect', label: 'Deselect'}
-                    ]
-                };
-            } else {
-                // Original behavior: just deselect
-                selected_cap = null
-                selected_cap_render_position = null
-                inspected_cap = null
-                inspected_cap_render_position = null
+                if (ability_target_type === 'SelfCap') {
+                    // Show popup with "Use Ability" and "Deselect"
+                    popup_state = {
+                        visible: true,
+                        position: position,
+                        render_position: {x: e.nativeEvent.screenX, y: e.nativeEvent.screenY},
+                        available_actions: [
+                            {type: 'ability', label: 'Use Ability'},
+                            {type: 'deselect', label: 'Deselect'}
+                        ]
+                    };
+                } else {
+                    // Original behavior: just deselect
+                    selected_cap = null
+                    selected_cap_render_position = null
+                    inspected_cap = null
+                    inspected_cap_render_position = null
+                }
+                return;
             }
-            return;
         }
 
         console.log(e)
