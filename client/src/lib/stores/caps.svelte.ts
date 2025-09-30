@@ -342,16 +342,18 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             alert(`Not enough energy! Need ${move_cost} but only have ${energy}`)
             return
         }
+
+        let cap_position = selected_cap.location.unwrap()!;
         
         let cairo_action_type;
-        if (selected_cap.location.unwrap()!.position.x == position.x) {
-            if (BigInt(position.y) > BigInt(selected_cap.location.unwrap()!.position.y)) {
+        if (cap_position.x == position.x) {
+            if (BigInt(position.y) > BigInt(cap_position.y)) {
                 cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.location.unwrap()!.position.y)}, Attack: undefined})
             } else {
                 cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.location.unwrap()!.position.y) - BigInt(position.y)}, Attack: undefined})
             }
-        } else if (selected_cap.location.unwrap()!.position.y == position.y) {
-            if (BigInt(position.x) > BigInt(selected_cap.location.unwrap()!.position.x)) {
+        } else if (cap_position.y == position.y) {
+            if (BigInt(position.x) > BigInt(cap_position.x)) {
                 cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.location.unwrap()!.position.x)}, Attack: undefined})
             } else {
                 cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.location.unwrap()!.position.x) - BigInt(position.x)}, Attack: undefined})
@@ -596,9 +598,6 @@ export const caps = {
                 console.log(`Action ${index + 1}: ${actionType} for cap ${action.cap_id}`);
             });
             
-            let calldata = client.actions.buildTakeTurnCalldata(game_state.game.id, current_move)
-            console.log('Built calldata:', calldata)
-            
             let res = await client.actions.takeTurn(account.account!, game_state.game.id, current_move)
             console.log('Turn submitted successfully:', res)
             
@@ -696,9 +695,9 @@ export const caps = {
             actionType: a.action_type.activeVariant()
         })));
         
-        await get_simulated_state();
+    //    await get_simulated_state();
         
-        console.log('Action added and state simulated successfully! 🐙');
+   //     console.log('Action added and state simulated successfully! 🐙');
     },
 
     handle_click: (position: {x: number, y: number}, e: any) => {

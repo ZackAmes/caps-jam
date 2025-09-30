@@ -24,6 +24,7 @@ export const account = {
             return username;
         },
         async connect() {
+            controller.probe();
             const res = await controller.connect();
             if (res) {
                 accountStore = res;
