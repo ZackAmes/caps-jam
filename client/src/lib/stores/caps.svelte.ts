@@ -594,7 +594,7 @@ export const caps = {
 
             let moves = current_move.map(action => ({
                 cap_id: action.cap_id,
-                action_type: new CairoCustomEnum(action.action_type)
+                action_type: new CairoCustomEnum({[action.action_type.activeVariant()]: action.action_type.unwrap()})
             }))
 
             console.log('Moves:', moves);
