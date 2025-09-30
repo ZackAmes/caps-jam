@@ -592,7 +592,8 @@ export const caps = {
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
 
-            let moves = current_move;
+            // Convert Svelte proxy array to plain array for Starknet serialization
+            let moves = [...current_move];
 
             console.log('Moves:', moves);
             
