@@ -348,15 +348,15 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         let cairo_action_type;
         if (cap_position.x == position.x) {
             if (BigInt(position.y) > BigInt(cap_position.y)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(selected_cap.location.unwrap()!.position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(cap_position.y)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(selected_cap.location.unwrap()!.position.y) - BigInt(position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(cap_position.y) - BigInt(position.y)}, Attack: undefined})
             }
         } else if (cap_position.y == position.y) {
             if (BigInt(position.x) > BigInt(cap_position.x)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(selected_cap.location.unwrap()!.position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(cap_position.x)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(selected_cap.location.unwrap()!.position.x) - BigInt(position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(cap_position.x) - BigInt(position.x)}, Attack: undefined})
             }
         }
         
