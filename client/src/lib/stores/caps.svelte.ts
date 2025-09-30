@@ -592,8 +592,11 @@ export const caps = {
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
 
-            // Convert Svelte proxy array and objects to plain JS for Starknet serialization - tentacles shed their proxy shells! 🐙
-            let moves = structuredClone(current_move);
+            // Unwrap Svelte proxy while preserving CairoCustomEnum objects - tentacles carefully extract their contents! 🐙
+            let moves = current_move.map(action => ({
+                cap_id: action.cap_id,
+                action_type: action.action_type
+            }));
 
             console.log('Moves:', moves);
             
