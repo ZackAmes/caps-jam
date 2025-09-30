@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x13d92333361bb7049c1232c0a5404e2c19082ededc3a73d75cb33fa952adec7",
-    "address": "0x3386f42474eaa3f6bf8410524b22fdd69beb12ce772e9e6d3cc964e2c3f46de",
-    "seed": "gkjasfsasd1asdf2fssdfrfsd",
+    "address": "0xb6e40f8a90aaca4997cc5d9aa2b53836a786fe4e7121713451b3d87bc251c4",
+    "seed": "gkjasfsasd1asdf2fssdfrfsasdfd",
     "name": "Caps vibe jam",
     "entrypoints": [
       "uuid",
@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x315c608c996621b2b8351204109f5c67fe03ca9325be214bbee1fa71f7a50ab",
-      "class_hash": "0x28bf79d799bfc944b1b76412933c3ca475ec7321b73672b82ac35226192f4b1",
+      "address": "0x1565e3ccd4bae59803369db49af08cd2d860c04e91dd303338f55730860531",
+      "class_hash": "0x5b58d9241c33c760ab1ae11a442772ed71fcf426a8251f99aae591a6021b3b5",
       "abi": [
         {
           "type": "impl",
@@ -1406,7 +1406,7 @@
           "variants": [
             {
               "name": "Play",
-              "type": "(core::integer::u64, caps::models::game::Vec2)"
+              "type": "caps::models::game::Vec2"
             },
             {
               "name": "Move",
@@ -2035,7 +2035,7 @@
       ]
     },
     {
-      "address": "0x55bf65ff794ae268576e95601c68670eaaa4affc684cf2309d13b81fbbd97c5",
+      "address": "0x6847b5b59ea7f8f290201b63654daa14d73eb4500e28b4af677ec896e0a25d3",
       "class_hash": "0x7579b4bc78adda3b2dff3029d9e1eee73fea758fef5c2dbcc01ccdf4caa3da9",
       "abi": [
         {
@@ -2594,7 +2594,7 @@
       ]
     },
     {
-      "address": "0x1bdc3967451a69bcc9c91f9c6f147ae8397968ef223fd0544185b39919da853",
+      "address": "0x1e01cbfb1568a0c25589943ff419bdd54cd8ed4cc99637af92b5167d4555386",
       "class_hash": "0x3c5a3d519aadd42ff983ed2defec668e355dbf65ce0bfa9eb2aec2642921e46",
       "abi": [
         {
@@ -3158,7 +3158,7 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x30080ac4dbeb5acd2aaab50ef6cc30449ad17bf695abe9be05898c714bbbfa8",
+      "class_hash": "0x9812f84e03614a6c0967795d875317dc23b606b2ddfd752dc7cf42b1422488",
       "tag": "caps-Moved",
       "selector": "0x28faa2453fd12c9f957e617904b76596e0ca8c09aa4f46936030c70c8976fe9"
     }

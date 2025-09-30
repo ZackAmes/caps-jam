@@ -163,7 +163,7 @@ pub struct Action {
 
 #[derive(Drop, Serde, Copy, Introspect)]
 pub enum ActionType {
-    Play: (u64, Vec2),
+    Play: Vec2,
     Move: Vec2,
     Attack: Vec2,
     Ability: Vec2,

@@ -348,15 +348,15 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         let cairo_action_type;
         if (cap_position.x == position.x) {
             if (BigInt(position.y) > BigInt(cap_position.y)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 2, y: BigInt(position.y) - BigInt(cap_position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 2, y: BigInt(position.y) - BigInt(cap_position.y)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 3, y: BigInt(cap_position.y) - BigInt(position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 3, y: BigInt(cap_position.y) - BigInt(position.y)}, Attack: undefined})
             }
         } else if (cap_position.y == position.y) {
             if (BigInt(position.x) > BigInt(cap_position.x)) {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 0, y: BigInt(position.x) - BigInt(cap_position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 0, y: BigInt(position.x) - BigInt(cap_position.x)}, Attack: undefined})
             } else {
-                cairo_action_type = new CairoCustomEnum({ Move: {x: 1, y: BigInt(cap_position.x) - BigInt(position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 1, y: BigInt(cap_position.x) - BigInt(position.x)}, Attack: undefined})
             }
         }
         
@@ -371,7 +371,7 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             return
         }
         
-        let cairo_action_type = new CairoCustomEnum({ Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}, Ability: undefined})
+        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}, Ability: undefined})
         energy -= attack_cost
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
@@ -381,7 +381,7 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             return
         }
         
-        let cairo_action_type = new CairoCustomEnum({ Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
+        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
         energy -= ability_cost
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
@@ -403,10 +403,7 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         
         // Play action uses the cap type and position - tentacles emerge from the depths! 🐙
         let cairo_action_type = new CairoCustomEnum({ 
-            Play: [BigInt(selected_cap.cap_type), {x: BigInt(position.x), y: BigInt(position.y)}],
-            Move: undefined, 
-            Attack: undefined,
-            Ability: undefined
+            Play: {x: BigInt(position.x), y: BigInt(position.y)}
         })
         
         console.log('Cairo action type:', cairo_action_type);

@@ -423,13 +423,14 @@ pub fn process_actions(
                     }
                 }
             },
-            ActionType::Play((cap_id, location)) => {
-                let mut cap = keys.get((*cap_id).into()).deref();
+            ActionType::Play(location) => {
+                let mut cap = keys.get((cap.id).into()).deref();
                 let cap_type: CapType = cap.get_cap_type(ref set);
                 assert!(cap.owner == caller.into(), "You are not the owner of this piece");
                 assert!(cap.location == Location::Bench, "Piece is not on the bench");
                 assert!(cap_type.play_cost <= energy, "Not enough energy, play cost: {}, energy: {}", cap_type.play_cost, energy);
                 energy -= cap_type.play_cost;
+                //todo check if location is valid (is there a piece there? and is it the last row?)
                 cap.location = Location::Board(*location);
                 keys.insert(cap.id.into(), NullableTrait::new(cap));
                 locations.insert((*location.x * 7 + *location.y).into(), cap.id);
