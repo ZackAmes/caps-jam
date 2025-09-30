@@ -591,14 +591,18 @@ export const caps = {
             console.log('=== SUBMITTING TURN - tentacles finalize their strategy! 🐙 ===');
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
+
+            let moves = current_move;
+
+            console.log('Moves:', moves);
             
             // Log each action type
-            current_move.forEach((action, index) => {
+            moves.forEach((action, index) => {
                 const actionType = action.action_type.activeVariant();
                 console.log(`Action ${index + 1}: ${actionType} for cap ${action.cap_id}`);
             });
             
-            let res = await client.actions.takeTurn(account.account!, game_state.game.id, current_move)
+            let res = await client.actions.takeTurn(account.account!, game_state.game.id, moves)
             console.log('Turn submitted successfully:', res)
             
             // Clear state after successful turn
