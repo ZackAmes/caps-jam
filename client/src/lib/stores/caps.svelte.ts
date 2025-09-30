@@ -592,7 +592,14 @@ export const caps = {
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
 
-            let calldata = CallData.compile([game_state.game.id, current_move])
+            let moves = current_move.map(action => ({
+                cap_id: action.cap_id,
+                action_type: action.action_type as CairoCustomEnum
+            }))
+
+            console.log('Moves:', moves);
+
+            let calldata = CallData.compile([game_state.game.id, moves])
             console.log(calldata)
             let res = await account.account.execute([
                 {
