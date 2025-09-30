@@ -6,15 +6,16 @@
     import Popup from '../ui/popup.svelte'
     import { caps } from '../stores/caps.svelte'
     import { planetelo } from '../stores/planetelo.svelte'
+    import { account } from '../stores/account.svelte'
     import { push } from 'svelte-spa-router'
     
     const { params }: { params: { game_id: string } } = $props()
     
     const game_id = parseInt(params.game_id)
 
-    // Load the game when component mounts or game_id changes
+    // Load the game when component mounts or game_id changes - tentacles reaching into the blockchain! 🐙
     $effect(() => {
-        if (game_id && !isNaN(game_id)) {
+        if (game_id && !isNaN(game_id) && account.account) {
             caps.get_game(game_id)
         }
     })
@@ -51,44 +52,54 @@
     </div>
 </div>
 
-{#if caps.selected_cap}
-    <CapData capType="selected" />
-{/if}
-{#if caps.inspected_cap}
-    <CapData capType="inspected" />
-{/if}
-{#if caps.popup_state.visible}
-    <Popup />
-{/if}
-
-{#if caps.game_state && !caps.game_state.game.over}
-    <MoveData />
-    <div class="game-board-container">
-        <Canvas>
-            <Game />
-        </Canvas>
-    </div>
-    <div class="action-buttons">
-        <button onclick={() => caps.reset_move()}>Reset Move</button>
-        <button onclick={() => caps.take_turn()}>Take Turn</button>
-    </div>
-{:else if caps.game_state?.game.over}
-    <div class="game-over">
-        <h3>Game Over!</h3>
-        {#if game_id === planetelo.planetelo_game_id}
-            <div class="card">
-                <button onclick={() => planetelo.handleSettle()}>Settle Match</button>
-            </div>
-        {:else if game_id === planetelo.agent_game_id}
-            <div class="card">
-                <button onclick={() => planetelo.settle_agent_game()}>Settle Game</button>
-            </div>
-        {/if}
+{#if !account.account}
+    <div class="wallet-prompt">
+        <div class="wallet-prompt-content">
+            <h3>Connect Your Wallet</h3>
+            <p>Please connect your wallet to view this game</p>
+            <button class="connect-button" onclick={account.connect}>Connect Wallet</button>
+        </div>
     </div>
 {:else}
-    <div class="loading">
-        <p>Loading game {game_id}...</p>
-    </div>
+    {#if caps.selected_cap}
+        <CapData capType="selected" />
+    {/if}
+    {#if caps.inspected_cap}
+        <CapData capType="inspected" />
+    {/if}
+    {#if caps.popup_state.visible}
+        <Popup />
+    {/if}
+
+    {#if caps.game_state && !caps.game_state.game.over}
+        <MoveData />
+        <div class="game-board-container">
+            <Canvas>
+                <Game />
+            </Canvas>
+        </div>
+        <div class="action-buttons">
+            <button onclick={() => caps.reset_move()}>Reset Move</button>
+            <button onclick={() => caps.take_turn()}>Take Turn</button>
+        </div>
+    {:else if caps.game_state?.game.over}
+        <div class="game-over">
+            <h3>Game Over!</h3>
+            {#if game_id === planetelo.planetelo_game_id}
+                <div class="card">
+                    <button onclick={() => planetelo.handleSettle()}>Settle Match</button>
+                </div>
+            {:else if game_id === planetelo.agent_game_id}
+                <div class="card">
+                    <button onclick={() => planetelo.settle_agent_game()}>Settle Game</button>
+                </div>
+            {/if}
+        </div>
+    {:else}
+        <div class="loading">
+            <p>Loading game {game_id}...</p>
+        </div>
+    {/if}
 {/if}
 
 <style>
@@ -143,6 +154,50 @@
     .loading {
         text-align: center;
         padding: 2rem;
+    }
+    
+    .wallet-prompt {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        padding: 2rem;
+    }
+    
+    .wallet-prompt-content {
+        text-align: center;
+        padding: 3rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        max-width: 400px;
+    }
+    
+    .wallet-prompt-content h3 {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+    
+    .wallet-prompt-content p {
+        margin-bottom: 2rem;
+        opacity: 0.8;
+    }
+    
+    .connect-button {
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        background: rgba(100, 200, 255, 0.2);
+        border: 1px solid rgba(100, 200, 255, 0.4);
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .connect-button:hover {
+        background: rgba(100, 200, 255, 0.3);
+        border-color: rgba(100, 200, 255, 0.6);
+        transform: translateY(-2px);
     }
     
     /* Mobile responsive layout adjustments */
