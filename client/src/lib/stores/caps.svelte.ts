@@ -595,7 +595,7 @@ export const caps = {
             // Unwrap Svelte proxy while preserving CairoCustomEnum objects - tentacles carefully extract their contents! 🐙
             let moves = current_move.map(action => ({
                 cap_id: action.cap_id,
-                action_type: action.action_type
+                action_type: action.action_type as CairoCustomEnum
             }));
 
             console.log('Moves:', moves);
