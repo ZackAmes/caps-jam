@@ -592,21 +592,15 @@ export const caps = {
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
 
-            // Unwrap Svelte proxy while preserving CairoCustomEnum objects - tentacles carefully extract their contents! 🐙
-            let moves = current_move.map(action => ({
-                cap_id: action.cap_id,
-                action_type: action.action_type as CairoCustomEnum
-            }));
-
-            console.log('Moves:', moves);
-            
-            // Log each action type
-            moves.forEach((action, index) => {
-                const actionType = action.action_type.activeVariant();
-                console.log(`Action ${index + 1}: ${actionType} for cap ${action.cap_id}`);
-            });
-            
-            let res = await client.actions.takeTurn(account.account!, game_state.game.id, moves)
+            let calldata = CallData.compile([game_state.game.id, current_move])
+            console.log(calldata)
+            let res = await account.account.execute([
+                {
+                    contractAddress: manifest.contracts[0].address,
+                    entrypoint: "take_turn",
+                    calldata: calldata
+                }
+            ])
             console.log('Turn submitted successfully:', res)
             
             // Clear state after successful turn

@@ -1,5 +1,5 @@
 import { DojoProvider, type DojoCall } from "@dojoengine/core";
-import { Account, AccountInterface, type BigNumberish, CairoOption, CairoCustomEnum } from "starknet";
+import { Account, AccountInterface, type BigNumberish, CairoOption, CairoCustomEnum, CallData } from "starknet";
 import type {Cap, Game, Action, Vec2} from "./models.gen";
 
 export function setupWorld(provider: DojoProvider) {
@@ -80,7 +80,7 @@ export function setupWorld(provider: DojoProvider) {
 		return {
 			contractName: "actions",
 			entrypoint: "take_turn",
-			calldata: [gameId, turn],
+			calldata: CallData.compile([gameId, turn]),
 		};
 	};
 
