@@ -674,18 +674,22 @@ export const caps = {
         // Create proper deep copies to avoid shared object references - tentacles break free from temporal entanglements! 🐙
         if (initial_state) {
             // Deep copy caps to restore original locations
-            const restoredCaps = initial_state.caps.map((cap: Cap) => ({
+            const restoredCaps = initial_state.caps.map((cap: Cap) => {
+                let position = cap.location.unwrap()!
+                return {
                 ...cap,
                 location: new CairoCustomEnum(
                     cap.location.activeVariant() === 'Board' 
-                        ? { Bench: undefined, Board: { ...cap.location.unwrap() } }
+                        ? { Bench: undefined, Board: { ...position } }
                         : cap.location.activeVariant() === 'Bench'
-                        ? { Bench: cap.location.unwrap() }
+                        ? { Bench: 1 }
                         : cap.location.activeVariant() === 'Hidden'
-                        ? { Bench: undefined, Board: undefined, Hidden: cap.location.unwrap() }
-                        : { Bench: undefined, Board: undefined, Hidden: undefined, Dead: cap.location.unwrap() }
+                        ? { Bench: undefined, Board: undefined, Hidden: 1 }
+                        : { Bench: undefined, Board: undefined, Hidden: undefined, Dead: 1 }
                 )
-            }));
+            }
+        
+        });
             
             game_state = {
                 game: initial_state.game,
@@ -693,14 +697,20 @@ export const caps = {
                 effects: [...initial_state.effects]
             }
             
-            console.log('Initial state caps restored:', initial_state.caps.map(c => ({
+            console.log('Initial state caps restored:', initial_state.caps.map(c => {
+                let position = c.location.unwrap()!
+                return {
                 id: c.id,
-                location: c.location.activeVariant()
-            })));
-            console.log('Game state now:', game_state.caps.map(c => ({
+                location: c.location.activeVariant(),
+                position: position
+            }}));
+            console.log('Game state now:', game_state.caps.map(c => {
+                let position = c.location.unwrap()!
+                return {
                 id: c.id,
-                location: c.location.activeVariant()
-            })));
+                location: c.location.activeVariant(),
+                position: position
+            }}));
         }
         
         // Close popup
