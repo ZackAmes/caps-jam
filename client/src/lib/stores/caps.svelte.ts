@@ -348,20 +348,20 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         let cairo_action_type;
         if (cap_position.x == position.x) {
             if (BigInt(position.y) > BigInt(cap_position.y)) {
-                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 2, y: BigInt(position.y) - BigInt(cap_position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 2, y: BigInt(position.y) - BigInt(cap_position.y)} })
             } else {
-                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 3, y: BigInt(cap_position.y) - BigInt(position.y)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 3, y: BigInt(cap_position.y) - BigInt(position.y)} })
             }
         } else if (cap_position.y == position.y) {
             if (BigInt(position.x) > BigInt(cap_position.x)) {
-                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 0, y: BigInt(position.x) - BigInt(cap_position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 0, y: BigInt(position.x) - BigInt(cap_position.x)} })
             } else {
-                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 1, y: BigInt(cap_position.x) - BigInt(position.x)}, Attack: undefined})
+                cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: {x: 1, y: BigInt(cap_position.x) - BigInt(position.x)} })
             }
         }
         
         energy -= move_cost
-        selected_cap.location = new CairoCustomEnum({Board: {x: BigInt(position.x), y: BigInt(position.y)}})
+        selected_cap.location = new CairoCustomEnum({Bench: undefined, Board: {x: BigInt(position.x), y: BigInt(position.y)}})
         console.log(selected_cap)
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type!})
     }
@@ -371,7 +371,7 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             return
         }
         
-        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)}, Ability: undefined})
+        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: {x: BigInt(position.x), y: BigInt(position.y)} })
         energy -= attack_cost
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
@@ -381,7 +381,7 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
             return
         }
         
-        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)}})
+        let cairo_action_type = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: undefined, Ability: {x: BigInt(position.x), y: BigInt(position.y)} })
         energy -= ability_cost
         caps.add_action({cap_id: selected_cap.id, action_type: cairo_action_type})
     }
@@ -414,20 +414,16 @@ const execute_action = (action_type: 'move' | 'attack' | 'ability' | 'deselect' 
         let cap_in_state = game_state.caps.find(c => c.id === selected_cap!.id);
         if (cap_in_state) {
             cap_in_state.location = new CairoCustomEnum({
-                Board: {x: BigInt(position.x), y: BigInt(position.y)},
                 Bench: undefined,
-                Hidden: undefined,
-                Dead: undefined
+                Board: {x: BigInt(position.x), y: BigInt(position.y)}
             });
             console.log('Updated cap location in game state:', cap_in_state.location);
         }
         
         // Also update selected_cap reference
         selected_cap.location = new CairoCustomEnum({
-            Board: {x: BigInt(position.x), y: BigInt(position.y)},
             Bench: undefined,
-            Hidden: undefined,
-            Dead: undefined
+            Board: {x: BigInt(position.x), y: BigInt(position.y)}
         });
         
         console.log('Adding play action to moves list');
@@ -460,8 +456,23 @@ export const caps = {
         
         let res = (await caps_contract.get_game(id)).unwrap()
         
-        // Always save the initial state as a clean copy
-        initial_state = { game: res[0], caps: res[1], effects: res[2] }
+        // Always save the initial state as a clean copy with deep copied caps - tentacles preserve original state! 🐙
+        initial_state = { 
+            game: res[0], 
+            caps: res[1].map((cap: Cap) => ({
+                ...cap,
+                location: new CairoCustomEnum(
+                    cap.location.activeVariant() === 'Board' 
+                        ? { Bench: undefined, Board: { ...cap.location.unwrap() } }
+                        : cap.location.activeVariant() === 'Bench'
+                        ? { Bench: cap.location.unwrap() }
+                        : cap.location.activeVariant() === 'Hidden'
+                        ? { Bench: undefined, Board: undefined, Hidden: cap.location.unwrap() }
+                        : { Bench: undefined, Board: undefined, Hidden: undefined, Dead: cap.location.unwrap() }
+                )
+            })),
+            effects: res[2] 
+        }
         
         console.log('Initial state loaded:', {
             turnCount: initial_state.game.turn_count,
@@ -660,11 +671,25 @@ export const caps = {
         energy = max_energy
         
         // Restore game state to initial - this puts all pieces back to their original positions (bench/board)
-        // Note: Since game_state and initial_state share object references, we need to create a fresh copy
+        // Create proper deep copies to avoid shared object references - tentacles break free from temporal entanglements! 🐙
         if (initial_state) {
+            // Deep copy caps to restore original locations
+            const restoredCaps = initial_state.caps.map((cap: Cap) => ({
+                ...cap,
+                location: new CairoCustomEnum(
+                    cap.location.activeVariant() === 'Board' 
+                        ? { Bench: undefined, Board: { ...cap.location.unwrap() } }
+                        : cap.location.activeVariant() === 'Bench'
+                        ? { Bench: cap.location.unwrap() }
+                        : cap.location.activeVariant() === 'Hidden'
+                        ? { Bench: undefined, Board: undefined, Hidden: cap.location.unwrap() }
+                        : { Bench: undefined, Board: undefined, Hidden: undefined, Dead: cap.location.unwrap() }
+                )
+            }));
+            
             game_state = {
                 game: initial_state.game,
-                caps: [...initial_state.caps], // Create a new array to trigger reactivity
+                caps: restoredCaps,
                 effects: [...initial_state.effects]
             }
             
