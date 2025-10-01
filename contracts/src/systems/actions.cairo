@@ -441,12 +441,13 @@ pub mod actions {
                     game.remove_cap(cap_id);
                 } else {
                     if cap.owner == (game.player1).into() {
-                        if cap.cap_type % 4 == 0 {
+                        //todo: better way to tell if it's a tower
+                        if cap.cap_type < 4 {
                             one_tower_found = true;
                         }
                         one_found = true;
                     } else if cap.owner == (game.player2).into() {
-                        if cap.cap_type % 4 == 0 {
+                        if cap.cap_type < 4 {
                             two_tower_found = true;
                         }
                         two_found = true;

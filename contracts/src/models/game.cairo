@@ -120,12 +120,13 @@ pub impl GameImpl of GameTrait {
             }
             if cap.owner == (*self.player1).into() {
                 one_found = true;
-                if cap.cap_type % 4 == 0 {
+                //todo: better way to tell if it's a tower
+                if cap.cap_type < 4 {
                     one_tower_found = true;
                 }
             } else if cap.owner == (*self.player2).into() {
                 two_found = true;
-                if cap.cap_type % 4 == 0 {
+                if cap.cap_type < 4 {
                     two_tower_found = true;
                 }
             }
