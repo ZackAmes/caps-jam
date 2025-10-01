@@ -431,6 +431,8 @@ pub mod actions {
             let mut i = 0;
             let mut one_found = false;
             let mut two_found = false;
+            let mut one_tower_found = false;
+            let mut two_tower_found = false;
             while i < game.caps_ids.len() {
                 let cap_id = *game.caps_ids[i];
                 let cap = keys.get(cap_id.into()).deref();
@@ -439,8 +441,14 @@ pub mod actions {
                     game.remove_cap(cap_id);
                 } else {
                     if cap.owner == (game.player1).into() {
+                        if cap.cap_type % 4 == 0 {
+                            one_tower_found = true;
+                        }
                         one_found = true;
                     } else if cap.owner == (game.player2).into() {
+                        if cap.cap_type % 4 == 0 {
+                            two_tower_found = true;
+                        }
                         two_found = true;
                     }
                     final_caps.append(cap);
@@ -448,10 +456,10 @@ pub mod actions {
                 i += 1;
             };
 
-            if !one_found {
+            if !one_found || !one_tower_found {
                 game.over = true;
             }
-            if !two_found {
+            if !two_found || !two_tower_found {
                 game.over = true;
             }
             let mut final_effects: Array<Effect> = ArrayTrait::new();

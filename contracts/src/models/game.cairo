@@ -109,6 +109,8 @@ pub impl GameImpl of GameTrait {
         let mut i = 0;
         let mut one_found = false;
         let mut two_found = false;
+        let mut one_tower_found = false;
+        let mut two_tower_found = false;
         while i < self.caps_ids.len() {
             let cap: Cap = world.read_model(*self.caps_ids[i]);
             let cap_type = get_cap_type(cap.cap_type).unwrap();
@@ -118,14 +120,20 @@ pub impl GameImpl of GameTrait {
             }
             if cap.owner == (*self.player1).into() {
                 one_found = true;
+                if cap.cap_type % 4 == 0 {
+                    one_tower_found = true;
+                }
             } else if cap.owner == (*self.player2).into() {
                 two_found = true;
+                if cap.cap_type % 4 == 0 {
+                    two_tower_found = true;
+                }
             }
             i += 1;
         };
-        if !one_found {
+        if !one_found || !one_tower_found {
             return (true, *self.player2);
-        } else if !two_found {
+        } else if !two_found || !two_tower_found {
             return (true, *self.player1);
         }
         (false, starknet::contract_address_const::<0>())
