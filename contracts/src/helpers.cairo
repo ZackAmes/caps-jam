@@ -39,6 +39,8 @@ pub fn get_piece_locations(
         let cap: Cap = world.read_model(*game.caps_ids[i]);
         let position = cap.get_position();
         if position.is_none() {
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
+            i+=1;
             continue;
         }
         let position = position.unwrap();
@@ -188,6 +190,8 @@ pub fn clone_dicts(
         let cap: Cap = keys.get((*game.caps_ids[i]).into()).deref();
         let position = cap.get_position();
         if position.is_none() {
+            new_keys.insert(cap.id.into(), NullableTrait::new(cap));
+            i += 1;
             continue;
         }
         let position = position.unwrap();
