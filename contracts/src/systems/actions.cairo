@@ -255,11 +255,14 @@ pub mod actions {
 
             if game.turn_count % 2 == 0 {
                 assert!(
-                    get_caller_address() == game.player1, "You are not the turn player, 1s turn",
+                    true
+                    //temp to test without changing controllers constantly
+         //           get_caller_address() == game.player1, "You are not the turn player, 1s turn",
                 );
             } else {
                 assert!(
-                    get_caller_address() == game.player2, "You are not the turn player, 2s turn",
+                    true
+         //           get_caller_address() == game.player2, "You are not the turn player, 2s turn",
                 );
             }
 

@@ -600,10 +600,27 @@ export const caps = {
             console.log('Current move actions:', current_move);
             console.log('Number of actions:', current_move.length);
 
-            let moves = current_move.map(action => ({
-                cap_id: action.cap_id,
-                action_type: new CairoCustomEnum({[action.action_type.activeVariant()]: action.action_type.unwrap()})
-            }))
+            let moves = current_move.map(action => {
+                const variant = action.action_type.activeVariant();
+                const value = action.action_type.unwrap();
+                
+                // Create proper Cairo enum with preceding undefined variants - tentacles follow the rules! 🐙
+                let cairo_enum;
+                if (variant === 'Play') {
+                    cairo_enum = new CairoCustomEnum({ Play: value });
+                } else if (variant === 'Move') {
+                    cairo_enum = new CairoCustomEnum({ Play: undefined, Move: value });
+                } else if (variant === 'Attack') {
+                    cairo_enum = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: value });
+                } else if (variant === 'Ability') {
+                    cairo_enum = new CairoCustomEnum({ Play: undefined, Move: undefined, Attack: undefined, Ability: value });
+                }
+                
+                return {
+                    cap_id: action.cap_id,
+                    action_type: cairo_enum
+                };
+            })
 
             console.log('Moves:', moves);
 
