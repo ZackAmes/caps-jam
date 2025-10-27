@@ -660,7 +660,7 @@ export const caps = {
         inspected_cap_render_position = null;
     },
 
-    reset_move: () => {
+    reset_move: async () => {
         console.log('=== RESETTING MOVE - tentacles retreat to their starting positions! 🐙 ===');
         console.log('Current move before reset:', current_move);
         console.log('Actions being discarded:', current_move.map(a => ({
@@ -673,6 +673,40 @@ export const caps = {
                 id: c.id,
                 location: c.location.activeVariant()
             })));
+            
+            // Fetch the latest state from the contract to check if it's been updated - tentacles sync with reality! 🐙
+            console.log('Fetching latest game state from contract...');
+            try {
+                let res = (await caps_contract.get_game(game_state.game.id)).unwrap()
+                let fetched_state = { 
+                    game: res[0], 
+                    caps: res[1].map((cap: Cap) => ({
+                        ...cap,
+                        location: new CairoCustomEnum(
+                            cap.location.activeVariant() === 'Board' 
+                                ? { Bench: undefined, Board: { ...cap.location.unwrap() } }
+                                : cap.location.activeVariant() === 'Bench'
+                                ? { Bench: cap.location.unwrap() }
+                                : cap.location.activeVariant() === 'Hidden'
+                                ? { Bench: undefined, Board: undefined, Hidden: cap.location.unwrap() }
+                                : { Bench: undefined, Board: undefined, Hidden: undefined, Dead: cap.location.unwrap() }
+                        )
+                    })),
+                    effects: res[2] 
+                }
+                
+                console.log('Fetched state turn count:', fetched_state.game.turn_count);
+                console.log('Current initial state turn count:', initial_state?.game.turn_count);
+                
+                // If the fetched state has a higher turn count, update initial_state - tentacles adapt to new reality! 🐙
+                if (!initial_state || fetched_state.game.turn_count > initial_state.game.turn_count) {
+                    console.log('Found newer state! Updating initial_state...');
+                    initial_state = fetched_state;
+                }
+            } catch (error) {
+                console.error('Failed to fetch latest game state:', error);
+                console.log('Proceeding with cached initial_state');
+            }
         }
         
         // Clear current move - all actions are discarded
