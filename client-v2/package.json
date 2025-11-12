@@ -21,6 +21,7 @@
 		"vite": "^7.1.10"
 	},
 	"dependencies": {
+		"@dojoengine/sdk": "^1.8.5",
 		"starknet": "^8.7.0"
 	}
 }
