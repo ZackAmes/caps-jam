@@ -11,9 +11,9 @@
   onMount(async () => {
     try {
       // Dynamically import the WASM module using the alias
-      const wasm = await import('$wasm/caps_wasm.js');
-      await wasm.default();
-      wasmModule = wasm;
+   //s   const wasm = await import('$wasm/caps_wasm.js');
+    //  await wasm.default();
+    //s  wasmModule = wasm;
       loading = false;
     } catch (e) {
       error = `Failed to load WASM: ${e}`;
