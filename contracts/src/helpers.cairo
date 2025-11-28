@@ -62,7 +62,7 @@ pub fn get_active_effects(
 
     let mut i = 0;
     while i < game.effect_ids.len() {
-        let effect: Effect = world.read_model((game.id, i).into());
+        let effect: Effect = world.read_model((game.id, i));
         match effect.get_timing() {
             Timing::StartOfTurn => { start_of_turn_effects.append(effect); },
             Timing::MoveStep => { move_step_effects.append(effect); },
@@ -413,7 +413,7 @@ pub fn process_actions(
                     locations = new_locations;
                     keys = new_keys;
                     if valid {
-                        let (mut game, new_double_effects, new_locations, new_keys) = cap
+                        let (mut new_game, new_double_effects, new_locations, new_keys) = cap
                             .use_ability(*target, ref game, @set, ref locations, ref keys);
                         locations = new_locations;
                         keys = new_keys;

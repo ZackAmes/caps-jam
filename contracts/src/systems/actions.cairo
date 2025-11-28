@@ -508,7 +508,7 @@ pub mod actions {
             let mut i: u64 = 0;
             let mut effects: Array<Effect> = ArrayTrait::new();
             while i < game.effect_ids.len().into() {
-                let effect: Effect = world.read_model((game_id, i).into());
+                let effect: Effect = world.read_model((game_id, i));
                 if effect.remaining_triggers > 0 {
                     effects.append(effect);
                 }

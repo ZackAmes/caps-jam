@@ -12,8 +12,10 @@ pub struct Effect {
     pub remaining_triggers: u8,
 }
 
-#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Default, DojoStore, Introspect)]
 pub enum EffectType {
+    #[default]
+    None,
     DamageBuff: u8,
     Shield: u8,
     Heal: u8,
@@ -29,8 +31,10 @@ pub enum EffectType {
     Double: u8,
 }
 
-#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Default, DojoStore, Introspect)]
 pub enum EffectTarget {
+    #[default]
+    None,
     Cap: u64,
     Square: Vec2,
 }
@@ -55,25 +59,27 @@ pub impl EffectImpl of EffectTrait {
 
     fn get_timing(self: @Effect) -> Timing {
         match self.effect_type {
-            EffectType::DamageBuff => Timing::MoveStep,
-            EffectType::Shield => Timing::MoveStep,
-            EffectType::Heal => Timing::StartOfTurn,
-            EffectType::DOT => Timing::EndOfTurn,
-            EffectType::MoveBonus => Timing::MoveStep,
-            EffectType::AttackBonus => Timing::MoveStep,
-            EffectType::BonusRange => Timing::MoveStep,
-            EffectType::MoveDiscount => Timing::MoveStep,
-            EffectType::AttackDiscount => Timing::MoveStep,
-            EffectType::AbilityDiscount => Timing::MoveStep,
-            EffectType::ExtraEnergy => Timing::StartOfTurn,
-            EffectType::Stun => Timing::StartOfTurn,
-            EffectType::Double => Timing::EndOfTurn,
+            EffectType::None => Timing::StartOfTurn,
+            EffectType::DamageBuff(_) => Timing::MoveStep,
+            EffectType::Shield(_) => Timing::MoveStep,
+            EffectType::Heal(_) => Timing::StartOfTurn,
+            EffectType::DOT(_) => Timing::EndOfTurn,
+            EffectType::MoveBonus(_) => Timing::MoveStep,
+            EffectType::AttackBonus(_) => Timing::MoveStep,
+            EffectType::BonusRange(_) => Timing::MoveStep,
+            EffectType::MoveDiscount(_) => Timing::MoveStep,
+            EffectType::AttackDiscount(_) => Timing::MoveStep,
+            EffectType::AbilityDiscount(_) => Timing::MoveStep,
+            EffectType::ExtraEnergy(_) => Timing::StartOfTurn,
+            EffectType::Stun(_) => Timing::StartOfTurn,
+            EffectType::Double(_) => Timing::EndOfTurn,
         }
     }
 }
 
-#[derive(Copy, Drop, Serde, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, DojoStore, Default)]
 pub enum Timing {
+    #[default]
     StartOfTurn,
     MoveStep,
     EndOfTurn,

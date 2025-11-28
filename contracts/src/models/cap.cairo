@@ -272,8 +272,9 @@ pub struct CapType {
 }
 
 
-#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, Debug, PartialEq, DojoStore, Default, Introspect)]
 pub enum TargetType {
+    #[default]
     None,
     SelfCap,
     TeamCap,
@@ -282,8 +283,9 @@ pub enum TargetType {
     AnySquare,
 }
 
-#[derive(Copy, Drop, Serde, Debug, PartialEq, Introspect)]
+#[derive(Copy, Drop, Serde, Debug, PartialEq, DojoStore, Default, Introspect)]
 pub enum Location {
+    #[default]
     Bench,
     Board: Vec2,
     Hidden: felt252, // hash if hidden

@@ -178,7 +178,7 @@ pub enum ActionType {
     Ability: Vec2,
 }
 
-#[derive(Copy, Drop, Serde, PartialEq, Introspect, Debug)]
+#[derive(Copy, Drop, Serde, PartialEq, DojoStore, Debug, Introspect)]
 pub struct Vec2 {
     pub x: u8,
     pub y: u8,
