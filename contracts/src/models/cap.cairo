@@ -206,10 +206,9 @@ pub impl CapImpl of CapTrait {
         valid
     }
 
-    fn get_cap_type(self: @Cap, ref set: Set) -> CapType {
+    fn get_cap_type(self: @Cap, ref set: Set) -> Option<CapType> {
         let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
-        let cap_type = dispatcher.get_cap_type(*self.cap_type).unwrap();
-        cap_type
+        dispatcher.get_cap_type(*self.cap_type)
     }
 
     fn get_position(self: @Cap) -> Option<Vec2> {

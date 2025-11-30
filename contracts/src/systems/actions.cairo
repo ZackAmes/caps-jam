@@ -287,7 +287,7 @@ pub mod actions {
                 process_actions(
                 ref game,
                 ref turn,
-                ref locations,
+                locations,
                 ref keys,
                 ref start_of_turn_effects,
                 ref move_step_effects,
@@ -303,7 +303,7 @@ pub mod actions {
 
             let (mut game, mut new_end_of_turn_effects, new_locations, new_keys) =
                 update_end_of_turn_effects(
-                ref game, ref end_of_turn_effects, ref locations, ref keys,
+                ref game, ref end_of_turn_effects, locations, keys,
             );
             end_of_turn_effects = new_end_of_turn_effects;
             locations = new_locations;
@@ -403,7 +403,7 @@ pub mod actions {
                 process_actions(
                 ref game,
                 ref turn,
-                ref locations,
+                locations,
                 ref keys,
                 ref start_of_turn_effects,
                 ref move_step_effects,
@@ -420,7 +420,7 @@ pub mod actions {
 
             let (mut game, mut new_end_of_turn_effects, new_locations, new_keys) =
                 update_end_of_turn_effects(
-                ref game, ref end_of_turn_effects, ref locations, ref keys,
+                ref game, ref end_of_turn_effects, locations, keys,
             );
 
             end_of_turn_effects = new_end_of_turn_effects;

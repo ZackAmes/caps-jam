@@ -2,8 +2,7 @@ use starknet::{ContractAddress};
 use dojo::model::{ModelStorage};
 use dojo::world::WorldStorage;
 use caps::models::effect::{Effect};
-use caps::models::cap::{Cap};
-use caps::sets::set_zero::get_cap_type;
+use caps::models::cap::{Cap, CapTrait};
 
 #[derive(Copy, Drop, Serde, Debug)]
 #[dojo::model]
@@ -111,9 +110,10 @@ pub impl GameImpl of GameTrait {
         let mut two_found = false;
         let mut one_tower_found = false;
         let mut two_tower_found = false;
+        let mut set = world.read_model(0);
         while i < self.caps_ids.len() {
             let cap: Cap = world.read_model(*self.caps_ids[i]);
-            let cap_type = get_cap_type(cap.cap_type).unwrap();
+            let cap_type = cap.get_cap_type(ref set).unwrap();
             if cap.dmg_taken >= cap_type.base_health {
                 i += 1;
                 continue;

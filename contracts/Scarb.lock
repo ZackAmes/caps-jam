@@ -5,6 +5,14 @@ version = 1
 name = "caps"
 version = "1.5.0"
 dependencies = [
+ "caps_core",
+ "dojo",
+]
+
+[[package]]
+name = "caps_core"
+version = "0.1.0"
+dependencies = [
  "dojo",
 ]
 
