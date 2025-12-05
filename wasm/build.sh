@@ -18,4 +18,3 @@ wasm-pack build --target=web
 
 echo "✅ Build complete! WASM package is in pkg/"
 echo "📝 You can now use it in your Svelte app"
-

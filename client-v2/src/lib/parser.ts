@@ -1,7 +1,5 @@
 // WASM Cairo Type Deserialization Helpers
 
-import { type BigNumberish, type ByteArray, cairo } from "starknet";
-
 export interface Vec2 {
   x: number;
   y: number;
@@ -71,34 +69,108 @@ export interface GameState {
   caps: Cap[];
 }
 
-// Helper to parse ByteArray from felts using the custom stringFromByteArray helper
+// Helper to parse ByteArray from felts
+// Cairo ByteArray format: [data_len, ...data_words, pending_word, pending_word_len]
+// But cairo1_run may serialize it differently - need to detect the format
 function parseByteArray(felts: string[], idx: number): { value: string; nextIdx: number } {
   const startIdx = idx;
-  const dataLength = Number(felts[idx++]);
   
-  const words: BigNumberish[] = [];
-  for (let i = 0; i < dataLength; i++) {
-    words.push(felts[idx++]);
+  // Check bounds
+  if (idx >= felts.length) {
+    throw new Error(`[parseByteArray] Out of bounds at idx=${idx}, felts.length=${felts.length}`);
   }
-  const pendingWord = felts[idx++];
-  const pendingWordLen = Number(felts[idx++]);
   
-  console.log(`[parseByteArray] idx=${startIdx}, dataLen=${dataLength}, pendingLen=${pendingWordLen}, nextIdx=${idx}`);
+  const firstValue = felts[idx];
+  const firstNum = Number(firstValue);
   
-  try {
-    // Construct a ByteArray object and decode it
-    const byteArray: ByteArray = {
-      data: words,
-      pending_word: pendingWord,
-      pending_word_len: pendingWordLen
-    };
-    const result = stringFromByteArray(byteArray);
-    console.log(`[parseByteArray] Decoded: "${result}"`);
+  console.log(`[parseByteArray] idx=${startIdx}, firstValue=${firstValue}, firstNum=${firstNum}`);
+  
+  // Detect format: if first value is small (0-100), it's likely data_len
+  // If it's huge, it's likely a short string encoded directly
+  if (firstNum >= 0 && firstNum <= 100 && Number.isInteger(firstNum)) {
+    // Standard ByteArray format: [data_len, ...data_words, pending_word, pending_word_len]
+    const dataLength = firstNum;
+    idx++;
     
+    // Read the data words (full 31-byte chunks)
+    const words: string[] = [];
+    for (let i = 0; i < dataLength; i++) {
+      if (idx >= felts.length) {
+        throw new Error(`[parseByteArray] Out of bounds reading data word ${i} at idx=${idx}`);
+      }
+      words.push(felts[idx++]);
+    }
+    
+    // Read pending word and its length
+    if (idx + 1 >= felts.length) {
+      throw new Error(`[parseByteArray] Out of bounds reading pending_word at idx=${idx}`);
+    }
+    const pendingWord = felts[idx++];
+    const pendingWordLen = Number(felts[idx++]);
+    
+    console.log(`[parseByteArray] Standard format: dataLen=${dataLength}, pendingWord=${pendingWord}, pendingLen=${pendingWordLen}`);
+    
+    // Decode the ByteArray to string
+    let result = '';
+    
+    // Decode full words (31 bytes each)
+    for (const word of words) {
+      if (word && BigInt(word) !== 0n) {
+        result += feltToString(word);
+      }
+    }
+    
+    // Decode pending word
+    if (pendingWord && BigInt(pendingWord) !== 0n && pendingWordLen > 0) {
+      result += feltToString(pendingWord, pendingWordLen);
+    }
+    
+    console.log(`[parseByteArray] Decoded: "${result}"`);
     return { value: result, nextIdx: idx };
-  } catch (error) {
-    console.error(`[parseByteArray] Error:`, error);
-    throw error;
+  } else {
+    // Short string format: just the felt-encoded string directly
+    // Followed by the string length in bytes
+    const stringFelt = felts[idx++];
+    const stringLen = Number(felts[idx++]);
+    
+    console.log(`[parseByteArray] Short string format: felt=${stringFelt}, len=${stringLen}`);
+    
+    const result = feltToString(stringFelt, stringLen);
+    console.log(`[parseByteArray] Decoded: "${result}"`);
+    return { value: result, nextIdx: idx };
+  }
+}
+
+// Convert a felt252 to a string (up to 31 bytes)
+function feltToString(felt: string, maxLen?: number): string {
+  try {
+    const bigIntVal = BigInt(felt);
+    if (bigIntVal === 0n) return '';
+    
+    let hex = bigIntVal.toString(16);
+    // Ensure even length for hex pairs
+    if (hex.length % 2 !== 0) {
+      hex = '0' + hex;
+    }
+    
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) {
+      const charCode = parseInt(hex.substring(i, i + 2), 16);
+      if (charCode > 0) {
+        str += String.fromCharCode(charCode);
+      }
+    }
+    
+    // If maxLen specified, take only that many characters from the end
+    // (felt encoding puts the string right-aligned for short strings)
+    if (maxLen !== undefined && str.length > maxLen) {
+      str = str.slice(-maxLen);
+    }
+    
+    return str;
+  } catch (e) {
+    console.error(`[feltToString] Error converting ${felt}:`, e);
+    return '';
   }
 }
 
@@ -111,23 +183,26 @@ function parseVec2(felts: string[], idx: number): { value: Vec2; nextIdx: number
 }
 
 // Helper to parse Array of Vec2
+// The array length is the count of individual values, not Vec2s
+// So we divide by 2 since each Vec2 has 2 values (x, y)
 function parseVec2Array(felts: string[], idx: number): { value: Vec2[]; nextIdx: number } {
   const startIdx = idx;
-  const len = Number(felts[idx++]);
-  console.log(`[parseVec2Array] idx: ${startIdx}, arrayLength: ${len}`);
+  const valueCount = Number(felts[idx++]);
+  const vec2Count = Math.floor(valueCount / 2);
+  console.log(`[parseVec2Array] idx: ${startIdx}, valueCount: ${valueCount}, vec2Count: ${vec2Count}`);
   
-  if (isNaN(len) || !isFinite(len)) {
-    console.error(`[parseVec2Array] Invalid length value: ${len}, felt was: "${felts[startIdx]}"`);
-    throw new RangeError(`Invalid array length: ${len}`);
+  if (isNaN(valueCount) || !isFinite(valueCount)) {
+    console.error(`[parseVec2Array] Invalid length value: ${valueCount}, felt was: "${felts[startIdx]}"`);
+    throw new RangeError(`Invalid array length: ${valueCount}`);
   }
   
   const arr: Vec2[] = [];
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < vec2Count; i++) {
     const parsed = parseVec2(felts, idx);
     arr.push(parsed.value);
     idx = parsed.nextIdx;
   }
-  console.log(`[parseVec2Array] Parsed ${len} Vec2s, nextIdx: ${idx}`);
+  console.log(`[parseVec2Array] Parsed ${vec2Count} Vec2s, nextIdx: ${idx}`);
   return { value: arr, nextIdx: idx };
 }
 
@@ -154,41 +229,64 @@ export function parseCapType(rawOutput: string): CapType | null {
   
   const felts = normalized.split(/\s+/).filter((s: string) => s.length > 0);
   
-  console.log(`[parseCapType] Normalized felts (${felts.length}):`, felts);
+  console.log(`[parseCapType] Normalized felts (${felts.length}):`);
+  // Print felts with indices for easier debugging
+  felts.forEach((f, i) => {
+    const display = f.length > 20 ? f.slice(0, 20) + '...' : f;
+    console.log(`  [${i}] ${display}`);
+  });
   
   let idx = 0;
   
-  // Parse CapType struct - first element is the ID
+  // First element is the Option variant discriminator: 0 = Some, 1 = None
+  const optionVariant = Number(felts[idx++]);
+  console.log(`[parseCapType] Option variant: ${optionVariant}`);
+  
+  if (optionVariant === 1) {
+    // Option::None - no CapType found
+    return null;
+  }
+  
+  // Option::Some - parse the CapType struct
   const id = Number(felts[idx++]);
-  console.log(`[parseCapType] ID: ${id}, idx: ${idx}`);
+  console.log(`[parseCapType] 1. id=${id}, nextIdx=${idx}`);
   
   const name = parseByteArray(felts, idx);
   idx = name.nextIdx;
+  console.log(`[parseCapType] 2. name="${name.value}", nextIdx=${idx}`);
   
   const description = parseByteArray(felts, idx);
   idx = description.nextIdx;
+  console.log(`[parseCapType] 3. description="${description.value}", nextIdx=${idx}`);
   
   const play_cost = Number(felts[idx++]);
   const move_cost = Number(felts[idx++]);
   const attack_cost = Number(felts[idx++]);
+  console.log(`[parseCapType] 4. costs: play=${play_cost}, move=${move_cost}, attack=${attack_cost}, nextIdx=${idx}`);
   
   const attack_range = parseVec2Array(felts, idx);
   idx = attack_range.nextIdx;
+  console.log(`[parseCapType] 5. attack_range count=${attack_range.value.length}, nextIdx=${idx}`);
   
   const ability_range = parseVec2Array(felts, idx);
   idx = ability_range.nextIdx;
+  console.log(`[parseCapType] 6. ability_range count=${ability_range.value.length}, nextIdx=${idx}`);
   
   const ability_description = parseByteArray(felts, idx);
   idx = ability_description.nextIdx;
+  console.log(`[parseCapType] 7. ability_description="${ability_description.value}", nextIdx=${idx}`);
   
   const move_range = parseVec2(felts, idx);
   idx = move_range.nextIdx;
+  console.log(`[parseCapType] 8. move_range=(${move_range.value.x},${move_range.value.y}), nextIdx=${idx}`);
   
   const attack_dmg = Number(felts[idx++]);
   const base_health = Number(felts[idx++]);
+  console.log(`[parseCapType] 9. attack_dmg=${attack_dmg}, base_health=${base_health}, nextIdx=${idx}`);
   
   const ability_target = TargetTypeNames[Number(felts[idx++])];
   const ability_cost = Number(felts[idx++]);
+  console.log(`[parseCapType] 10. ability_target=${ability_target}, ability_cost=${ability_cost}, nextIdx=${idx}`);
   
   return {
     id,
@@ -209,57 +307,6 @@ export function parseCapType(rawOutput: string): CapType | null {
 }
 
 
-export function stringFromByteArray(myByteArray: ByteArray): string {
-    const pending_word: string =
-      BigInt(myByteArray.pending_word) === 0n
-        ? ''
-        : decodeShortString(toHex(myByteArray.pending_word));
-    return (
-      myByteArray.data.reduce<string>((cumuledString, encodedString: BigNumberish) => {
-        const add: string =
-          BigInt(encodedString) === 0n ? '' : decodeShortString(toHex(encodedString));
-        return cumuledString + add;
-      }, '') + pending_word
-    );
-  }
-
-  export function toHex(value: BigNumberish): string {
-    return addHexPrefix(toBigInt(value).toString(16));
-  }
-
-  export function toBigInt(value: BigNumberish): bigint {
-    return BigInt(value);
-  }
-
-  export function addHexPrefix(hex: string): string {
-    return `0x${removeHexPrefix(hex)}`;
-  }
-
-  export function removeHexPrefix(hex: string): string {
-    return hex.startsWith('0x') || hex.startsWith('0X') ? hex.slice(2) : hex;
-  }
-
-  export function decodeShortString(str: string): string {
-    if (!isASCII(str)) throw new Error(`${str} is not an ASCII string`);
-    if (isHex(str)) {
-      return removeHexPrefix(str).replace(/.{2}/g, (hex) => String.fromCharCode(parseInt(hex, 16)));
-    }
-    if (isDecimalString(str)) {
-      return decodeShortString('0X'.concat(BigInt(str).toString(16)));
-    }
-    throw new Error(`${str} is not Hex or decimal`);
-  }
-
-  export function isASCII(str: string): boolean {
-    // eslint-disable-next-line no-control-regex
-    return /^[\x00-\x7F]*$/.test(str);
-  }
-  export function isHex(hex: string): boolean {
-    return /^0[xX][0-9a-fA-F]*$/.test(hex);
-  }
-  export function isDecimalString(str: string): boolean {
-    return /^[0-9]*$/i.test(str);
-  }
 
 // Helper to parse ContractAddress (felt252)
 function parseContractAddress(felts: string[], idx: number): { value: string; nextIdx: number } {

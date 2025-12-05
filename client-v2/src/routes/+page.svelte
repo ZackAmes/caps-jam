@@ -7,13 +7,14 @@
   let result: CapType | null = null;
   let error: string | null = null;
   let loading = true;
+  let rawOutput: string | null = null;
 
   onMount(async () => {
     try {
       // Dynamically import the WASM module using the alias
-   //s   const wasm = await import('$wasm/caps_wasm.js');
-    //  await wasm.default();
-    //s  wasmModule = wasm;
+      const wasm = await import('$wasm/caps_wasm.js');
+      await wasm.default();
+      wasmModule = wasm;
       loading = false;
     } catch (e) {
       error = `Failed to load WASM: ${e}`;
@@ -29,16 +30,26 @@
 
     error = null;
     result = null;
+    rawOutput = null;
 
     try {
-      const rawOutput = await wasmModule.runCairoProgram(capTypeId);
+      console.log('Running Cairo program with cap type ID:', capTypeId);
+      rawOutput = await wasmModule.runCairoProgram(capTypeId);
+      console.log('Raw WASM output:', rawOutput);
+      
+      if (!rawOutput) {
+        error = 'No output from WASM';
+        return;
+      }
+      
       result = parseCapType(rawOutput);
       
       if (!result) {
-        error = 'Invalid cap type ID';
+        error = 'Invalid cap type ID (Option::None returned)';
       }
-    } catch (e) {
-      error = `Error: ${e}`;
+    } catch (e: any) {
+      error = `Error: ${e.message || e}`;
+      console.error('Parse error:', e);
     }
   }
 </script>
@@ -52,6 +63,12 @@
     <div class="error">
       {error}
     </div>
+    {#if rawOutput}
+      <details open>
+        <summary>Raw WASM Output (for debugging)</summary>
+        <pre style="background: #333; color: #0f0; padding: 1rem; overflow-x: auto; font-size: 0.8rem;">{rawOutput}</pre>
+      </details>
+    {/if}
   {:else}
     <div class="controls">
       <label>
