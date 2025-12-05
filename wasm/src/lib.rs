@@ -3,6 +3,7 @@ mod utils;
 use cairo1_run::{Cairo1RunConfig, FuncArg};
 use cairo_lang_sierra::ProgramParser;
 use cairo_vm::types::layout_name::LayoutName;
+use cairo_vm::Felt252;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -46,6 +47,68 @@ pub fn run_cairo_program(cap_type_id: u16) -> Result<String, JsValue> {
     let output = serialized_output.unwrap();
 
     log(&output);
+
+    Ok(output)
+}
+
+/// Run the test_input Cairo program with a Game struct and ActionType enum
+/// 
+/// Input format: JSON array where each element is either:
+/// - A string/number for a single felt
+/// - An array of strings/numbers for an Array<T> field
+/// 
+/// For Game { id, player1, player2, caps_ids, turn_count, over, effect_ids, last_action_timestamp }
+/// + ActionType { variant, x, y }
+#[wasm_bindgen(js_name = runTestInput)]
+pub fn run_test_input(args_js: Vec<JsValue>) -> Result<String, JsValue> {
+    let mut args: Vec<FuncArg> = Vec::new();
+    
+    for (i, v) in args_js.iter().enumerate() {
+        if v.is_array() {
+            // This is an array field - convert to FuncArg::Array
+            let arr = js_sys::Array::from(v);
+            let felts: Vec<Felt252> = arr
+                .iter()
+                .map(|elem| {
+                    let s = elem.as_string().unwrap_or_else(|| elem.as_f64().unwrap().to_string());
+                    Felt252::from_dec_str(&s).unwrap_or_else(|_| Felt252::from(0))
+                })
+                .collect();
+            log(&format!("Arg {}: Array with {} elements", i, felts.len()));
+            args.push(FuncArg::Array(felts));
+        } else {
+            // Single felt value
+            let s = v.as_string().unwrap_or_else(|| v.as_f64().unwrap().to_string());
+            let felt = Felt252::from_dec_str(&s).unwrap_or_else(|_| Felt252::from(0));
+            log(&format!("Arg {}: Single({})", i, s));
+            args.push(FuncArg::Single(felt));
+        }
+    }
+    
+    log(&format!("Total args for test_input: {}", args.len()));
+    
+    let cairo_run_config = Cairo1RunConfig {
+        args: &args,
+        layout: LayoutName::all_cairo,
+        relocate_mem: true,
+        trace_enabled: true,
+        serialize_output: true,
+        ..Default::default()
+    };
+
+    let sierra_program = {
+        let program_str = include_str!("../cairo/test_input.sierra");
+        wrap_error!(ProgramParser::new().parse(program_str))?
+    };
+
+    let (_, _, serialized_output) = wrap_error!(cairo1_run::cairo_run_program(
+        &sierra_program,
+        cairo_run_config
+    ))?;
+
+    let output = serialized_output.unwrap();
+
+    log(&format!("test_input output: {}", output));
 
     Ok(output)
 }

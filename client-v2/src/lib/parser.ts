@@ -1,8 +1,77 @@
-// WASM Cairo Type Deserialization Helpers
+// WASM Cairo Type Serialization & Deserialization Helpers
 
 export interface Vec2 {
   x: number;
   y: number;
+}
+
+// ActionType enum for input serialization
+export type ActionType = 
+  | { type: 'Play'; pos: Vec2 }
+  | { type: 'Move'; pos: Vec2 }
+  | { type: 'Attack'; pos: Vec2 }
+  | { type: 'Ability'; pos: Vec2 };
+
+const ActionTypeVariants = ['Play', 'Move', 'Attack', 'Ability'];
+
+// ============= SERIALIZATION (JS -> Cairo felts) =============
+
+/**
+ * Serialize a Game struct to an array of args (strings for singles, string[] for arrays)
+ * Game { id, player1, player2, caps_ids, turn_count, over, effect_ids, last_action_timestamp }
+ * 
+ * Arrays are passed as nested arrays so Rust can identify them as FuncArg::Array
+ */
+export function serializeGame(game: Game): (string | string[])[] {
+  return [
+    game.id.toString(),
+    game.player1,  // felt252
+    game.player2,  // felt252
+    game.caps_ids.map(id => id.toString()),  // Array<u64> as nested array
+    game.turn_count.toString(),
+    game.over ? '1' : '0',
+    game.effect_ids.map(id => id.toString()),  // Array<u64> as nested array
+    game.last_action_timestamp.toString(),
+  ];
+}
+
+/**
+ * Serialize an ActionType enum to an array of felt strings
+ * ActionType { Play(Vec2) | Move(Vec2) | Attack(Vec2) | Ability(Vec2) }
+ */
+export function serializeActionType(action: ActionType): string[] {
+  const variantIndex = ActionTypeVariants.indexOf(action.type);
+  return [
+    variantIndex.toString(),
+    action.pos.x.toString(),
+    action.pos.y.toString()
+  ];
+}
+
+/**
+ * Serialize Game + ActionType for test_input.cairo
+ * Returns mixed array where arrays are nested and primitives are strings
+ */
+export function serializeTestInput(game: Game, action: ActionType): (string | string[])[] {
+  return [...serializeGame(game), ...serializeActionType(action)];
+}
+
+/**
+ * Parse the output of test_input: (u64, u8, u8)
+ */
+export function parseTestInputOutput(rawOutput: string): { result: number; x: number; y: number } | null {
+  const felts = rawOutput.split(/\s+/).filter(s => s.length > 0);
+  
+  if (felts.length < 3) {
+    console.error('[parseTestInputOutput] Expected 3 values, got:', felts.length);
+    return null;
+  }
+  
+  return {
+    result: Number(felts[0]),
+    x: Number(felts[1]),
+    y: Number(felts[2])
+  };
 }
 
 export interface CapType {

@@ -9,8 +9,9 @@ cd "$(dirname "$0")"
 source ~/cairo-vm/cairo-vm-env/bin/activate
 
 # Step 1: Compile Cairo to Sierra using cairo-compile (Cairo 2)
-echo "1️⃣  Compiling Cairo to Sierra..."
+echo "1️⃣  Compiling Cairo files to Sierra..."
 ~/cairo-vm/cairo2/bin/cairo-compile --single-file -r cairo/types.cairo cairo/types.sierra
+~/cairo-vm/cairo2/bin/cairo-compile --single-file -r cairo/test_input.cairo cairo/test_input.sierra
 
 # Step 2: Build WASM package
 echo "2️⃣  Building WASM package..."
