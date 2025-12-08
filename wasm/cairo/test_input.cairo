@@ -17,6 +17,7 @@ pub enum Location {
 pub enum ActionType {
     Play: Vec2,
     Move: Vec2,
+    Attack: Vec2,
 }
 
 // Test function that takes a Location and ActionType, returns what it parsed
@@ -32,6 +33,7 @@ pub fn main(location: Location, action: ActionType) -> (u8, u8, u8, u8, u8) {
     let (action_type, target_x, _target_y) = match action {
         ActionType::Play(pos) => (0_u8, pos.x, pos.y),
         ActionType::Move(pos) => (1_u8, pos.x, pos.y),
+        ActionType::Attack(pos) => (2_u8, pos.x, pos.y),
     };
     
     (loc_type, loc_x, loc_y, action_type, target_x)

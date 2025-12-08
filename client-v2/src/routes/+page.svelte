@@ -13,16 +13,18 @@
   // First enum = reverse-odd: (numVariants - 1 - index) * 2 + 1
   // Second enum = simple: 0, 1, 2, etc.
   const locationVariantIds = { Bench: 5, Board: 3, Dead: 1 };  // First enum (reverse-odd)
-  const actionVariantIds = { Play: 0, Move: 1 };  // Second enum (simple)
+  // Theory: odd variant count uses reverse-odd, even uses simple
+  // ActionType now has 3 variants (odd) - test if reverse-odd: Play=5, Move=3, Attack=1
+  const actionVariantIds = { Play: 5, Move: 3, Attack: 1 };  // 3 variants (odd) - reverse-odd?
   
   let testLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
   let testLocationX = 3;
   let testLocationY = 3;
   let testLocationVariantId = 5;  // First enum: reverse-odd
-  let testActionType: 'Play' | 'Move' = 'Play';
+  let testActionType: 'Play' | 'Move' | 'Attack' = 'Play';
   let testActionX = 3;
   let testActionY = 4;
-  let testActionVariantId = 0;  // Second enum: simple
+  let testActionVariantId = 5;  // Now 3 variants (odd) - try reverse-odd: Play=5, Move=3, Attack=1
   let showAdvanced = false;  // Toggle for variant ID fields
   let testInputResult: { locType: number; locX: number; locY: number; actType: number; actX: number } | null = null;
   let testInputError: string | null = null;
@@ -32,20 +34,164 @@
   let simulateError: string | null = null;
   let simulateRaw: string | null = null;
   let simulateRunning = false;
+  let simulateResult: ParsedCap[] | null = null;
+  
+  // Parsed Cap type for display
+  interface ParsedCap {
+    id: number;
+    owner: string;
+    location: { type: string; x?: number; y?: number };
+    set_id: number;
+    cap_type: number;
+    dmg_taken: number;
+    shield_amt: number;
+    base_health?: number;  // From CapType lookup
+  }
+  
+  // Parse simulate output: Array<Cap>
+  function parseSimulateOutput(rawOutput: string): ParsedCap[] | null {
+    try {
+      console.log('Raw simulate output:', rawOutput);
+      console.log('Raw output length:', rawOutput.length);
+      
+      // Check if output contains brackets (array format)
+      const bracketMatch = rawOutput.match(/\[([^\]]*)\]/);
+      let felts: string[];
+      
+      if (bracketMatch) {
+        // Array format: [a b c d ...] or [length a b c d ...]
+        const contents = bracketMatch[1].trim();
+        felts = contents.split(/\s+/).filter((s: string) => s.length > 0);
+        console.log('Array contents (from brackets):', felts, 'Count:', felts.length);
+      } else {
+        // Space-separated format
+        felts = rawOutput.split(/\s+/).filter((s: string) => s.length > 0);
+        console.log('Space-separated felts:', felts, 'Count:', felts.length);
+      }
+      
+      if (felts.length === 0) {
+        console.error('No felts found in output');
+        return [];
+      }
+      
+      // Cap has 8 fields: id, owner, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
+      // Location enum variant is NOT in output, just the x, y values
+      const fieldsPerCap = 8;
+      
+      // Try different parsing strategies
+      let startIdx = 0;
+      let numCaps = 0;
+      
+      // Strategy 1: Check if first value is a length prefix (total field count or cap count)
+      const firstValue = Number(felts[0]);
+      const remainingAfterLength = felts.length - 1;
+      
+      if (remainingAfterLength > 0 && remainingAfterLength % fieldsPerCap === 0) {
+        const possibleCaps = remainingAfterLength / fieldsPerCap;
+        // Length could be total fields (remainingAfterLength) or cap count (possibleCaps)
+        if (firstValue === remainingAfterLength || firstValue === possibleCaps) {
+          console.log('Strategy 1: Detected length prefix:', firstValue, 'Caps:', possibleCaps);
+          startIdx = 1;
+          numCaps = possibleCaps;
+        }
+      }
+      
+      // Strategy 2: No length prefix, just divide by fieldsPerCap
+      if (numCaps === 0) {
+        if (felts.length % fieldsPerCap === 0) {
+          numCaps = felts.length / fieldsPerCap;
+          console.log('Strategy 2: No length prefix, direct division. Caps:', numCaps);
+        } else {
+          console.warn('Strategy 3: Felts length', felts.length, 'does not divide evenly by', fieldsPerCap);
+          // Try to parse what we can
+          numCaps = Math.floor(felts.length / fieldsPerCap);
+          console.log('Attempting to parse', numCaps, 'caps with', felts.length, 'felts');
+        }
+      }
+      
+      console.log('Final: Start idx:', startIdx, 'Total felts:', felts.length, 'Fields per cap:', fieldsPerCap, 'Caps:', numCaps);
+      
+      if (numCaps === 0) {
+        console.error('Could not determine number of caps. Felts:', felts);
+        return [];
+      }
+      
+      const caps: ParsedCap[] = [];
+      let idx = startIdx;
+      
+      for (let i = 0; i < numCaps; i++) {
+        if (idx + fieldsPerCap > felts.length) {
+          console.error(`Not enough felts for cap ${i}. Need ${fieldsPerCap} but only have ${felts.length - idx} remaining.`);
+          break;
+        }
+        
+        console.log(`Parsing cap ${i} starting at idx ${idx}`);
+        const id = Number(felts[idx++]);
+        const owner = felts[idx++];
+        // Location enum: no variant in output, just the values (x, y)
+        // For Bench/Dead: x=0, y=0 (or maybe not present?)
+        // For Board: x, y coordinates
+        const locX = Number(felts[idx++]);
+        const locY = Number(felts[idx++]);
+        const set_id = Number(felts[idx++]);
+        const cap_type = Number(felts[idx++]);
+        const dmg_taken = Number(felts[idx++]);
+        const shield_amt = Number(felts[idx++]);  // Might be 8th field or missing
+        
+        console.log(`Cap ${i}: id=${id}, owner=${owner}, loc=(${locX},${locY}), set_id=${set_id}, type=${cap_type}, dmg=${dmg_taken}, shield=${shield_amt}`);
+        
+        // Infer location type from values
+        // If both x and y are 0, it's likely Bench or Dead (can't distinguish without variant)
+        // If either is non-zero, it's Board
+        let locationType: string;
+        if (locX === 0 && locY === 0) {
+          locationType = 'Bench/Dead';  // Can't tell which without variant
+        } else {
+          locationType = 'Board';
+        }
+        
+        // Basic CapType lookup for base_health (simplified - just first few types)
+        let base_health: number | undefined;
+        if (cap_type <= 3) base_health = 10;
+        else if (cap_type === 4) base_health = 8;
+        
+        caps.push({
+          id,
+          owner,
+          location: { 
+            type: locationType, 
+            x: locationType === 'Board' ? locX : undefined,
+            y: locationType === 'Board' ? locY : undefined
+          },
+          set_id,
+          cap_type,
+          dmg_taken,
+          shield_amt,
+          base_health,
+        });
+      }
+      
+      return caps;
+    } catch (e) {
+      console.error('Failed to parse simulate output:', e);
+      return null;
+    }
+  }
   
   // Editable calldata for simulate
-  // Cap fields: id, owner, loc_variant, loc_x, loc_y, cap_type, health, dmg_taken
+  // Cap fields: id, owner, loc_variant, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
   let simCapId = '1';
   let simCapOwner = '111';
   let simCapLocVariant = '5';  // Bench (1st enum: reverse-odd)
   let simCapLocX = '0';
   let simCapLocY = '0';
+  let simCapSetId = '0';
   let simCapType = '4';
-  let simCapHealth = '10';
   let simCapDmgTaken = '0';
+  let simCapShield = '0';
   // Action fields: cap_id, action_variant, x, y
   let simActionCapId = '1';
-  let simActionVariant = '0';  // Play (2nd enum: simple)
+  let simActionVariant = '5';  // 3 variants (odd): Play=5, Move=3, Attack=1?
   let simActionX = '3';
   let simActionY = '3';
   // Caller
@@ -209,20 +355,22 @@
 
     simulateError = null;
     simulateRaw = null;
+    simulateResult = null;
     simulateRunning = true;
 
     try {
       // Build serialized input from editable fields
-      // Cap { id: u64, owner: felt252, location: Location, cap_type: u16, health: u16, dmg_taken: u16 }
+      // Cap { id: u64, owner: felt252, location: Location, set_id: u64, cap_type: u16, dmg_taken: u16, shield_amt: u16 }
       const capsFlat: string[] = [
         simCapId,
         simCapOwner,
         simCapLocVariant,
         simCapLocX,
         simCapLocY,
+        simCapSetId,
         simCapType,
-        simCapHealth,
         simCapDmgTaken,
+        simCapShield,
       ];
 
       // Action { cap_id: u64, action_type: ActionType }
@@ -246,6 +394,10 @@
 
       simulateRaw = await wasmModule.runSimulate(serialized);
       console.log('Simulate raw output:', simulateRaw);
+      
+      if (simulateRaw) {
+        simulateResult = parseSimulateOutput(simulateRaw);
+      }
       
     } catch (e: any) {
       const msg = e.message || String(e);
@@ -360,6 +512,7 @@
             }}>
               <option value="Play">Play</option>
               <option value="Move">Move</option>
+              <option value="Attack">Attack</option>
             </select>
           </label>
           <label>
@@ -371,7 +524,7 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testActionVariantId} min="0" max="10" />
-              <span class="hint">Play=0, Move=1 (2nd: simple)</span>
+              <span class="hint">3 variants (odd): Play=5, Move=3, Attack=1?</span>
             </label>
           {/if}
         </div>
@@ -420,16 +573,17 @@
           </label>
           <label>loc_x: <input type="text" bind:value={simCapLocX} /></label>
           <label>loc_y: <input type="text" bind:value={simCapLocY} /></label>
+          <label>set_id: <input type="text" bind:value={simCapSetId} /></label>
           <label>cap_type: <input type="text" bind:value={simCapType} /></label>
-          <label>health: <input type="text" bind:value={simCapHealth} /></label>
           <label>dmg_taken: <input type="text" bind:value={simCapDmgTaken} /></label>
+          <label>shield_amt: <input type="text" bind:value={simCapShield} /></label>
         </div>
 
         <div class="input-group">
           <h4>Action</h4>
           <label>cap_id: <input type="text" bind:value={simActionCapId} /></label>
           <label>action_variant: <input type="text" bind:value={simActionVariant} />
-            <span class="hint">Play=0, Move=1 (2nd: simple)</span>
+            <span class="hint">3 variants: Play=5, Move=3, Attack=1?</span>
           </label>
           <label>x: <input type="text" bind:value={simActionX} /></label>
           <label>y: <input type="text" bind:value={simActionY} /></label>
@@ -440,7 +594,7 @@
 
       <div class="calldata-preview">
         <h4>Serialized Calldata</h4>
-        <pre class="raw-output">caps: [{simCapId}, {simCapOwner}, {simCapLocVariant}, {simCapLocX}, {simCapLocY}, {simCapType}, {simCapHealth}, {simCapDmgTaken}]
+        <pre class="raw-output">caps: [{simCapId}, {simCapOwner}, {simCapLocVariant}, {simCapLocX}, {simCapLocY}, {simCapSetId}, {simCapType}, {simCapDmgTaken}, {simCapShield}]
 action: [{simActionCapId}, {simActionVariant}, {simActionX}, {simActionY}]
 caller: {simCaller}</pre>
       </div>
@@ -449,13 +603,32 @@ caller: {simCaller}</pre>
         {simulateRunning ? 'Running...' : 'Run Simulate'}
       </button>
 
-      {#if simulateRaw}
+      {#if simulateResult}
         <div class="result success">
-          <h3>✅ Simulation Complete</h3>
-          <p>Check the console for detailed output parsing</p>
+          <h3>✅ Simulation Complete - {simulateResult.length} Cap(s)</h3>
+          {#each simulateResult as cap, i}
+            <div class="cap-result">
+              <h4>Cap {i + 1}</h4>
+              <div class="stats">
+                <p><strong>ID:</strong> {cap.id}</p>
+                <p><strong>Owner:</strong> {cap.owner}</p>
+                <p><strong>Location:</strong> {cap.location.type}{cap.location.type === 'Board' ? ` (${cap.location.x}, ${cap.location.y})` : ''}</p>
+                <p><strong>Set ID:</strong> {cap.set_id}</p>
+                <p><strong>Cap Type:</strong> {cap.cap_type}</p>
+                {#if cap.base_health !== undefined}
+                  <p><strong>Health:</strong> {cap.base_health - cap.dmg_taken}/{cap.base_health} (dmg: {cap.dmg_taken})</p>
+                {:else}
+                  <p><strong>Damage Taken:</strong> {cap.dmg_taken}</p>
+                {/if}
+                <p><strong>Shield:</strong> {cap.shield_amt}</p>
+              </div>
+            </div>
+          {/each}
         </div>
-        
-        <details open>
+      {/if}
+      
+      {#if simulateRaw}
+        <details>
           <summary>Raw Output</summary>
           <pre class="raw-output">{simulateRaw}</pre>
         </details>
@@ -646,6 +819,20 @@ caller: {simCaller}</pre>
   .input-group input[type="text"] {
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 0.85rem;
+  }
+
+  .cap-result {
+    background: white;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .cap-result h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2e7d32;
+    font-size: 0.95rem;
   }
 
   .section-header {

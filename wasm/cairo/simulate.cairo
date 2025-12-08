@@ -1,5 +1,5 @@
 // ============================================================================
-// SIMPLIFIED SIMULATE - Single action with Felt252Dict
+// SIMULATE - Play, Move, Attack actions with Felt252Dict and CapType
 // For compilation with: cairo-compile --single-file
 // ============================================================================
 
@@ -27,9 +27,10 @@ pub struct Cap {
     pub id: u64,
     pub owner: felt252,
     pub location: Location,
+    pub set_id: u64,
     pub cap_type: u16,
-    pub health: u16,
     pub dmg_taken: u16,
+    pub shield_amt: u16,
 }
 
 #[derive(Drop, Serde, Copy)]
@@ -42,6 +43,29 @@ pub struct Action {
 pub enum ActionType {
     Play: Vec2,
     Move: Vec2,
+    Attack: Vec2,
+}
+
+#[derive(Drop, Serde, Debug, Clone)]
+pub struct CapType {
+    pub id: u16,
+    pub base_health: u16,
+    pub attack_dmg: u16,
+}
+
+// ============================================================================
+// CAP TYPE LOOKUP (Basic set - first 4 types)
+// ============================================================================
+
+fn get_cap_type(cap_type_id: u16) -> Option<CapType> {
+    match cap_type_id {
+        0 => Option::Some(CapType { id: 0, base_health: 10, attack_dmg: 1 }),
+        1 => Option::Some(CapType { id: 1, base_health: 10, attack_dmg: 1 }),
+        2 => Option::Some(CapType { id: 2, base_health: 10, attack_dmg: 1 }),
+        3 => Option::Some(CapType { id: 3, base_health: 10, attack_dmg: 1 }),
+        4 => Option::Some(CapType { id: 4, base_health: 8, attack_dmg: 2 }),
+        _ => Option::None,
+    }
 }
 
 // ============================================================================
@@ -88,6 +112,32 @@ fn caps_from_dicts(
         i += 1;
     };
     result
+}
+
+// Check if target is in attack range (adjacent squares for now)
+fn is_in_range(from: Vec2, to: Vec2, range: u8) -> bool {
+    let dx = if from.x > to.x { from.x - to.x } else { to.x - from.x };
+    let dy = if from.y > to.y { from.y - to.y } else { to.y - from.y };
+    dx <= range && dy <= range && (dx > 0 || dy > 0)
+}
+
+// Deal damage to a cap using its CapType for health
+fn deal_damage(ref cap: Cap, amount: u16) {
+    let cap_type = get_cap_type(cap.cap_type).unwrap();
+    
+    // Shield absorbs damage first
+    if cap.shield_amt >= amount {
+        cap.shield_amt -= amount;
+    } else {
+        let remaining = amount - cap.shield_amt;
+        cap.shield_amt = 0;
+        cap.dmg_taken += remaining;
+        
+        // Check if dead (using base_health from CapType)
+        if cap.dmg_taken >= cap_type.base_health {
+            cap.location = Location::Dead;
+        }
+    }
 }
 
 // ============================================================================
@@ -143,6 +193,36 @@ fn process_action(
             cap.location = Location::Board(Vec2 { x: new_x, y: new_y });
             locations.insert(new_index, cap.id);
             keys.insert(cap.id.into(), NullableTrait::new(cap));
+        },
+        ActionType::Attack(target) => {
+            let position = get_position(@cap);
+            assert!(position.is_some(), "Cap not on board");
+            let pos = position.unwrap();
+            
+            // Check range (1 square for basic attack)
+            assert!(is_in_range(pos, *target, 1), "Target out of range");
+            
+            // Get target cap
+            let target_index: felt252 = (*target.x * 7 + *target.y).into();
+            let target_cap_id = locations.get(target_index);
+            assert!(target_cap_id != 0, "No cap at target");
+            
+            let mut target_cap: Cap = keys.get(target_cap_id.into()).deref();
+            assert!(target_cap.owner != caller, "Cannot attack own cap");
+            
+            // Get attacker's CapType for attack damage
+            let attacker_cap_type = get_cap_type(cap.cap_type).unwrap();
+            deal_damage(ref target_cap, attacker_cap_type.attack_dmg);
+            
+            // If target died, remove from board
+            match target_cap.location {
+                Location::Dead => {
+                    locations.insert(target_index, 0);
+                },
+                _ => {},
+            };
+            
+            keys.insert(target_cap.id.into(), NullableTrait::new(target_cap));
         },
     };
 }
