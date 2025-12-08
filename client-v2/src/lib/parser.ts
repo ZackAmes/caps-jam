@@ -36,8 +36,10 @@ export function serializeGame(game: Game): (string | string[])[] {
 }
 
 /**
- * Serialize an ActionType enum to an array of felt strings
+ * Serialize an ActionType enum as an array starting with variant index
  * ActionType { Play(Vec2) | Move(Vec2) | Attack(Vec2) | Ability(Vec2) }
+ * 
+ * Enums in Cairo are serialized as: [variant_index, ...payload_fields]
  */
 export function serializeActionType(action: ActionType): string[] {
   const variantIndex = ActionTypeVariants.indexOf(action.type);
@@ -51,9 +53,12 @@ export function serializeActionType(action: ActionType): string[] {
 /**
  * Serialize Game + ActionType for test_input.cairo
  * Returns mixed array where arrays are nested and primitives are strings
+ * Enums are passed as arrays: [variant_index, ...payload]
  */
 export function serializeTestInput(game: Game, action: ActionType): (string | string[])[] {
-  return [...serializeGame(game), ...serializeActionType(action)];
+  // ActionType enum passed as array: [variant, x, y]
+  const actionArray = serializeActionType(action);
+  return [...serializeGame(game), actionArray];
 }
 
 /**
