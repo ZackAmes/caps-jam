@@ -30,45 +30,23 @@ pub impl CapImpl of CapTrait {
             },
         }
         match direction {
-            0 => if new_position.x + amt > 6 {
-                panic!(
-                    "Move out of bounds: would move to x: {} (start: {}, amt: {}) (get_new_index_from_dir)",
-                    new_position.x + amt,
-                    new_position.x,
-                    amt,
-                );
-            } else {
-                new_position.x += amt
+            0 => 
+            {
+                assert!(new_position.x + amt <= 6, "Move out of bounds: would move to x: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.x + amt, new_position.x, amt);
+                new_position.x += amt;
             },
-            1 => if amt > new_position.x {
-                panic!(
-                    "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (get_new_index_from_dir)",
-                    amt - new_position.x,
-                    new_position.x,
-                    amt,
-                );
-            } else {
-                new_position.x -= amt
+            1 => 
+            {
+                assert!(amt <= new_position.x, "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.x, new_position.x, amt);
+                new_position.x -= amt;
             },
             2 => if new_position.y + amt > 6 {
-                panic!(
-                    "Move out of bounds: would move to y: {} (start: {}, amt: {}) (get_new_index_from_dir)",
-                    new_position.y + amt,
-                    new_position.y,
-                    amt,
-                );
-            } else {
-                new_position.y += amt
+                assert!(new_position.y + amt <= 6, "Move out of bounds: would move to y: {} (start: {}, amt: {}) (get_new_index_from_dir)", new_position.y + amt, new_position.y, amt);
+                new_position.y += amt;
             },
             3 => if amt > new_position.y {
-                panic!(
-                    "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (get_new_index_from_dir)",
-                    amt - new_position.y,
-                    new_position.y,
-                    amt,
-                );
-            } else {
-                new_position.y -= amt
+                assert!(amt <= new_position.y, "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (get_new_index_from_dir)", amt - new_position.y, new_position.y, amt);
+                new_position.y -= amt;
             },
             _ => panic!("Invalid direction"),
         };
@@ -77,68 +55,31 @@ pub impl CapImpl of CapTrait {
 
     fn move(ref self: Cap, cap_type: CapType, direction: u8, amount: u8, bonus_range: u8) {
         let mut new_position = self.get_position();
-        if new_position.is_none() {
-            panic!("Cap is not on the board");
-        }
+        assert!(new_position.is_some(), "Cap is not on the board");
         let mut new_position = new_position.unwrap();
         match direction {
-            0 => {
-                if new_position.x + amount > 6 {
-                    panic!(
-                        "Move out of bounds: would move to x: {} (start: {}, amt: {}) (Move)",
-                        new_position.x + amount,
-                        new_position.x,
-                        amount,
-                    );
-                }
-                if amount > cap_type.move_range.x + bonus_range {
-                    panic!("Move out of range");
-                }
+            0 => 
+            {
+                assert!(new_position.x + amount <= 6, "Move out of bounds: would move to x: {} (start: {}, amt: {}) (Move)", new_position.x + amount, new_position.x, amount);
+                assert!(amount <= cap_type.move_range.x + bonus_range, "Move out of range");
                 new_position.x += amount;
             },
             1 => {
-                if amount > new_position.x {
-                    panic!(
-                        "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (Move)",
-                        amount - new_position.x,
-                        new_position.x,
-                        amount,
-                    );
-                }
-                if amount > cap_type.move_range.x + bonus_range {
-                    panic!("Move out of range");
-                }
+                assert!(amount <= new_position.x, "Move out of bounds: would move to x: -{} (start: {}, amt: {}) (Move)", amount - new_position.x, new_position.x, amount);
+                assert!(amount <= cap_type.move_range.x + bonus_range, "Move out of range");
                 new_position.x -= amount;
             },
             2 => {
-                if new_position.y + amount > 6 {
-                    panic!(
-                        "Move out of bounds: would move to y: {} (start: {}, amt: {}) (Move)",
-                        new_position.y + amount,
-                        new_position.y,
-                        amount,
-                    );
-                }
-                if amount > cap_type.move_range.y + bonus_range {
-                    panic!("Move out of range");
-                }
+                assert!(new_position.y + amount <= 6, "Move out of bounds: would move to y: {} (start: {}, amt: {}) (Move)", new_position.y + amount, new_position.y, amount);
+                assert!(amount <= cap_type.move_range.y + bonus_range, "Move out of range");
                 new_position.y += amount;
             },
             3 => {
-                if amount > new_position.y {
-                    panic!(
-                        "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (Move)",
-                        amount - new_position.y,
-                        new_position.y,
-                        amount,
-                    );
-                }
-                if amount > cap_type.move_range.y + bonus_range {
-                    panic!("Move out of range");
-                }
+                assert!(amount <= new_position.y, "Move out of bounds: would move to y: -{} (start: {}, amt: {}) (Move)", amount - new_position.y, new_position.y, amount);
+                assert!(amount <= cap_type.move_range.y + bonus_range, "Move out of range");
                 new_position.y -= amount;
             },
-            _ => (),
+            _ => panic!("Invalid direction"),
         };
         self.location = Location::Board(new_position);
     }

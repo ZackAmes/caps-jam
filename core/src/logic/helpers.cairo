@@ -1,7 +1,6 @@
 use core::dict::Felt252Dict;
-use starknet::ContractAddress;
-use caps_core::types::game::{Game, GameTrait, Action, ActionType};
-use caps_core::types::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait, Location};
+use caps_core::types::game::{Game, GameTrait};
+use caps_core::types::cap::{Cap, CapTrait};
 use caps_core::types::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
 
 pub fn check_includes(array: @Array<u64>, id: u64) -> bool {
@@ -127,30 +126,24 @@ pub fn update_end_of_turn_effects(
         }
         match effect.effect_type {
             EffectType::DOT(dmg) => {
-                match effect.target {
-                    EffectTarget::Cap(cap_id) => {
+                if let EffectTarget::Cap(cap_id) = effect.target {
                         let mut cap: Cap = keys.get(cap_id.into()).deref();
                         let (new_game, new_cap) = handle_damage(
                             ref game, ref cap, dmg.into(),
                         );
                         game = new_game;
                         keys.insert(cap_id.into(), NullableTrait::new(new_cap));
-                    },
-                    _ => {},
                 }
             },
             EffectType::Heal(heal) => {
-                match effect.target {
-                    EffectTarget::Cap(cap_id) => {
-                        let mut cap: Cap = keys.get(cap_id.into()).deref();
-                        if heal.into() > cap.dmg_taken {
-                            cap.dmg_taken = 0;
-                        } else {
-                            cap.dmg_taken -= heal.into();
-                        }
-                        keys.insert(cap_id.into(), NullableTrait::new(cap));
-                    },
-                    _ => {},
+                if let EffectTarget::Cap(cap_id) = effect.target {
+                    let mut cap: Cap = keys.get(cap_id.into()).deref();
+                    if heal.into() > cap.dmg_taken {
+                        cap.dmg_taken = 0;
+                    } else {
+                        cap.dmg_taken -= heal.into();
+                    }
+                    keys.insert(cap_id.into(), NullableTrait::new(cap));
                 }
             },
             _ => {},

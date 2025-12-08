@@ -1,8 +1,8 @@
 use core::dict::Felt252Dict;
 use starknet::ContractAddress;
-use caps_core::types::game::{Game, GameTrait, Action, ActionType, Vec2};
+use caps_core::types::game::{Game, Action, ActionType};
 use caps_core::types::cap::{Cap, CapTrait, CapType, TargetType, TargetTypeTrait, Location};
-use caps_core::types::effect::{Effect, EffectTrait, EffectType, EffectTarget, Timing};
+use caps_core::types::effect::{Effect, EffectTrait, EffectType, Timing};
 use caps_core::logic::helpers::{
     handle_start_of_turn_effects, check_includes, clone_dicts, handle_damage,
 };
@@ -136,9 +136,7 @@ pub fn process_actions(
                 assert!(
                     piece_at_location.owner != caller.into(), "You cannot attack your own piece",
                 );
-                if (!cap.check_in_range(*target, @cap_type.attack_range)) {
-                    panic!("Attack is not valid");
-                }
+                assert!(cap.check_in_range(*target, @cap_type.attack_range), "Attack is not valid");
                 let (new_game, new_cap) = handle_damage(
                     ref game, ref piece_at_location, attack_dmg.try_into().unwrap(),
                 );
