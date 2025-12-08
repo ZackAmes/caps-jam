@@ -12,6 +12,7 @@ source ~/cairo-vm/cairo-vm-env/bin/activate
 echo "1️⃣  Compiling Cairo files to Sierra..."
 ~/cairo-vm/cairo2/bin/cairo-compile --single-file -r cairo/types.cairo cairo/types.sierra
 ~/cairo-vm/cairo2/bin/cairo-compile --single-file -r cairo/test_input.cairo cairo/test_input.sierra
+~/cairo-vm/cairo2/bin/cairo-compile --single-file -r cairo/simulate.cairo cairo/simulate.sierra
 
 # Step 2: Build WASM package
 echo "2️⃣  Building WASM package..."

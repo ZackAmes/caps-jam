@@ -14,6 +14,15 @@ export type ActionType =
 
 const ActionTypeVariants = ['Play', 'Move', 'Attack', 'Ability'];
 
+/**
+ * Cairo enum serialization uses reverse odd numbers for variant IDs
+ * For n variants: variant 0 → 2n-1, variant 1 → 2n-3, etc.
+ * Example for 4 variants: Play=7, Move=5, Attack=3, Ability=1
+ */
+export function enumVariantId(index: number, numVariants: number): number {
+  return (numVariants - 1 - index) * 2 + 1;
+}
+
 // ============= SERIALIZATION (JS -> Cairo felts) =============
 
 /**
@@ -36,15 +45,16 @@ export function serializeGame(game: Game): (string | string[])[] {
 }
 
 /**
- * Serialize an ActionType enum as an array starting with variant index
+ * Serialize an ActionType enum with Cairo's reverse odd number variant IDs
  * ActionType { Play(Vec2) | Move(Vec2) | Attack(Vec2) | Ability(Vec2) }
  * 
- * Enums in Cairo are serialized as: [variant_index, ...payload_fields]
+ * Cairo enum variant IDs: Play=7, Move=5, Attack=3, Ability=1
  */
-export function serializeActionType(action: ActionType): string[] {
-  const variantIndex = ActionTypeVariants.indexOf(action.type);
+export function serializeActionType(action: ActionType, customVariantId?: number): string[] {
+  const index = ActionTypeVariants.indexOf(action.type);
+  const variantId = customVariantId ?? enumVariantId(index, ActionTypeVariants.length);
   return [
-    variantIndex.toString(),
+    variantId.toString(),
     action.pos.x.toString(),
     action.pos.y.toString()
   ];
@@ -53,12 +63,12 @@ export function serializeActionType(action: ActionType): string[] {
 /**
  * Serialize Game + ActionType for test_input.cairo
  * Returns mixed array where arrays are nested and primitives are strings
- * Enums are passed as arrays: [variant_index, ...payload]
+ * Enums are passed as individual Singles: variant_index, then payload fields
  */
-export function serializeTestInput(game: Game, action: ActionType): (string | string[])[] {
-  // ActionType enum passed as array: [variant, x, y]
-  const actionArray = serializeActionType(action);
-  return [...serializeGame(game), actionArray];
+export function serializeTestInput(game: Game, action: ActionType, customVariantId?: number): (string | string[])[] {
+  // ActionType enum passed as individual felts: variant, x, y
+  const actionFelts = serializeActionType(action, customVariantId);
+  return [...serializeGame(game), ...actionFelts];
 }
 
 /**
@@ -77,6 +87,261 @@ export function parseTestInputOutput(rawOutput: string): { result: number; x: nu
     x: Number(felts[1]),
     y: Number(felts[2])
   };
+}
+
+// ============= SIMULATE SERIALIZATION =============
+
+// Location enum variants (original: Bench, Board, Hidden, Dead)
+const LocationVariantsOld = ['Bench', 'Board', 'Hidden', 'Dead'];
+
+/**
+ * Serialize a Location enum (original format)
+ * Location { Bench, Board(Vec2), Hidden(felt252), Dead }
+ */
+export function serializeLocation(location: Location): string[] {
+  const variantId = enumVariantId(LocationVariantsOld.indexOf(location.type), LocationVariantsOld.length);
+  
+  switch (location.type) {
+    case 'Bench':
+      return [variantId.toString(), location.value];
+    case 'Board':
+      return [variantId.toString(), location.value.x.toString(), location.value.y.toString()];
+    case 'Hidden':
+      return [variantId.toString(), location.value.toString()];
+    case 'Dead':
+      return [variantId.toString(), location.value];
+  }
+}
+
+// Location enum variants (simplified: Bench, Board, Dead)
+const LocationVariantsSimple = ['Bench', 'Board', 'Dead'];
+
+/**
+ * Serialize a simplified Location enum
+ * Location { Bench, Board(Vec2), Dead }
+ */
+export function serializeLocationSimple(location: LocationSimple): string[] {
+  const variantId = enumVariantId(LocationVariantsSimple.indexOf(location.type), LocationVariantsSimple.length);
+  
+  switch (location.type) {
+    case 'Bench':
+      return [variantId.toString()];
+    case 'Board':
+      return [variantId.toString(), location.value.x.toString(), location.value.y.toString()];
+    case 'Dead':
+      return [variantId.toString()];
+  }
+}
+
+// Simplified Location for new simulate
+export type LocationSimple = 
+  | { type: 'Bench' }
+  | { type: 'Board'; value: Vec2 }
+  | { type: 'Dead' };
+
+// Simplified Cap for new simulate
+export interface CapSimple {
+  id: number;
+  owner: string;
+  location: LocationSimple;
+  cap_type: number;
+  health: number;
+  dmg_taken: number;
+}
+
+/**
+ * Serialize a simplified Cap struct
+ * Cap { id, owner, location, cap_type, health, dmg_taken }
+ */
+export function serializeCapSimple(cap: CapSimple): string[] {
+  return [
+    cap.id.toString(),
+    cap.owner,
+    ...serializeLocationSimple(cap.location),
+    cap.cap_type.toString(),
+    cap.health.toString(),
+    cap.dmg_taken.toString(),
+  ];
+}
+
+// Simplified ActionType (only Play and Move)
+const ActionTypeSimpleVariants = ['Play', 'Move'];
+
+export type ActionTypeSimple = 
+  | { type: 'Play'; pos: Vec2 }
+  | { type: 'Move'; pos: Vec2 };
+
+/**
+ * Serialize simplified ActionType
+ */
+export function serializeActionTypeSimple(action: ActionTypeSimple): string[] {
+  const index = ActionTypeSimpleVariants.indexOf(action.type);
+  const variantId = enumVariantId(index, ActionTypeSimpleVariants.length);
+  return [
+    variantId.toString(),
+    action.pos.x.toString(),
+    action.pos.y.toString()
+  ];
+}
+
+/**
+ * Serialize simplified Action struct
+ * Action { cap_id, action_type }
+ */
+export function serializeActionSimple(action: { cap_id: number; action_type: ActionTypeSimple }): string[] {
+  return [
+    action.cap_id.toString(),
+    ...serializeActionTypeSimple(action.action_type),
+  ];
+}
+
+/**
+ * Serialize simplified simulate input
+ * main(caps: Array<Cap>, action: Action, caller: felt252) -> Array<Cap>
+ */
+export function serializeSimulateInputSimple(
+  caps: CapSimple[],
+  action: { cap_id: number; action_type: ActionTypeSimple },
+  caller: string
+): (string | string[])[] {
+  // Serialize caps as flat array
+  const capsFlat: string[] = [];
+  for (const cap of caps) {
+    capsFlat.push(...serializeCapSimple(cap));
+  }
+  
+  // Serialize action as individual felts
+  const actionFelts = serializeActionSimple(action);
+  
+  return [
+    capsFlat,      // Array<Cap>
+    ...actionFelts, // Action fields as singles
+    caller,        // caller felt252
+  ];
+}
+
+/**
+ * Serialize a Cap struct
+ * Cap { id, owner, location, set_id, cap_type, dmg_taken, shield_amt }
+ */
+export function serializeCap(cap: Cap): string[] {
+  return [
+    cap.id.toString(),
+    cap.owner.toString(),
+    ...serializeLocation(cap.location),
+    cap.set_id.toString(),
+    cap.cap_type.toString(),
+    cap.dmg_taken.toString(),
+    cap.shield_amt.toString(),
+  ];
+}
+
+// EffectType enum variants
+const EffectTypeVariants = ['None', 'DamageBuff', 'Shield', 'Heal', 'DOT', 'MoveBonus', 'AttackBonus', 'BonusRange', 'MoveDiscount', 'AttackDiscount', 'AbilityDiscount', 'ExtraEnergy', 'Stun', 'Double'];
+
+/**
+ * Serialize an EffectType enum (most variants have a u8 payload)
+ */
+export function serializeEffectType(effectType: string, value?: number): string[] {
+  const index = EffectTypeVariants.indexOf(effectType);
+  const variantId = enumVariantId(index, EffectTypeVariants.length);
+  
+  if (effectType === 'None') {
+    return [variantId.toString()];
+  }
+  return [variantId.toString(), (value ?? 0).toString()];
+}
+
+// EffectTarget enum variants  
+const EffectTargetVariants = ['None', 'Cap', 'Square'];
+
+/**
+ * Serialize an EffectTarget enum
+ */
+export function serializeEffectTarget(target: EffectTarget | { type: 'None' }): string[] {
+  if (target.type === 'None') {
+    const variantId = enumVariantId(0, EffectTargetVariants.length);
+    return [variantId.toString()];
+  }
+  
+  const index = EffectTargetVariants.indexOf(target.type);
+  const variantId = enumVariantId(index, EffectTargetVariants.length);
+  
+  if (target.type === 'Cap') {
+    return [variantId.toString(), target.value.toString()];
+  } else {
+    return [variantId.toString(), target.value.x.toString(), target.value.y.toString()];
+  }
+}
+
+/**
+ * Serialize an Effect struct
+ * Effect { game_id, effect_id, effect_type, target, remaining_triggers }
+ */
+export function serializeEffect(effect: Effect): string[] {
+  // Parse effect_type string to get variant and value
+  const effectTypeMatch = effect.effect_type.match(/^(\w+)(?:\((\d+)\))?$/);
+  const effectTypeName = effectTypeMatch?.[1] ?? 'None';
+  const effectTypeValue = effectTypeMatch?.[2] ? parseInt(effectTypeMatch[2]) : undefined;
+  
+  return [
+    effect.game_id.toString(),
+    effect.effect_id.toString(),
+    ...serializeEffectType(effectTypeName, effectTypeValue),
+    ...serializeEffectTarget(effect.target),
+    effect.remaining_triggers.toString(),
+  ];
+}
+
+/**
+ * Serialize an Action struct
+ * Action { cap_id, action_type }
+ */
+export function serializeAction(action: { cap_id: number; action_type: ActionType }): string[] {
+  return [
+    action.cap_id.toString(),
+    ...serializeActionType(action.action_type),
+  ];
+}
+
+/**
+ * Serialize the full simulate input
+ * main(game: Game, caps: Array<Cap>, effects: Array<Effect>, turn: Array<Action>)
+ */
+export function serializeSimulateInput(
+  game: Game,
+  caps: Cap[],
+  effects: Effect[],
+  actions: { cap_id: number; action_type: ActionType }[]
+): (string | string[])[] {
+  // Serialize Game (8 args: 6 singles + 2 arrays)
+  const gameArgs = serializeGame(game);
+  
+  // Serialize caps as flat array
+  const capsFlat: string[] = [];
+  for (const cap of caps) {
+    capsFlat.push(...serializeCap(cap));
+  }
+  
+  // Serialize effects as flat array  
+  const effectsFlat: string[] = [];
+  for (const effect of effects) {
+    effectsFlat.push(...serializeEffect(effect));
+  }
+  
+  // Serialize actions as flat array
+  const actionsFlat: string[] = [];
+  for (const action of actions) {
+    actionsFlat.push(...serializeAction(action));
+  }
+  
+  // Return: game fields + caps array + effects array + actions array
+  return [
+    ...gameArgs,
+    capsFlat,      // Array<Cap>
+    effectsFlat,   // Array<Effect>
+    actionsFlat,   // Array<Action>
+  ];
 }
 
 export interface CapType {

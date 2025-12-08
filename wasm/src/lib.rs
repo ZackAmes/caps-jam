@@ -112,3 +112,66 @@ pub fn run_test_input(args_js: Vec<JsValue>) -> Result<String, JsValue> {
 
     Ok(output)
 }
+
+/// Run the simulate Cairo program
+/// 
+/// Input format: Array where each element is either:
+/// - A string/number for a single felt
+/// - An array of strings/numbers for an Array<T> field
+/// 
+/// Arguments in order:
+/// 1. Game struct fields
+/// 2. Array of Cap structs (as nested array)
+/// 3. Array of Effect structs (as nested array)  
+/// 4. Array of Action structs (as nested array)
+#[wasm_bindgen(js_name = runSimulate)]
+pub fn run_simulate(args_js: Vec<JsValue>) -> Result<String, JsValue> {
+    let mut args: Vec<FuncArg> = Vec::new();
+    
+    for (i, v) in args_js.iter().enumerate() {
+        if v.is_array() {
+            let arr = js_sys::Array::from(v);
+            let felts: Vec<Felt252> = arr
+                .iter()
+                .map(|elem| {
+                    let s = elem.as_string().unwrap_or_else(|| elem.as_f64().unwrap().to_string());
+                    Felt252::from_dec_str(&s).unwrap_or_else(|_| Felt252::from(0))
+                })
+                .collect();
+            log(&format!("Simulate Arg {}: Array with {} elements", i, felts.len()));
+            args.push(FuncArg::Array(felts));
+        } else {
+            let s = v.as_string().unwrap_or_else(|| v.as_f64().unwrap().to_string());
+            let felt = Felt252::from_dec_str(&s).unwrap_or_else(|_| Felt252::from(0));
+            log(&format!("Simulate Arg {}: Single({})", i, s));
+            args.push(FuncArg::Single(felt));
+        }
+    }
+    
+    log(&format!("Total args for simulate: {}", args.len()));
+    
+    let cairo_run_config = Cairo1RunConfig {
+        args: &args,
+        layout: LayoutName::all_cairo,
+        relocate_mem: true,
+        trace_enabled: true,
+        serialize_output: true,
+        ..Default::default()
+    };
+
+    let sierra_program = {
+        let program_str = include_str!("../cairo/simulate.sierra");
+        wrap_error!(ProgramParser::new().parse(program_str))?
+    };
+
+    let (_, _, serialized_output) = wrap_error!(cairo1_run::cairo_run_program(
+        &sierra_program,
+        cairo_run_config
+    ))?;
+
+    let output = serialized_output.unwrap();
+
+    log(&format!("simulate output: {}", output));
+
+    Ok(output)
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { parseCapType, serializeTestInput, parseTestInputOutput, type CapType, type Game, type ActionType } from '$lib';
+  import { parseCapType, type CapType } from '$lib';
   
   let wasmModule: any;
   let capTypeId = 4;
@@ -9,23 +9,87 @@
   let loading = true;
   let rawOutput: string | null = null;
 
-  // Test input state
-  let testGame: Game = {
-    id: 1,
-    player1: '123456789',
-    player2: '987654321',
-    caps_ids: [1, 2, 3],
-    turn_count: 5,
-    over: false,
-    effect_ids: [10, 20],
-    last_action_timestamp: 1000
-  };
-  let testActionType: 'Play' | 'Move' | 'Attack' | 'Ability' = 'Move';
+  // Test input state - now tests Location + ActionType enums
+  // First enum = reverse-odd: (numVariants - 1 - index) * 2 + 1
+  // Second enum = simple: 0, 1, 2, etc.
+  const locationVariantIds = { Bench: 5, Board: 3, Dead: 1 };  // First enum (reverse-odd)
+  const actionVariantIds = { Play: 0, Move: 1 };  // Second enum (simple)
+  
+  let testLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
+  let testLocationX = 3;
+  let testLocationY = 3;
+  let testLocationVariantId = 5;  // First enum: reverse-odd
+  let testActionType: 'Play' | 'Move' = 'Play';
   let testActionX = 3;
   let testActionY = 4;
-  let testInputResult: { result: number; x: number; y: number } | null = null;
+  let testActionVariantId = 0;  // Second enum: simple
+  let showAdvanced = false;  // Toggle for variant ID fields
+  let testInputResult: { locType: number; locX: number; locY: number; actType: number; actX: number } | null = null;
   let testInputError: string | null = null;
   let testInputRaw: string | null = null;
+
+  // Simulate test state
+  let simulateError: string | null = null;
+  let simulateRaw: string | null = null;
+  let simulateRunning = false;
+  
+  // Editable calldata for simulate
+  // Cap fields: id, owner, loc_variant, loc_x, loc_y, cap_type, health, dmg_taken
+  let simCapId = '1';
+  let simCapOwner = '111';
+  let simCapLocVariant = '5';  // Bench (1st enum: reverse-odd)
+  let simCapLocX = '0';
+  let simCapLocY = '0';
+  let simCapType = '4';
+  let simCapHealth = '10';
+  let simCapDmgTaken = '0';
+  // Action fields: cap_id, action_variant, x, y
+  let simActionCapId = '1';
+  let simActionVariant = '0';  // Play (2nd enum: simple)
+  let simActionX = '3';
+  let simActionY = '3';
+  // Caller
+  let simCaller = '111';
+  
+  // Helper to decode hex strings from Cairo panic messages
+  function hexToString(hex: string): string {
+    // Remove 0x prefix if present
+    const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+    let str = '';
+    for (let i = 0; i < clean.length; i += 2) {
+      const charCode = parseInt(clean.substring(i, i + 2), 16);
+      if (charCode > 0 && charCode < 128) {
+        str += String.fromCharCode(charCode);
+      }
+    }
+    return str;
+  }
+  
+  // Parse Cairo panic error messages
+  function parseCairoError(errorMsg: string): string {
+    // Match: Program panicked with [hex1, hex2, hex3, ...]
+    const panicMatch = errorMsg.match(/Program panicked with \[([^\]]+)\]/);
+    if (!panicMatch) return errorMsg;
+    
+    const hexValues = panicMatch[1].split(',').map(s => s.trim());
+    const decoded: string[] = [];
+    
+    for (const hex of hexValues) {
+      if (hex.startsWith('0x') && hex.length > 4) {
+        const str = hexToString(hex);
+        if (str.length > 2 && /^[\x20-\x7E]+$/.test(str)) {
+          // Looks like readable ASCII
+          decoded.push(`"${str}"`);
+        } else {
+          decoded.push(hex);
+        }
+      } else {
+        decoded.push(hex);
+      }
+    }
+    
+    return `Cairo panic: ${decoded.join(', ')}`;
+  }
 
   onMount(async () => {
     try {
@@ -82,13 +146,32 @@
     testInputRaw = null;
 
     try {
-      const action: ActionType = { 
-        type: testActionType, 
-        pos: { x: testActionX, y: testActionY } 
-      };
+      // Build Location enum serialization
+      // Location { Bench, Board(Vec2), Dead }
+      // Always send variant + 2 values (padded with 0 if no payload)
+      let locationFelts: string[] = [];
+      if (testLocationType === 'Board') {
+        locationFelts = [testLocationVariantId.toString(), testLocationX.toString(), testLocationY.toString()];
+      } else {
+        // Bench or Dead - pad with zeros
+        locationFelts = [testLocationVariantId.toString(), '0', '0'];
+      }
+
+      // Build ActionType enum serialization
+      // ActionType { Play(Vec2), Move(Vec2) }
+      // Always sends variant + 2 values
+      const actionFelts = [
+        testActionVariantId.toString(),
+        testActionX.toString(),
+        testActionY.toString()
+      ];
       
-      const serialized = serializeTestInput(testGame, action);
-      console.log('Serialized input felts:', serialized);
+      // Combine: location felts + action felts (all as singles) = 6 total
+      const serialized: (string | string[])[] = [...locationFelts, ...actionFelts];
+      
+      console.log('Test input serialized:', serialized);
+      console.log('Location:', testLocationType, 'variant:', testLocationVariantId);
+      console.log('Action:', testActionType, 'variant:', testActionVariantId);
       
       testInputRaw = await wasmModule.runTestInput(serialized);
       console.log('Raw test_input output:', testInputRaw);
@@ -98,14 +181,78 @@
         return;
       }
       
-      testInputResult = parseTestInputOutput(testInputRaw);
-      
-      if (!testInputResult) {
-        testInputError = 'Failed to parse output';
+      // Parse output: (u8, u8, u8, u8, u8) = (loc_type, loc_x, loc_y, action_type, target_x)
+      const felts = testInputRaw.split(/\s+/).filter((s: string) => s.length > 0);
+      if (felts.length >= 5) {
+        testInputResult = {
+          locType: Number(felts[0]),
+          locX: Number(felts[1]),
+          locY: Number(felts[2]),
+          actType: Number(felts[3]),
+          actX: Number(felts[4]),
+        };
+      } else {
+        testInputError = `Expected 5 values, got ${felts.length}`;
       }
     } catch (e: any) {
-      testInputError = `Error: ${e.message || e}`;
+      const msg = e.message || String(e);
+      testInputError = parseCairoError(msg);
       console.error('Test input error:', e);
+    }
+  }
+
+  async function runSimulate() {
+    if (!wasmModule) {
+      simulateError = 'WASM module not loaded';
+      return;
+    }
+
+    simulateError = null;
+    simulateRaw = null;
+    simulateRunning = true;
+
+    try {
+      // Build serialized input from editable fields
+      // Cap { id: u64, owner: felt252, location: Location, cap_type: u16, health: u16, dmg_taken: u16 }
+      const capsFlat: string[] = [
+        simCapId,
+        simCapOwner,
+        simCapLocVariant,
+        simCapLocX,
+        simCapLocY,
+        simCapType,
+        simCapHealth,
+        simCapDmgTaken,
+      ];
+
+      // Action { cap_id: u64, action_type: ActionType }
+      const actionFelts: string[] = [
+        simActionCapId,
+        simActionVariant,
+        simActionX,
+        simActionY,
+      ];
+
+      const serialized: (string | string[])[] = [
+        capsFlat,         // Array<Cap>
+        ...actionFelts,   // Action fields as singles
+        simCaller,        // caller felt252
+      ];
+
+      console.log('Simulate serialized input:', serialized);
+      console.log('Caps flat:', capsFlat);
+      console.log('Action felts:', actionFelts);
+      console.log('Caller:', simCaller);
+
+      simulateRaw = await wasmModule.runSimulate(serialized);
+      console.log('Simulate raw output:', simulateRaw);
+      
+    } catch (e: any) {
+      const msg = e.message || String(e);
+      simulateError = parseCairoError(msg);
+      console.error('Simulate error:', e);
+    } finally {
+      simulateRunning = false;
     }
   }
 </script>
@@ -158,10 +305,18 @@
 
     <hr />
 
-    <!-- Test 2: Complex Input -->
+    <!-- Test 2: Enum Variant Discovery -->
     <section class="test-section">
-      <h2>Test 2: Complex Input (Game + Enum)</h2>
-      <p class="description">Tests serializing complex types to Cairo</p>
+      <div class="section-header">
+        <div>
+          <h2>Test 2: Enum Variant Discovery</h2>
+          <p class="description">Find the correct enum variant IDs for Location and ActionType</p>
+        </div>
+        <label class="toggle-label">
+          <input type="checkbox" bind:checked={showAdvanced} />
+          Show variant IDs
+        </label>
+      </div>
       
       {#if testInputError}
         <div class="error">{testInputError}</div>
@@ -169,30 +324,42 @@
 
       <div class="input-grid">
         <div class="input-group">
-          <h4>Game State</h4>
+          <h4>Location Enum</h4>
           <label>
-            ID: <input type="number" bind:value={testGame.id} />
+            Type:
+            <select bind:value={testLocationType} on:change={() => {
+              testLocationVariantId = locationVariantIds[testLocationType];
+            }}>
+              <option value="Bench">Bench</option>
+              <option value="Board">Board</option>
+              <option value="Dead">Dead</option>
+            </select>
           </label>
-          <label>
-            Turn Count: <input type="number" bind:value={testGame.turn_count} />
-          </label>
-          <label>
-            Over: <input type="checkbox" bind:checked={testGame.over} />
-          </label>
-          <label>
-            Timestamp: <input type="number" bind:value={testGame.last_action_timestamp} />
-          </label>
+          {#if testLocationType === 'Board'}
+            <label>
+              Board X: <input type="number" bind:value={testLocationX} min="0" max="6" />
+            </label>
+            <label>
+              Board Y: <input type="number" bind:value={testLocationY} min="0" max="6" />
+            </label>
+          {/if}
+          {#if showAdvanced}
+            <label>
+              Variant ID: <input type="number" bind:value={testLocationVariantId} min="0" max="10" />
+              <span class="hint">Bench=5, Board=3, Dead=1 (1st: reverse-odd)</span>
+            </label>
+          {/if}
         </div>
 
         <div class="input-group">
-          <h4>Action</h4>
+          <h4>ActionType Enum</h4>
           <label>
             Type:
-            <select bind:value={testActionType}>
+            <select bind:value={testActionType} on:change={() => {
+              testActionVariantId = actionVariantIds[testActionType];
+            }}>
               <option value="Play">Play</option>
               <option value="Move">Move</option>
-              <option value="Attack">Attack</option>
-              <option value="Ability">Ability</option>
             </select>
           </label>
           <label>
@@ -201,6 +368,12 @@
           <label>
             Target Y: <input type="number" bind:value={testActionY} min="0" max="6" />
           </label>
+          {#if showAdvanced}
+            <label>
+              Variant ID: <input type="number" bind:value={testActionVariantId} min="0" max="10" />
+              <span class="hint">Play=0, Move=1 (2nd: simple)</span>
+            </label>
+          {/if}
         </div>
       </div>
 
@@ -208,16 +381,83 @@
 
       {#if testInputResult}
         <div class="result success">
-          <h3>✅ Result</h3>
-          <p><strong>Computed Value:</strong> {testInputResult.result}</p>
-          <p class="explanation">(turn_count {testGame.turn_count} + action_value {testInputResult.result - testGame.turn_count} = {testInputResult.result})</p>
-          <p><strong>Target X:</strong> {testInputResult.x}</p>
-          <p><strong>Target Y:</strong> {testInputResult.y}</p>
+          <h3>✅ Parsed by Cairo</h3>
+          <div class="stats">
+            <p><strong>Location Type:</strong> {testInputResult.locType} (0=Bench, 1=Board, 2=Dead)</p>
+            <p><strong>Location X:</strong> {testInputResult.locX}</p>
+            <p><strong>Location Y:</strong> {testInputResult.locY}</p>
+            <p><strong>Action Type:</strong> {testInputResult.actType} (0=Play, 1=Move)</p>
+            <p><strong>Action X:</strong> {testInputResult.actX}</p>
+          </div>
+          <p class="explanation">If these match your inputs, you found the right variant IDs!</p>
         </div>
         
         <details>
           <summary>Raw Output</summary>
           <pre class="raw-output">{testInputRaw}</pre>
+        </details>
+      {/if}
+    </section>
+
+    <hr />
+
+    <!-- Test 3: Full Simulate -->
+    <section class="test-section">
+      <h2>Test 3: Full Game Simulation</h2>
+      <p class="description">Editable calldata for simulate(caps, action, caller)</p>
+      
+      {#if simulateError}
+        <div class="error">{simulateError}</div>
+      {/if}
+
+      <div class="input-grid">
+        <div class="input-group">
+          <h4>Cap (Array[0])</h4>
+          <label>id: <input type="text" bind:value={simCapId} /></label>
+          <label>owner: <input type="text" bind:value={simCapOwner} /></label>
+          <label>loc_variant: <input type="text" bind:value={simCapLocVariant} />
+            <span class="hint">Bench=5, Board=3, Dead=1 (1st: reverse-odd)</span>
+          </label>
+          <label>loc_x: <input type="text" bind:value={simCapLocX} /></label>
+          <label>loc_y: <input type="text" bind:value={simCapLocY} /></label>
+          <label>cap_type: <input type="text" bind:value={simCapType} /></label>
+          <label>health: <input type="text" bind:value={simCapHealth} /></label>
+          <label>dmg_taken: <input type="text" bind:value={simCapDmgTaken} /></label>
+        </div>
+
+        <div class="input-group">
+          <h4>Action</h4>
+          <label>cap_id: <input type="text" bind:value={simActionCapId} /></label>
+          <label>action_variant: <input type="text" bind:value={simActionVariant} />
+            <span class="hint">Play=0, Move=1 (2nd: simple)</span>
+          </label>
+          <label>x: <input type="text" bind:value={simActionX} /></label>
+          <label>y: <input type="text" bind:value={simActionY} /></label>
+          <h4>Caller</h4>
+          <label>caller: <input type="text" bind:value={simCaller} /></label>
+        </div>
+      </div>
+
+      <div class="calldata-preview">
+        <h4>Serialized Calldata</h4>
+        <pre class="raw-output">caps: [{simCapId}, {simCapOwner}, {simCapLocVariant}, {simCapLocX}, {simCapLocY}, {simCapType}, {simCapHealth}, {simCapDmgTaken}]
+action: [{simActionCapId}, {simActionVariant}, {simActionX}, {simActionY}]
+caller: {simCaller}</pre>
+      </div>
+
+      <button on:click={runSimulate} disabled={simulateRunning}>
+        {simulateRunning ? 'Running...' : 'Run Simulate'}
+      </button>
+
+      {#if simulateRaw}
+        <div class="result success">
+          <h3>✅ Simulation Complete</h3>
+          <p>Check the console for detailed output parsing</p>
+        </div>
+        
+        <details open>
+          <summary>Raw Output</summary>
+          <pre class="raw-output">{simulateRaw}</pre>
         </details>
       {/if}
     </section>
@@ -291,6 +531,29 @@
     font-size: 0.95rem;
   }
 
+  .simulate-info {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1rem;
+  }
+
+  .simulate-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #555;
+  }
+
+  .simulate-info ul {
+    margin: 0;
+    padding-left: 1.5rem;
+  }
+
+  .simulate-info li {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+  }
+
   label {
     display: flex;
     flex-direction: column;
@@ -359,6 +622,60 @@
     color: #666;
     font-size: 0.85rem;
     font-style: italic;
+  }
+
+  .hint {
+    color: #888;
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+
+  .calldata-preview {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
+
+  .calldata-preview h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  .input-group input[type="text"] {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .section-header h2 {
+    margin: 0;
+  }
+
+  .section-header .description {
+    margin: 0.25rem 0 0 0;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .toggle-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
   }
 
   .stats {

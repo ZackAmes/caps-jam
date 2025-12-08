@@ -1,129 +1,172 @@
-pub fn main(
-    self: @ContractState,
-    game: Game,
-    caps: Array<Cap>,
-    effects: Option<Array<Effect>>,
-    turn: Array<Action>,
-) -> (Game, Span<Effect>, Span<Cap>) {
-    //the only world read is for the set. This is just for convenience and shouldn't be too
-    //hard to remove when neccesary we still need to figure out how to handle the sets when
-    //running in wasm anyways
-    let mut world = self.world(@"caps");
-    let mut set = world.read_model(*caps[0].set_id);
-    let mut effects = effects.unwrap_or(ArrayTrait::new());
-    let mut game = game;
-    let mut turn = turn;
+// ============================================================================
+// SIMPLIFIED SIMULATE - Single action with Felt252Dict
+// For compilation with: cairo-compile --single-file
+// ============================================================================
 
-    let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) =
-        get_active_effects_from_array(
-        @game, @effects,
-    );
+use core::dict::Felt252Dict;
 
-    let mut caller = starknet::contract_address_const::<0x0>();
+// ============================================================================
+// TYPES
+// ============================================================================
 
-    if game.turn_count % 2 == 0 {
-        caller = game.player1;
-    } else {
-        caller = game.player2;
+#[derive(Copy, Drop, Serde, PartialEq, Debug)]
+pub struct Vec2 {
+    pub x: u8,
+    pub y: u8,
+}
+
+#[derive(Copy, Drop, Serde, Debug)]
+pub enum Location {
+    Bench,
+    Board: Vec2,
+    Dead,
+}
+
+#[derive(Copy, Drop, Serde, Debug)]
+pub struct Cap {
+    pub id: u64,
+    pub owner: felt252,
+    pub location: Location,
+    pub cap_type: u16,
+    pub health: u16,
+    pub dmg_taken: u16,
+}
+
+#[derive(Drop, Serde, Copy)]
+pub struct Action {
+    pub cap_id: u64,
+    pub action_type: ActionType,
+}
+
+#[derive(Drop, Serde, Copy)]
+pub enum ActionType {
+    Play: Vec2,
+    Move: Vec2,
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+fn get_position(cap: @Cap) -> Option<Vec2> {
+    match cap.location {
+        Location::Board(vec) => Option::Some(*vec),
+        _ => Option::None,
     }
+}
 
-    let (mut locations, mut keys) = get_dicts_from_array(@caps);
+fn get_dicts_from_array(caps: @Array<Cap>) -> (Felt252Dict<u64>, Felt252Dict<Nullable<Cap>>) {
+    let mut locations: Felt252Dict<u64> = Default::default();
+    let mut keys: Felt252Dict<Nullable<Cap>> = Default::default();
 
-    let (
-        new_game,
-        new_locations,
-        new_keys,
-        new_start_of_turn_effects,
-        new_move_step_effects,
-        new_end_of_turn_effects,
-    ) =
-        process_actions(
-        ref game,
-        ref turn,
-        ref locations,
-        ref keys,
-        ref start_of_turn_effects,
-        ref move_step_effects,
-        ref end_of_turn_effects,
-        ref set,
-        caller,
-    );
-
-    game = new_game;
-    locations = new_locations;
-    keys = new_keys;
-    move_step_effects = new_move_step_effects;
-    end_of_turn_effects = new_end_of_turn_effects;
-
-    let (mut game, mut new_end_of_turn_effects, new_locations, new_keys) =
-        update_end_of_turn_effects(
-        ref game, ref end_of_turn_effects, ref locations, ref keys,
-    );
-
-    end_of_turn_effects = new_end_of_turn_effects;
-    locations = new_locations;
-    keys = new_keys;
-
-    let mut final_caps: Array<Cap> = ArrayTrait::new();
     let mut i = 0;
-    let mut one_found = false;
-    let mut two_found = false;
-    let mut one_tower_found = false;
-    let mut two_tower_found = false;
-    while i < game.caps_ids.len() {
-        let cap_id = *game.caps_ids[i];
-        let cap = keys.get(cap_id.into()).deref();
-        let cap_type = self.get_cap_data(cap.set_id, cap.cap_type).unwrap();
-        if cap.dmg_taken >= cap_type.base_health {
-            game.remove_cap(cap_id);
-        } else {
-            if cap.owner == (game.player1).into() {
-                //todo: better way to tell if it's a tower
-                if cap.cap_type < 4 {
-                    one_tower_found = true;
-                }
-                one_found = true;
-            } else if cap.owner == (game.player2).into() {
-                if cap.cap_type < 4 {
-                    two_tower_found = true;
-                }
-                two_found = true;
-            }
-            final_caps.append(cap);
+    while i < caps.len() {
+        let cap: Cap = *caps.at(i);
+        let position = get_position(@cap);
+        if position.is_some() {
+            let pos = position.unwrap();
+            let index: felt252 = (pos.x * 7 + pos.y).into();
+            locations.insert(index, cap.id);
         }
+        keys.insert(cap.id.into(), NullableTrait::new(cap));
         i += 1;
     };
 
-    if !one_found || !one_tower_found {
-        game.over = true;
-    }
-    if !two_found || !two_tower_found {
-        game.over = true;
-    }
-    let mut final_effects: Array<Effect> = ArrayTrait::new();
-    let mut new_effect_ids: Array<u64> = ArrayTrait::new();
-    for effect in new_start_of_turn_effects {
-        if effect.remaining_triggers > 0 {
-            new_effect_ids.append(effect.effect_id);
-            final_effects.append(effect);
-        }
-    };
-    for effect in move_step_effects {
-        if effect.remaining_triggers > 0 {
-            new_effect_ids.append(effect.effect_id);
-            final_effects.append(effect);
-        }
-    };
-    for effect in end_of_turn_effects {
-        if effect.remaining_triggers > 0 {
-            new_effect_ids.append(effect.effect_id);
-            final_effects.append(effect);
-        }
-    };
+    (locations, keys)
+}
 
-    game.last_action_timestamp = get_block_timestamp();
-    game.turn_count = game.turn_count + 1;
-    game.effect_ids = new_effect_ids;
+fn caps_from_dicts(
+    cap_ids: @Array<u64>,
+    ref keys: Felt252Dict<Nullable<Cap>>,
+) -> Array<Cap> {
+    let mut result: Array<Cap> = ArrayTrait::new();
+    let mut i = 0;
+    while i < cap_ids.len() {
+        let cap_id = *cap_ids.at(i);
+        let cap = keys.get(cap_id.into()).deref();
+        result.append(cap);
+        i += 1;
+    };
+    result
+}
 
-    (game, final_effects.span(), final_caps.span())
+// ============================================================================
+// PROCESS SINGLE ACTION
+// ============================================================================
+
+fn process_action(
+    action: @Action,
+    ref locations: Felt252Dict<u64>,
+    ref keys: Felt252Dict<Nullable<Cap>>,
+    caller: felt252,
+) {
+    let mut cap: Cap = keys.get((*action.cap_id).into()).deref();
+    assert!(cap.owner == caller, "Not your cap");
+
+    match action.action_type {
+        ActionType::Play(target) => {
+            match cap.location {
+                Location::Bench => {},
+                _ => { panic!("Cap not on bench"); },
+            };
+            let target_index: felt252 = (*target.x * 7 + *target.y).into();
+            let existing = locations.get(target_index);
+            assert!(existing == 0, "Location occupied");
+            
+            cap.location = Location::Board(*target);
+            locations.insert(target_index, cap.id);
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
+        },
+        ActionType::Move(dir) => {
+            let position = get_position(@cap);
+            assert!(position.is_some(), "Cap not on board");
+            let pos = position.unwrap();
+            
+            // dir.x = direction (0=right, 1=left, 2=up, 3=down)
+            // dir.y = amount
+            let mut new_x = pos.x;
+            let mut new_y = pos.y;
+            match *dir.x {
+                0 => { new_x = pos.x + *dir.y; },
+                1 => { new_x = pos.x - *dir.y; },
+                2 => { new_y = pos.y + *dir.y; },
+                3 => { new_y = pos.y - *dir.y; },
+                _ => { panic!("Invalid direction"); },
+            };
+            
+            let old_index: felt252 = (pos.x * 7 + pos.y).into();
+            let new_index: felt252 = (new_x * 7 + new_y).into();
+            let existing = locations.get(new_index);
+            assert!(existing == 0, "Location occupied");
+            
+            locations.insert(old_index, 0);
+            cap.location = Location::Board(Vec2 { x: new_x, y: new_y });
+            locations.insert(new_index, cap.id);
+            keys.insert(cap.id.into(), NullableTrait::new(cap));
+        },
+    };
+}
+
+// ============================================================================
+// MAIN FUNCTION
+// ============================================================================
+
+pub fn main(
+    caps: Array<Cap>,
+    action: Action,
+    caller: felt252,
+) -> Array<Cap> {
+    let (mut locations, mut keys) = get_dicts_from_array(@caps);
+    
+    // Collect cap IDs before processing
+    let mut cap_ids: Array<u64> = ArrayTrait::new();
+    let mut i = 0;
+    while i < caps.len() {
+        cap_ids.append(*caps.at(i).id);
+        i += 1;
+    };
+    
+    process_action(@action, ref locations, ref keys, caller);
+    
+    caps_from_dicts(@cap_ids, ref keys)
 }

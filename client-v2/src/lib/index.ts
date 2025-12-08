@@ -5,7 +5,23 @@ export {
   serializeGame,
   serializeActionType,
   serializeTestInput,
-  parseTestInputOutput
+  parseTestInputOutput,
+  serializeCap,
+  serializeEffect,
+  serializeAction,
+  serializeSimulateInput,
+  enumVariantId,
+  // Simplified simulate exports
+  serializeCapSimple,
+  serializeActionSimple,
+  serializeActionTypeSimple,
+  serializeSimulateInputSimple,
+  serializeLocation,
+  serializeLocationSimple,
 } from './parser';
-export type { CapType, Cap, Effect, Game, GameState, Vec2, Location, EffectTarget, ActionType } from './parser';
+export type { 
+  CapType, Cap, Effect, Game, GameState, Vec2, Location, EffectTarget, ActionType,
+  // Simplified types
+  CapSimple, LocationSimple, ActionTypeSimple,
+} from './parser';
 
