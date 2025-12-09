@@ -13,20 +13,42 @@
   // First enum = reverse-odd: (numVariants - 1 - index) * 2 + 1
   // Second enum = simple: 0, 1, 2, etc.
   const locationVariantIds = { Bench: 5, Board: 3, Dead: 1 };  // First enum (reverse-odd)
-  // Theory: odd variant count uses reverse-odd, even uses simple
-  // ActionType now has 3 variants (odd) - test if reverse-odd: Play=5, Move=3, Attack=1
-  const actionVariantIds = { Play: 5, Move: 3, Attack: 1 };  // 3 variants (odd) - reverse-odd?
+  // Second enum (ActionType) uses simple 0-indexed: Play=0, Move=1, Attack=2, Ability=3
+  const actionVariantIds = { Play: 0, Move: 1, Attack: 2, Ability: 3 };
+  const targetTypeVariantIds = { None: 0, SelfCap: 1, TeamCap: 2, OpponentCap: 3, AnyCap: 4, AnySquare: 5 };
+  const effectTypeVariantIds = { 
+    None: 0, DamageBuff: 1, Shield: 2, Heal: 3, DOT: 4, MoveBonus: 5, AttackBonus: 6, 
+    BonusRange: 7, MoveDiscount: 8, AttackDiscount: 9, AbilityDiscount: 10, 
+    ExtraEnergy: 11, Stun: 12, Double: 13 
+  };
+  const effectTargetVariantIds = { None: 0, Cap: 1, Square: 2 };
   
   let testLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
   let testLocationX = 3;
   let testLocationY = 3;
   let testLocationVariantId = 5;  // First enum: reverse-odd
-  let testActionType: 'Play' | 'Move' | 'Attack' = 'Play';
+  let testActionType: 'Play' | 'Move' | 'Attack' | 'Ability' = 'Play';
   let testActionX = 3;
   let testActionY = 4;
-  let testActionVariantId = 5;  // Now 3 variants (odd) - try reverse-odd: Play=5, Move=3, Attack=1
+  let testActionVariantId = 0;  // Play=0, Move=1, Attack=2, Ability=3 (2nd enum: simple 0-indexed)
+  let testTargetType: 'None' | 'SelfCap' | 'TeamCap' | 'OpponentCap' | 'AnyCap' | 'AnySquare' = 'None';
+  let testTargetTypeVariantId = 0;
+  let testEffectType: 'None' | 'DamageBuff' | 'Shield' | 'Heal' | 'DOT' | 'MoveBonus' | 'AttackBonus' | 'BonusRange' | 'MoveDiscount' | 'AttackDiscount' | 'AbilityDiscount' | 'ExtraEnergy' | 'Stun' | 'Double' = 'None';
+  let testEffectTypeVariantId = 0;
+  let testEffectTypePayload = 0;  // u8 payload for EffectType
+  let testEffectTarget: 'None' | 'Cap' | 'Square' = 'None';
+  let testEffectTargetVariantId = 0;
+  let testEffectTargetCapId = '0';  // u64 for Cap variant
+  let testEffectTargetSquareX = 0;
+  let testEffectTargetSquareY = 0;
   let showAdvanced = false;  // Toggle for variant ID fields
-  let testInputResult: { locType: number; locX: number; locY: number; actType: number; actX: number } | null = null;
+  let testInputResult: { 
+    locVariant: number; locX: number; locY: number;
+    actionVariant: number; actionX: number; actionY: number;
+    targetTypeVariant: number;
+    effectTypeVariant: number; effectPayload: number;
+    effectTargetVariant: number; effectTargetId: number; effectTargetX: number; effectTargetY: number;
+  } | null = null;
   let testInputError: string | null = null;
   let testInputRaw: string | null = null;
 
@@ -34,9 +56,9 @@
   let simulateError: string | null = null;
   let simulateRaw: string | null = null;
   let simulateRunning = false;
-  let simulateResult: ParsedCap[] | null = null;
+  let simulateResult: ParsedSimulateResult | null = null;
   
-  // Parsed Cap type for display
+  // Parsed types for display
   interface ParsedCap {
     id: number;
     owner: string;
@@ -48,109 +70,114 @@
     base_health?: number;  // From CapType lookup
   }
   
-  // Parse simulate output: Array<Cap>
-  function parseSimulateOutput(rawOutput: string): ParsedCap[] | null {
+  interface ParsedGame {
+    id: number;
+    player1: string;
+    player2: string;
+    caps_ids: number[];
+    turn_count: number;
+    over: boolean;
+    effect_ids: number[];
+    last_action_timestamp: number;
+  }
+  
+  interface ParsedSimulateResult {
+    game: ParsedGame;
+    effects: any[];  // Simplified for now
+    caps: ParsedCap[];
+  }
+  
+  // Parse simulate output: (Game, Array<Effect>, Array<Cap>)
+  function parseSimulateOutput(rawOutput: string): ParsedSimulateResult | null {
     try {
       console.log('Raw simulate output:', rawOutput);
-      console.log('Raw output length:', rawOutput.length);
       
-      // Check if output contains brackets (array format)
-      const bracketMatch = rawOutput.match(/\[([^\]]*)\]/);
-      let felts: string[];
+      // Normalize arrays: [] becomes "0", [a b c] becomes "3 a b c"
+      let normalized = rawOutput.replace(/\[([^\]]*)\]/g, (_match, contents) => {
+        const elements = contents.trim();
+        if (elements === '') return '0';
+        const items = elements.split(/\s+/).filter((s: string) => s.length > 0);
+        return `${items.length} ${elements}`;
+      });
       
-      if (bracketMatch) {
-        // Array format: [a b c d ...] or [length a b c d ...]
-        const contents = bracketMatch[1].trim();
-        felts = contents.split(/\s+/).filter((s: string) => s.length > 0);
-        console.log('Array contents (from brackets):', felts, 'Count:', felts.length);
-      } else {
-        // Space-separated format
-        felts = rawOutput.split(/\s+/).filter((s: string) => s.length > 0);
-        console.log('Space-separated felts:', felts, 'Count:', felts.length);
+      const felts = normalized.split(/\s+/).filter((s: string) => s.length > 0);
+      console.log('Normalized felts:', felts);
+      
+      let idx = 0;
+      
+      // Parse Game struct: id, player1, player2, caps_ids, turn_count, over, effect_ids, last_action_timestamp
+      const gameId = Number(felts[idx++]);
+      const player1 = felts[idx++];
+      const player2 = felts[idx++];
+      
+      // caps_ids array
+      const capsIdsLen = Number(felts[idx++]);
+      const capsIds: number[] = [];
+      for (let i = 0; i < capsIdsLen; i++) {
+        capsIds.push(Number(felts[idx++]));
       }
       
-      if (felts.length === 0) {
-        console.error('No felts found in output');
-        return [];
+      const turnCount = Number(felts[idx++]);
+      const over = Number(felts[idx++]) === 1;
+      
+      // effect_ids array
+      const effectIdsLen = Number(felts[idx++]);
+      const effectIds: number[] = [];
+      for (let i = 0; i < effectIdsLen; i++) {
+        effectIds.push(Number(felts[idx++]));
       }
       
-      // Cap has 8 fields: id, owner, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
-      // Location enum variant is NOT in output, just the x, y values
-      const fieldsPerCap = 8;
+      const lastTimestamp = Number(felts[idx++]);
       
-      // Try different parsing strategies
-      let startIdx = 0;
-      let numCaps = 0;
+      const game: ParsedGame = {
+        id: gameId,
+        player1,
+        player2,
+        caps_ids: capsIds,
+        turn_count: turnCount,
+        over,
+        effect_ids: effectIds,
+        last_action_timestamp: lastTimestamp,
+      };
       
-      // Strategy 1: Check if first value is a length prefix (total field count or cap count)
-      const firstValue = Number(felts[0]);
-      const remainingAfterLength = felts.length - 1;
+      console.log('Parsed Game:', game);
       
-      if (remainingAfterLength > 0 && remainingAfterLength % fieldsPerCap === 0) {
-        const possibleCaps = remainingAfterLength / fieldsPerCap;
-        // Length could be total fields (remainingAfterLength) or cap count (possibleCaps)
-        if (firstValue === remainingAfterLength || firstValue === possibleCaps) {
-          console.log('Strategy 1: Detected length prefix:', firstValue, 'Caps:', possibleCaps);
-          startIdx = 1;
-          numCaps = possibleCaps;
-        }
-      }
+      // Parse Effects array (simplified - skip for now, just read length)
+      const effectsLen = Number(felts[idx++]);
+      console.log('Effects array length:', effectsLen);
+      // Skip effect fields for now (each effect has multiple fields)
+      // TODO: Parse effects properly
+      const effects: any[] = [];
       
-      // Strategy 2: No length prefix, just divide by fieldsPerCap
-      if (numCaps === 0) {
-        if (felts.length % fieldsPerCap === 0) {
-          numCaps = felts.length / fieldsPerCap;
-          console.log('Strategy 2: No length prefix, direct division. Caps:', numCaps);
-        } else {
-          console.warn('Strategy 3: Felts length', felts.length, 'does not divide evenly by', fieldsPerCap);
-          // Try to parse what we can
-          numCaps = Math.floor(felts.length / fieldsPerCap);
-          console.log('Attempting to parse', numCaps, 'caps with', felts.length, 'felts');
-        }
-      }
+      // Parse Caps array
+      const capsLen = Number(felts[idx++]);
+      console.log('Caps array length:', capsLen);
       
-      console.log('Final: Start idx:', startIdx, 'Total felts:', felts.length, 'Fields per cap:', fieldsPerCap, 'Caps:', numCaps);
-      
-      if (numCaps === 0) {
-        console.error('Could not determine number of caps. Felts:', felts);
-        return [];
-      }
-      
+      const fieldsPerCap = 8;  // id, owner, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
       const caps: ParsedCap[] = [];
-      let idx = startIdx;
       
-      for (let i = 0; i < numCaps; i++) {
+      for (let i = 0; i < capsLen; i++) {
         if (idx + fieldsPerCap > felts.length) {
-          console.error(`Not enough felts for cap ${i}. Need ${fieldsPerCap} but only have ${felts.length - idx} remaining.`);
+          console.error(`Not enough felts for cap ${i}`);
           break;
         }
         
-        console.log(`Parsing cap ${i} starting at idx ${idx}`);
         const id = Number(felts[idx++]);
         const owner = felts[idx++];
-        // Location enum: no variant in output, just the values (x, y)
-        // For Bench/Dead: x=0, y=0 (or maybe not present?)
-        // For Board: x, y coordinates
         const locX = Number(felts[idx++]);
         const locY = Number(felts[idx++]);
         const set_id = Number(felts[idx++]);
         const cap_type = Number(felts[idx++]);
         const dmg_taken = Number(felts[idx++]);
-        const shield_amt = Number(felts[idx++]);  // Might be 8th field or missing
+        const shield_amt = Number(felts[idx++]);
         
-        console.log(`Cap ${i}: id=${id}, owner=${owner}, loc=(${locX},${locY}), set_id=${set_id}, type=${cap_type}, dmg=${dmg_taken}, shield=${shield_amt}`);
-        
-        // Infer location type from values
-        // If both x and y are 0, it's likely Bench or Dead (can't distinguish without variant)
-        // If either is non-zero, it's Board
         let locationType: string;
         if (locX === 0 && locY === 0) {
-          locationType = 'Bench/Dead';  // Can't tell which without variant
+          locationType = 'Bench/Dead';
         } else {
           locationType = 'Board';
         }
         
-        // Basic CapType lookup for base_health (simplified - just first few types)
         let base_health: number | undefined;
         if (cap_type <= 3) base_health = 10;
         else if (cap_type === 4) base_health = 8;
@@ -171,15 +198,23 @@
         });
       }
       
-      return caps;
+      return { game, effects, caps };
     } catch (e) {
       console.error('Failed to parse simulate output:', e);
       return null;
     }
   }
   
-  // Editable calldata for simulate
-  // Cap fields: id, owner, loc_variant, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
+  // Full simulation state
+  // Game fields
+  let simGameId = '1';
+  let simPlayer1 = '111';
+  let simPlayer2 = '222';
+  let simTurnCount = '0';
+  let simGameOver = false;
+  let simLastTimestamp = '0';
+  
+  // Caps array - simplified to single cap for now
   let simCapId = '1';
   let simCapOwner = '111';
   let simCapLocVariant = '5';  // Bench (1st enum: reverse-odd)
@@ -189,13 +224,21 @@
   let simCapType = '4';
   let simCapDmgTaken = '0';
   let simCapShield = '0';
-  // Action fields: cap_id, action_variant, x, y
+  
+  // Actions array - single action for now
   let simActionCapId = '1';
-  let simActionVariant = '5';  // 3 variants (odd): Play=5, Move=3, Attack=1?
+  let simActionVariant = '0';  // Play=0, Move=1, Attack=2, Ability=3 (2nd enum: simple 0-indexed)
   let simActionX = '3';
   let simActionY = '3';
-  // Caller
-  let simCaller = '111';
+  // For Move action: direction (0=right, 1=left, 2=up, 3=down) and distance
+  let simActionDirection = '0';  // right
+  let simActionDistance = '1';
+  
+  // Effects array - empty for now
+  let simEffectsCount = 0;
+  
+  // Computed: is the action Move?
+  $: isMoveAction = simActionVariant === '1';  // Move variant ID (0=Play, 1=Move, 2=Attack, 3=Ability)
   
   // Helper to decode hex strings from Cairo panic messages
   function hexToString(hex: string): string {
@@ -303,21 +346,55 @@
         locationFelts = [testLocationVariantId.toString(), '0', '0'];
       }
 
-      // Build ActionType enum serialization
-      // ActionType { Play(Vec2), Move(Vec2) }
-      // Always sends variant + 2 values
+      // Build ActionType enum serialization - always variant + 2 values (Vec2)
       const actionFelts = [
         testActionVariantId.toString(),
         testActionX.toString(),
         testActionY.toString()
       ];
       
-      // Combine: location felts + action felts (all as singles) = 6 total
-      const serialized: (string | string[])[] = [...locationFelts, ...actionFelts];
+      // Build TargetType enum serialization - no payload, just variant
+      const targetTypeFelts = [testTargetTypeVariantId.toString()];
+      
+      // Build EffectType enum serialization - variant + 1 u8 payload
+      const effectTypeFelts = [
+        testEffectTypeVariantId.toString(),
+        testEffectTypePayload.toString()
+      ];
+      
+      // Build EffectTarget enum serialization
+      // Pad to match max payload size (Vec2 = 2 values)
+      let effectTargetFelts: string[] = [];
+      if (testEffectTarget === 'Cap') {
+        // Cap variant: variant + u64 (cap_id) + 1 zero to match Vec2 size
+        effectTargetFelts = [testEffectTargetVariantId.toString(), testEffectTargetCapId, '0'];
+      } else if (testEffectTarget === 'Square') {
+        // Square variant: variant + Vec2 (x, y)
+        effectTargetFelts = [
+          testEffectTargetVariantId.toString(),
+          testEffectTargetSquareX.toString(),
+          testEffectTargetSquareY.toString()
+        ];
+      } else {
+        // None variant: variant + 2 zeros to match Vec2 size
+        effectTargetFelts = [testEffectTargetVariantId.toString(), '0', '0'];
+      }
+      
+      // Combine all: location + action + target_type + effect_type + effect_target
+      const serialized: (string | string[])[] = [
+        ...locationFelts,
+        ...actionFelts,
+        ...targetTypeFelts,
+        ...effectTypeFelts,
+        ...effectTargetFelts
+      ];
       
       console.log('Test input serialized:', serialized);
       console.log('Location:', testLocationType, 'variant:', testLocationVariantId);
       console.log('Action:', testActionType, 'variant:', testActionVariantId);
+      console.log('TargetType:', testTargetType, 'variant:', testTargetTypeVariantId);
+      console.log('EffectType:', testEffectType, 'variant:', testEffectTypeVariantId, 'payload:', testEffectTypePayload);
+      console.log('EffectTarget:', testEffectTarget, 'variant:', testEffectTargetVariantId);
       
       testInputRaw = await wasmModule.runTestInput(serialized);
       console.log('Raw test_input output:', testInputRaw);
@@ -327,18 +404,29 @@
         return;
       }
       
-      // Parse output: (u8, u8, u8, u8, u8) = (loc_type, loc_x, loc_y, action_type, target_x)
+      // Parse output: (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u64, u8, u8)
+      // = (loc_variant, loc_x, loc_y, action_variant, action_x, action_y, 
+      //    target_type_variant, effect_type_variant, effect_payload, 
+      //    effect_target_variant, effect_target_id, effect_target_x, effect_target_y)
       const felts = testInputRaw.split(/\s+/).filter((s: string) => s.length > 0);
-      if (felts.length >= 5) {
+      if (felts.length >= 13) {
         testInputResult = {
-          locType: Number(felts[0]),
+          locVariant: Number(felts[0]),
           locX: Number(felts[1]),
           locY: Number(felts[2]),
-          actType: Number(felts[3]),
-          actX: Number(felts[4]),
+          actionVariant: Number(felts[3]),
+          actionX: Number(felts[4]),
+          actionY: Number(felts[5]),
+          targetTypeVariant: Number(felts[6]),
+          effectTypeVariant: Number(felts[7]),
+          effectPayload: Number(felts[8]),
+          effectTargetVariant: Number(felts[9]),
+          effectTargetId: Number(felts[10]),
+          effectTargetX: Number(felts[11]),
+          effectTargetY: Number(felts[12]),
         };
       } else {
-        testInputError = `Expected 5 values, got ${felts.length}`;
+        testInputError = `Expected 13 values, got ${felts.length}`;
       }
     } catch (e: any) {
       const msg = e.message || String(e);
@@ -359,8 +447,19 @@
     simulateRunning = true;
 
     try {
-      // Build serialized input from editable fields
-      // Cap { id: u64, owner: felt252, location: Location, set_id: u64, cap_type: u16, dmg_taken: u16, shield_amt: u16 }
+      // Serialize Game struct: id, player1, player2, caps_ids, turn_count, over, effect_ids, last_action_timestamp
+      const gameArgs: (string | string[])[] = [
+        simGameId,
+        simPlayer1,
+        simPlayer2,
+        [simCapId],  // caps_ids array
+        simTurnCount,
+        simGameOver ? '1' : '0',
+        [],  // effect_ids array (empty for now)
+        simLastTimestamp,
+      ];
+
+      // Serialize Cap: id, owner, loc_variant, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
       const capsFlat: string[] = [
         simCapId,
         simCapOwner,
@@ -373,24 +472,29 @@
         simCapShield,
       ];
 
-      // Action { cap_id: u64, action_type: ActionType }
+      // Serialize Action: cap_id, action_variant, x, y (or direction, distance for Move)
       const actionFelts: string[] = [
         simActionCapId,
         simActionVariant,
-        simActionX,
-        simActionY,
+        isMoveAction ? simActionDirection : simActionX,
+        isMoveAction ? simActionDistance : simActionY,
       ];
 
+      // Effects array - empty for now
+      const effectsFlat: string[] = [];
+
+      // Full input: game fields + caps array + effects array + actions array
       const serialized: (string | string[])[] = [
+        ...gameArgs,      // Game struct fields (8 args: singles + arrays)
         capsFlat,         // Array<Cap>
-        ...actionFelts,   // Action fields as singles
-        simCaller,        // caller felt252
+        effectsFlat,      // Array<Effect>
+        actionFelts,      // Array<Action>
       ];
 
       console.log('Simulate serialized input:', serialized);
+      console.log('Game args:', gameArgs);
       console.log('Caps flat:', capsFlat);
       console.log('Action felts:', actionFelts);
-      console.log('Caller:', simCaller);
 
       simulateRaw = await wasmModule.runSimulate(serialized);
       console.log('Simulate raw output:', simulateRaw);
@@ -513,6 +617,7 @@
               <option value="Play">Play</option>
               <option value="Move">Move</option>
               <option value="Attack">Attack</option>
+              <option value="Ability">Ability</option>
             </select>
           </label>
           <label>
@@ -524,7 +629,95 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testActionVariantId} min="0" max="10" />
-              <span class="hint">3 variants (odd): Play=5, Move=3, Attack=1?</span>
+              <span class="hint">Play=0, Move=1, Attack=2, Ability=3 (2nd: simple 0-indexed)</span>
+            </label>
+          {/if}
+        </div>
+
+        <div class="input-group">
+          <h4>TargetType Enum</h4>
+          <label>
+            Type:
+            <select bind:value={testTargetType} on:change={() => {
+              testTargetTypeVariantId = targetTypeVariantIds[testTargetType];
+            }}>
+              <option value="None">None</option>
+              <option value="SelfCap">SelfCap</option>
+              <option value="TeamCap">TeamCap</option>
+              <option value="OpponentCap">OpponentCap</option>
+              <option value="AnyCap">AnyCap</option>
+              <option value="AnySquare">AnySquare</option>
+            </select>
+          </label>
+          {#if showAdvanced}
+            <label>
+              Variant ID: <input type="number" bind:value={testTargetTypeVariantId} min="0" max="10" />
+              <span class="hint">None=0, SelfCap=1, TeamCap=2, OpponentCap=3, AnyCap=4, AnySquare=5</span>
+            </label>
+          {/if}
+        </div>
+
+        <div class="input-group">
+          <h4>EffectType Enum</h4>
+          <label>
+            Type:
+            <select bind:value={testEffectType} on:change={() => {
+              testEffectTypeVariantId = effectTypeVariantIds[testEffectType];
+            }}>
+              <option value="None">None</option>
+              <option value="DamageBuff">DamageBuff</option>
+              <option value="Shield">Shield</option>
+              <option value="Heal">Heal</option>
+              <option value="DOT">DOT</option>
+              <option value="MoveBonus">MoveBonus</option>
+              <option value="AttackBonus">AttackBonus</option>
+              <option value="BonusRange">BonusRange</option>
+              <option value="MoveDiscount">MoveDiscount</option>
+              <option value="AttackDiscount">AttackDiscount</option>
+              <option value="AbilityDiscount">AbilityDiscount</option>
+              <option value="ExtraEnergy">ExtraEnergy</option>
+              <option value="Stun">Stun</option>
+              <option value="Double">Double</option>
+            </select>
+          </label>
+          <label>
+            Payload (u8): <input type="number" bind:value={testEffectTypePayload} min="0" max="255" />
+          </label>
+          {#if showAdvanced}
+            <label>
+              Variant ID: <input type="number" bind:value={testEffectTypeVariantId} min="0" max="20" />
+            </label>
+          {/if}
+        </div>
+
+        <div class="input-group">
+          <h4>EffectTarget Enum</h4>
+          <label>
+            Type:
+            <select bind:value={testEffectTarget} on:change={() => {
+              testEffectTargetVariantId = effectTargetVariantIds[testEffectTarget];
+            }}>
+              <option value="None">None</option>
+              <option value="Cap">Cap</option>
+              <option value="Square">Square</option>
+            </select>
+          </label>
+          {#if testEffectTarget === 'Cap'}
+            <label>
+              Cap ID (u64): <input type="text" bind:value={testEffectTargetCapId} />
+            </label>
+          {:else if testEffectTarget === 'Square'}
+            <label>
+              Square X: <input type="number" bind:value={testEffectTargetSquareX} min="0" max="6" />
+            </label>
+            <label>
+              Square Y: <input type="number" bind:value={testEffectTargetSquareY} min="0" max="6" />
+            </label>
+          {/if}
+          {#if showAdvanced}
+            <label>
+              Variant ID: <input type="number" bind:value={testEffectTargetVariantId} min="0" max="10" />
+              <span class="hint">None=0, Cap=1, Square=2</span>
             </label>
           {/if}
         </div>
@@ -536,11 +729,31 @@
         <div class="result success">
           <h3>✅ Parsed by Cairo</h3>
           <div class="stats">
-            <p><strong>Location Type:</strong> {testInputResult.locType} (0=Bench, 1=Board, 2=Dead)</p>
-            <p><strong>Location X:</strong> {testInputResult.locX}</p>
-            <p><strong>Location Y:</strong> {testInputResult.locY}</p>
-            <p><strong>Action Type:</strong> {testInputResult.actType} (0=Play, 1=Move)</p>
-            <p><strong>Action X:</strong> {testInputResult.actX}</p>
+            <h4>Location</h4>
+            <p><strong>Variant:</strong> {testInputResult.locVariant} (0=Bench, 1=Board, 2=Dead)</p>
+            <p><strong>X:</strong> {testInputResult.locX}</p>
+            <p><strong>Y:</strong> {testInputResult.locY}</p>
+            
+            <h4>ActionType</h4>
+            <p><strong>Variant:</strong> {testInputResult.actionVariant} (0=Play, 1=Move, 2=Attack, 3=Ability)</p>
+            <p><strong>X:</strong> {testInputResult.actionX}</p>
+            <p><strong>Y:</strong> {testInputResult.actionY}</p>
+            
+            <h4>TargetType</h4>
+            <p><strong>Variant:</strong> {testInputResult.targetTypeVariant} (0=None, 1=SelfCap, 2=TeamCap, 3=OpponentCap, 4=AnyCap, 5=AnySquare)</p>
+            
+            <h4>EffectType</h4>
+            <p><strong>Variant:</strong> {testInputResult.effectTypeVariant} (0=None, 1=DamageBuff, ...)</p>
+            <p><strong>Payload:</strong> {testInputResult.effectPayload}</p>
+            
+            <h4>EffectTarget</h4>
+            <p><strong>Variant:</strong> {testInputResult.effectTargetVariant} (0=None, 1=Cap, 2=Square)</p>
+            {#if testInputResult.effectTargetVariant === 1}
+              <p><strong>Cap ID:</strong> {testInputResult.effectTargetId}</p>
+            {:else if testInputResult.effectTargetVariant === 2}
+              <p><strong>Square X:</strong> {testInputResult.effectTargetX}</p>
+              <p><strong>Square Y:</strong> {testInputResult.effectTargetY}</p>
+            {/if}
           </div>
           <p class="explanation">If these match your inputs, you found the right variant IDs!</p>
         </div>
@@ -557,13 +770,23 @@
     <!-- Test 3: Full Simulate -->
     <section class="test-section">
       <h2>Test 3: Full Game Simulation</h2>
-      <p class="description">Editable calldata for simulate(caps, action, caller)</p>
+      <p class="description">Full simulation: main(game: Game, caps: Array&lt;Cap&gt;, effects: Array&lt;Effect&gt;, turn: Array&lt;Action&gt;)</p>
       
       {#if simulateError}
         <div class="error">{simulateError}</div>
       {/if}
 
       <div class="input-grid">
+        <div class="input-group">
+          <h4>Game</h4>
+          <label>id: <input type="text" bind:value={simGameId} /></label>
+          <label>player1: <input type="text" bind:value={simPlayer1} /></label>
+          <label>player2: <input type="text" bind:value={simPlayer2} /></label>
+          <label>turn_count: <input type="text" bind:value={simTurnCount} /></label>
+          <label>over: <input type="checkbox" bind:checked={simGameOver} /></label>
+          <label>last_action_timestamp: <input type="text" bind:value={simLastTimestamp} /></label>
+        </div>
+
         <div class="input-group">
           <h4>Cap (Array[0])</h4>
           <label>id: <input type="text" bind:value={simCapId} /></label>
@@ -580,23 +803,29 @@
         </div>
 
         <div class="input-group">
-          <h4>Action</h4>
+          <h4>Action (Array[0])</h4>
           <label>cap_id: <input type="text" bind:value={simActionCapId} /></label>
           <label>action_variant: <input type="text" bind:value={simActionVariant} />
-            <span class="hint">3 variants: Play=5, Move=3, Attack=1?</span>
+            <span class="hint">Play=0, Move=1, Attack=2, Ability=3 (2nd: simple 0-indexed)</span>
           </label>
-          <label>x: <input type="text" bind:value={simActionX} /></label>
-          <label>y: <input type="text" bind:value={simActionY} /></label>
-          <h4>Caller</h4>
-          <label>caller: <input type="text" bind:value={simCaller} /></label>
+          {#if isMoveAction}
+            <label>direction: <input type="text" bind:value={simActionDirection} />
+              <span class="hint">0=right, 1=left, 2=up, 3=down</span>
+            </label>
+            <label>distance: <input type="text" bind:value={simActionDistance} /></label>
+          {:else}
+            <label>x: <input type="text" bind:value={simActionX} /></label>
+            <label>y: <input type="text" bind:value={simActionY} /></label>
+          {/if}
         </div>
       </div>
 
       <div class="calldata-preview">
         <h4>Serialized Calldata</h4>
-        <pre class="raw-output">caps: [{simCapId}, {simCapOwner}, {simCapLocVariant}, {simCapLocX}, {simCapLocY}, {simCapSetId}, {simCapType}, {simCapDmgTaken}, {simCapShield}]
-action: [{simActionCapId}, {simActionVariant}, {simActionX}, {simActionY}]
-caller: {simCaller}</pre>
+        <pre class="raw-output">Game: id={simGameId}, player1={simPlayer1}, player2={simPlayer2}, turn_count={simTurnCount}, over={simGameOver}
+Caps: [{simCapId}, {simCapOwner}, {simCapLocVariant}, {simCapLocX}, {simCapLocY}, {simCapSetId}, {simCapType}, {simCapDmgTaken}, {simCapShield}]
+Effects: [] (empty)
+Actions: [{simActionCapId}, {simActionVariant}, {isMoveAction ? simActionDirection : simActionX}, {isMoveAction ? simActionDistance : simActionY}]</pre>
       </div>
 
       <button on:click={runSimulate} disabled={simulateRunning}>
@@ -605,25 +834,51 @@ caller: {simCaller}</pre>
 
       {#if simulateResult}
         <div class="result success">
-          <h3>✅ Simulation Complete - {simulateResult.length} Cap(s)</h3>
-          {#each simulateResult as cap, i}
-            <div class="cap-result">
-              <h4>Cap {i + 1}</h4>
-              <div class="stats">
-                <p><strong>ID:</strong> {cap.id}</p>
-                <p><strong>Owner:</strong> {cap.owner}</p>
-                <p><strong>Location:</strong> {cap.location.type}{cap.location.type === 'Board' ? ` (${cap.location.x}, ${cap.location.y})` : ''}</p>
-                <p><strong>Set ID:</strong> {cap.set_id}</p>
-                <p><strong>Cap Type:</strong> {cap.cap_type}</p>
-                {#if cap.base_health !== undefined}
-                  <p><strong>Health:</strong> {cap.base_health - cap.dmg_taken}/{cap.base_health} (dmg: {cap.dmg_taken})</p>
-                {:else}
-                  <p><strong>Damage Taken:</strong> {cap.dmg_taken}</p>
-                {/if}
-                <p><strong>Shield:</strong> {cap.shield_amt}</p>
-              </div>
+          <h3>✅ Simulation Complete</h3>
+          
+          <div class="game-result">
+            <h4>Game State</h4>
+            <div class="stats">
+              <p><strong>ID:</strong> {simulateResult.game.id}</p>
+              <p><strong>Player 1:</strong> {simulateResult.game.player1}</p>
+              <p><strong>Player 2:</strong> {simulateResult.game.player2}</p>
+              <p><strong>Turn Count:</strong> {simulateResult.game.turn_count}</p>
+              <p><strong>Over:</strong> {simulateResult.game.over ? 'Yes' : 'No'}</p>
+              <p><strong>Cap IDs:</strong> [{simulateResult.game.caps_ids.join(', ')}]</p>
+              <p><strong>Effect IDs:</strong> [{simulateResult.game.effect_ids.join(', ')}]</p>
             </div>
-          {/each}
+          </div>
+
+          <div class="effects-result">
+            <h4>Effects ({simulateResult.effects.length})</h4>
+            {#if simulateResult.effects.length === 0}
+              <p>No effects</p>
+            {:else}
+              <p>Effects parsing not yet implemented</p>
+            {/if}
+          </div>
+
+          <div class="caps-result">
+            <h4>Caps ({simulateResult.caps.length})</h4>
+            {#each simulateResult.caps as cap, i}
+              <div class="cap-result">
+                <h5>Cap {i + 1}</h5>
+                <div class="stats">
+                  <p><strong>ID:</strong> {cap.id}</p>
+                  <p><strong>Owner:</strong> {cap.owner}</p>
+                  <p><strong>Location:</strong> {cap.location.type}{cap.location.type === 'Board' ? ` (${cap.location.x}, ${cap.location.y})` : ''}</p>
+                  <p><strong>Set ID:</strong> {cap.set_id}</p>
+                  <p><strong>Cap Type:</strong> {cap.cap_type}</p>
+                  {#if cap.base_health !== undefined}
+                    <p><strong>Health:</strong> {cap.base_health - cap.dmg_taken}/{cap.base_health} (dmg: {cap.dmg_taken})</p>
+                  {:else}
+                    <p><strong>Damage Taken:</strong> {cap.dmg_taken}</p>
+                  {/if}
+                  <p><strong>Shield:</strong> {cap.shield_amt}</p>
+                </div>
+              </div>
+            {/each}
+          </div>
         </div>
       {/if}
       
