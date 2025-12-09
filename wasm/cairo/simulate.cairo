@@ -228,25 +228,85 @@ fn process_action(
 }
 
 // ============================================================================
+// GAME STRUCT
+// ============================================================================
+
+#[derive(Drop, Serde, Debug, Clone)]
+pub struct Game {
+    pub id: u64,
+    pub player1: felt252,
+    pub player2: felt252,
+    pub caps_ids: Array<u64>,
+    pub turn_count: u64,
+    pub over: bool,
+    pub effect_ids: Array<u64>,
+    pub last_action_timestamp: u64,
+}
+
+// ============================================================================
+// EFFECT STRUCTS (Simplified for now)
+// ============================================================================
+
+#[derive(Copy, Drop, Serde, PartialEq)]
+pub struct Effect {
+    pub game_id: u64,
+    pub effect_id: u64,
+    pub effect_type: EffectType,
+    pub target: EffectTarget,
+    pub remaining_triggers: u8,
+}
+
+#[derive(Copy, Drop, Serde, PartialEq)]
+pub enum EffectType {
+    None,
+}
+
+#[derive(Copy, Drop, Serde, PartialEq)]
+pub enum EffectTarget {
+    None,
+}
+
+// ============================================================================
 // MAIN FUNCTION
 // ============================================================================
 
 pub fn main(
+    game: Game,
     caps: Array<Cap>,
-    action: Action,
-    caller: felt252,
-) -> Array<Cap> {
+    effects: Array<Effect>,
+    turn: Array<Action>,
+) -> (Game, Array<Effect>, Array<Cap>) {
+    let mut game = game;
+    
+    // Step 2: Process actions from turn array
+    // Determine caller based on turn count
+    let caller = if game.turn_count % 2 == 0 { game.player1 } else { game.player2 };
+    
+    // Convert caps array to dicts for processing
     let (mut locations, mut keys) = get_dicts_from_array(@caps);
     
-    // Collect cap IDs before processing
-    let mut cap_ids: Array<u64> = ArrayTrait::new();
+    // Process each action in the turn
     let mut i = 0;
-    while i < caps.len() {
-        cap_ids.append(*caps.at(i).id);
+    while i < turn.len() {
+        let action = turn.at(i);
+        process_action(action, ref locations, ref keys, caller);
         i += 1;
     };
     
-    process_action(@action, ref locations, ref keys, caller);
+    // Collect cap IDs from game
+    let mut cap_ids: Array<u64> = ArrayTrait::new();
+    let mut j = 0;
+    while j < game.caps_ids.len() {
+        cap_ids.append(*game.caps_ids[j]);
+        j += 1;
+    };
     
-    caps_from_dicts(@cap_ids, ref keys)
+    // Convert back to array
+    let final_caps = caps_from_dicts(@cap_ids, ref keys);
+    
+    // Increment turn count
+    game.turn_count = game.turn_count + 1;
+    
+    // Return updated game, effects (unchanged for now), and caps
+    (game, effects, final_caps)
 }
