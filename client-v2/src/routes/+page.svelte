@@ -12,32 +12,66 @@
   // Test input state - now tests Location + ActionType enums
   // First enum = reverse-odd: (numVariants - 1 - index) * 2 + 1
   // Second enum = simple: 0, 1, 2, etc.
-  const locationVariantIds = { Bench: 5, Board: 3, Dead: 1 };  // First enum (reverse-odd)
-  // Second enum (ActionType) uses simple 0-indexed: Play=0, Move=1, Attack=2, Ability=3
-  const actionVariantIds = { Play: 0, Move: 1, Attack: 2, Ability: 3 };
-  const targetTypeVariantIds = { None: 0, SelfCap: 1, TeamCap: 2, OpponentCap: 3, AnyCap: 4, AnySquare: 5 };
-  const effectTypeVariantIds = { 
-    None: 0, DamageBuff: 1, Shield: 2, Heal: 3, DOT: 4, MoveBonus: 5, AttackBonus: 6, 
-    BonusRange: 7, MoveDiscount: 8, AttackDiscount: 9, AbilityDiscount: 10, 
-    ExtraEnergy: 11, Stun: 12, Double: 13 
-  };
-  const effectTargetVariantIds = { None: 0, Cap: 1, Square: 2 };
+  // Helper function to calculate reverse-odd variant IDs
+  // For n variants: variant i (0-indexed) gets ID = 2n - 1 - 2i
+  function reverseOddVariantId(index: number, totalVariants: number): number {
+    if (totalVariants <= 2) {
+      return index;  // Simple 0-indexed for 2 or fewer variants
+    }
+    return 2 * totalVariants - 1 - 2 * index;
+  }
+  
+  // Location: 3 variants (Bench, Board, Dead) - reverse-odd
+  const locationVariants = ['Bench', 'Board', 'Dead'];
+  const locationVariantIds: Record<string, number> = {};
+  locationVariants.forEach((v, i) => {
+    locationVariantIds[v] = reverseOddVariantId(i, locationVariants.length);
+  });
+  
+  // ActionType: 4 variants (Play, Move, Attack, Ability) - reverse-odd
+  const actionVariants = ['Play', 'Move', 'Attack', 'Ability'];
+  const actionVariantIds: Record<string, number> = {};
+  actionVariants.forEach((v, i) => {
+    actionVariantIds[v] = reverseOddVariantId(i, actionVariants.length);
+  });
+  
+  // TargetType: 6 variants - reverse-odd
+  const targetTypeVariants = ['None', 'SelfCap', 'TeamCap', 'OpponentCap', 'AnyCap', 'AnySquare'];
+  const targetTypeVariantIds: Record<string, number> = {};
+  targetTypeVariants.forEach((v, i) => {
+    targetTypeVariantIds[v] = reverseOddVariantId(i, targetTypeVariants.length);
+  });
+  
+  // EffectType: 14 variants - reverse-odd
+  const effectTypeVariants = ['None', 'DamageBuff', 'Shield', 'Heal', 'DOT', 'MoveBonus', 'AttackBonus', 
+    'BonusRange', 'MoveDiscount', 'AttackDiscount', 'AbilityDiscount', 'ExtraEnergy', 'Stun', 'Double'];
+  const effectTypeVariantIds: Record<string, number> = {};
+  effectTypeVariants.forEach((v, i) => {
+    effectTypeVariantIds[v] = reverseOddVariantId(i, effectTypeVariants.length);
+  });
+  
+  // EffectTarget: 3 variants (None, Cap, Square) - reverse-odd
+  const effectTargetVariants = ['None', 'Cap', 'Square'];
+  const effectTargetVariantIds: Record<string, number> = {};
+  effectTargetVariants.forEach((v, i) => {
+    effectTargetVariantIds[v] = reverseOddVariantId(i, effectTargetVariants.length);
+  });
   
   let testLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
   let testLocationX = 3;
   let testLocationY = 3;
-  let testLocationVariantId = 5;  // First enum: reverse-odd
+  let testLocationVariantId = locationVariantIds['Bench'];  // Reverse-odd: Bench=5, Board=3, Dead=1
   let testActionType: 'Play' | 'Move' | 'Attack' | 'Ability' = 'Play';
   let testActionX = 3;
   let testActionY = 4;
-  let testActionVariantId = 0;  // Play=0, Move=1, Attack=2, Ability=3 (2nd enum: simple 0-indexed)
+  let testActionVariantId = actionVariantIds['Play'];  // Reverse-odd: Play=7, Move=5, Attack=3, Ability=1
   let testTargetType: 'None' | 'SelfCap' | 'TeamCap' | 'OpponentCap' | 'AnyCap' | 'AnySquare' = 'None';
-  let testTargetTypeVariantId = 0;
+  let testTargetTypeVariantId = targetTypeVariantIds['None'];  // Reverse-odd: None=11, SelfCap=9, TeamCap=7, OpponentCap=5, AnyCap=3, AnySquare=1
   let testEffectType: 'None' | 'DamageBuff' | 'Shield' | 'Heal' | 'DOT' | 'MoveBonus' | 'AttackBonus' | 'BonusRange' | 'MoveDiscount' | 'AttackDiscount' | 'AbilityDiscount' | 'ExtraEnergy' | 'Stun' | 'Double' = 'None';
-  let testEffectTypeVariantId = 0;
+  let testEffectTypeVariantId = effectTypeVariantIds['None'];  // Reverse-odd: None=27, DamageBuff=25, ..., Double=1
   let testEffectTypePayload = 0;  // u8 payload for EffectType
   let testEffectTarget: 'None' | 'Cap' | 'Square' = 'None';
-  let testEffectTargetVariantId = 0;
+  let testEffectTargetVariantId = effectTargetVariantIds['None'];  // Reverse-odd: None=5, Cap=3, Square=1
   let testEffectTargetCapId = '0';  // u64 for Cap variant
   let testEffectTargetSquareX = 0;
   let testEffectTargetSquareY = 0;
@@ -48,7 +82,11 @@
     targetTypeVariant: number;
     effectTypeVariant: number; effectPayload: number;
     effectTargetVariant: number; effectTargetId: number; effectTargetX: number; effectTargetY: number;
+    arrayLen: number;
   } | null = null;
+  
+  // Test array for empty array testing
+  let testArrayValues: string = '';  // Comma-separated values, empty string = empty array
   let testInputError: string | null = null;
   let testInputRaw: string | null = null;
 
@@ -217,7 +255,8 @@
   // Caps array - simplified to single cap for now
   let simCapId = '1';
   let simCapOwner = '111';
-  let simCapLocVariant = '5';  // Bench (1st enum: reverse-odd)
+  let simLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
+  let simCapLocVariant = locationVariantIds['Bench'].toString();  // Use reverse-odd mapping
   let simCapLocX = '0';
   let simCapLocY = '0';
   let simCapSetId = '0';
@@ -227,7 +266,8 @@
   
   // Actions array - single action for now
   let simActionCapId = '1';
-  let simActionVariant = '0';  // Play=0, Move=1, Attack=2, Ability=3 (2nd enum: simple 0-indexed)
+  let simActionType: 'Play' | 'Move' | 'Attack' | 'Ability' = 'Play';
+  let simActionVariant = actionVariantIds['Play'].toString();  // Use reverse-odd mapping
   let simActionX = '3';
   let simActionY = '3';
   // For Move action: direction (0=right, 1=left, 2=up, 3=down) and distance
@@ -237,8 +277,8 @@
   // Effects array - empty for now
   let simEffectsCount = 0;
   
-  // Computed: is the action Move?
-  $: isMoveAction = simActionVariant === '1';  // Move variant ID (0=Play, 1=Move, 2=Attack, 3=Ability)
+  // Computed: is the action Move? (Move = 5 in reverse-odd for 4 variants)
+  $: isMoveAction = simActionVariant === actionVariantIds['Move'].toString();
   
   // Helper to decode hex strings from Cairo panic messages
   function hexToString(hex: string): string {
@@ -380,13 +420,19 @@
         effectTargetFelts = [testEffectTargetVariantId.toString(), '0', '0'];
       }
       
-      // Combine all: location + action + target_type + effect_type + effect_target
+      // Build test array: parse comma-separated values, or empty array if empty string
+      const testArray: string[] = testArrayValues.trim() === '' 
+        ? [] 
+        : testArrayValues.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      
+      // Combine all: location + action + target_type + effect_type + effect_target + test_array
       const serialized: (string | string[])[] = [
         ...locationFelts,
         ...actionFelts,
         ...targetTypeFelts,
         ...effectTypeFelts,
-        ...effectTargetFelts
+        ...effectTargetFelts,
+        testArray  // Array<u64>
       ];
       
       console.log('Test input serialized:', serialized);
@@ -404,12 +450,12 @@
         return;
       }
       
-      // Parse output: (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u64, u8, u8)
+      // Parse output: (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u64, u8, u8, u64)
       // = (loc_variant, loc_x, loc_y, action_variant, action_x, action_y, 
       //    target_type_variant, effect_type_variant, effect_payload, 
-      //    effect_target_variant, effect_target_id, effect_target_x, effect_target_y)
+      //    effect_target_variant, effect_target_id, effect_target_x, effect_target_y, array_len)
       const felts = testInputRaw.split(/\s+/).filter((s: string) => s.length > 0);
-      if (felts.length >= 13) {
+      if (felts.length >= 14) {
         testInputResult = {
           locVariant: Number(felts[0]),
           locX: Number(felts[1]),
@@ -424,9 +470,10 @@
           effectTargetId: Number(felts[10]),
           effectTargetX: Number(felts[11]),
           effectTargetY: Number(felts[12]),
+          arrayLen: Number(felts[13]),
         };
       } else {
-        testInputError = `Expected 13 values, got ${felts.length}`;
+        testInputError = `Expected 14 values, got ${felts.length}`;
       }
     } catch (e: any) {
       const msg = e.message || String(e);
@@ -460,12 +507,15 @@
       ];
 
       // Serialize Cap: id, owner, loc_variant, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
+      // Location enum: always send variant + 2 values (Vec2), pad with 0 if no payload
+      const capLocX = simLocationType === 'Board' ? simCapLocX : '0';
+      const capLocY = simLocationType === 'Board' ? simCapLocY : '0';
       const capsFlat: string[] = [
         simCapId,
         simCapOwner,
         simCapLocVariant,
-        simCapLocX,
-        simCapLocY,
+        capLocX,
+        capLocY,
         simCapSetId,
         simCapType,
         simCapDmgTaken,
@@ -492,9 +542,21 @@
       ];
 
       console.log('Simulate serialized input:', serialized);
+      console.log('Serialized length:', serialized.length);
       console.log('Game args:', gameArgs);
-      console.log('Caps flat:', capsFlat);
-      console.log('Action felts:', actionFelts);
+      console.log('Game args length:', gameArgs.length);
+      console.log('Caps flat:', capsFlat, 'length:', capsFlat.length);
+      console.log('Effects flat:', effectsFlat, 'length:', effectsFlat.length);
+      console.log('Action felts:', actionFelts, 'length:', actionFelts.length);
+      
+      // Log each argument type
+      serialized.forEach((arg, i) => {
+        if (Array.isArray(arg)) {
+          console.log(`Arg ${i}: Array with ${arg.length} elements:`, arg);
+        } else {
+          console.log(`Arg ${i}: Single value:`, arg);
+        }
+      });
 
       simulateRaw = await wasmModule.runSimulate(serialized);
       console.log('Simulate raw output:', simulateRaw);
@@ -602,7 +664,7 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testLocationVariantId} min="0" max="10" />
-              <span class="hint">Bench=5, Board=3, Dead=1 (1st: reverse-odd)</span>
+              <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
             </label>
           {/if}
         </div>
@@ -629,7 +691,7 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testActionVariantId} min="0" max="10" />
-              <span class="hint">Play=0, Move=1, Attack=2, Ability=3 (2nd: simple 0-indexed)</span>
+              <span class="hint">Play=7, Move=5, Attack=3, Ability=1 (reverse-odd, 4 variants)</span>
             </label>
           {/if}
         </div>
@@ -652,7 +714,7 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testTargetTypeVariantId} min="0" max="10" />
-              <span class="hint">None=0, SelfCap=1, TeamCap=2, OpponentCap=3, AnyCap=4, AnySquare=5</span>
+              <span class="hint">None=11, SelfCap=9, TeamCap=7, OpponentCap=5, AnyCap=3, AnySquare=1 (reverse-odd, 6 variants)</span>
             </label>
           {/if}
         </div>
@@ -717,9 +779,18 @@
           {#if showAdvanced}
             <label>
               Variant ID: <input type="number" bind:value={testEffectTargetVariantId} min="0" max="10" />
-              <span class="hint">None=0, Cap=1, Square=2</span>
+              <span class="hint">None=5, Cap=3, Square=1 (reverse-odd, 3 variants)</span>
             </label>
           {/if}
+        </div>
+
+        <div class="input-group">
+          <h4>Test Array (Array&lt;u64&gt;)</h4>
+          <label>
+            Values (comma-separated, leave empty for empty array):
+            <input type="text" bind:value={testArrayValues} placeholder="e.g., 1, 2, 3" />
+          </label>
+          <span class="hint">Empty string = empty array. Use this to test empty array serialization.</span>
         </div>
       </div>
 
@@ -754,6 +825,10 @@
               <p><strong>Square X:</strong> {testInputResult.effectTargetX}</p>
               <p><strong>Square Y:</strong> {testInputResult.effectTargetY}</p>
             {/if}
+            
+            <h4>Test Array</h4>
+            <p><strong>Array Length:</strong> {testInputResult.arrayLen}</p>
+            <p class="explanation">If length matches your input array, empty arrays are working correctly!</p>
           </div>
           <p class="explanation">If these match your inputs, you found the right variant IDs!</p>
         </div>
@@ -791,11 +866,27 @@
           <h4>Cap (Array[0])</h4>
           <label>id: <input type="text" bind:value={simCapId} /></label>
           <label>owner: <input type="text" bind:value={simCapOwner} /></label>
-          <label>loc_variant: <input type="text" bind:value={simCapLocVariant} />
-            <span class="hint">Bench=5, Board=3, Dead=1 (1st: reverse-odd)</span>
+          <label>
+            Location:
+            <select bind:value={simLocationType} on:change={() => {
+              simCapLocVariant = locationVariantIds[simLocationType].toString();
+            }}>
+              <option value="Bench">Bench</option>
+              <option value="Board">Board</option>
+              <option value="Dead">Dead</option>
+            </select>
+            <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
           </label>
-          <label>loc_x: <input type="text" bind:value={simCapLocX} /></label>
-          <label>loc_y: <input type="text" bind:value={simCapLocY} /></label>
+          {#if simLocationType === 'Board'}
+            <label>loc_x: <input type="text" bind:value={simCapLocX} /></label>
+            <label>loc_y: <input type="text" bind:value={simCapLocY} /></label>
+          {:else}
+            <label>loc_x: <input type="text" bind:value={simCapLocX} disabled /></label>
+            <label>loc_y: <input type="text" bind:value={simCapLocY} disabled /></label>
+          {/if}
+          {#if showAdvanced}
+            <label>loc_variant: <input type="text" bind:value={simCapLocVariant} /></label>
+          {/if}
           <label>set_id: <input type="text" bind:value={simCapSetId} /></label>
           <label>cap_type: <input type="text" bind:value={simCapType} /></label>
           <label>dmg_taken: <input type="text" bind:value={simCapDmgTaken} /></label>
@@ -805,9 +896,21 @@
         <div class="input-group">
           <h4>Action (Array[0])</h4>
           <label>cap_id: <input type="text" bind:value={simActionCapId} /></label>
-          <label>action_variant: <input type="text" bind:value={simActionVariant} />
-            <span class="hint">Play=0, Move=1, Attack=2, Ability=3 (2nd: simple 0-indexed)</span>
+          <label>
+            Action Type:
+            <select bind:value={simActionType} on:change={() => {
+              simActionVariant = actionVariantIds[simActionType].toString();
+            }}>
+              <option value="Play">Play</option>
+              <option value="Move">Move</option>
+              <option value="Attack">Attack</option>
+              <option value="Ability">Ability</option>
+            </select>
+            <span class="hint">Play=7, Move=5, Attack=3, Ability=1 (reverse-odd, 4 variants)</span>
           </label>
+          {#if showAdvanced}
+            <label>action_variant: <input type="text" bind:value={simActionVariant} /></label>
+          {/if}
           {#if isMoveAction}
             <label>direction: <input type="text" bind:value={simActionDirection} />
               <span class="hint">0=right, 1=left, 2=up, 3=down</span>
