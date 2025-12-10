@@ -113,6 +113,50 @@ pub fn run_test_input(args_js: Vec<JsValue>) -> Result<String, JsValue> {
     Ok(output)
 }
 
+/// Run the test_output Cairo program
+/// 
+/// Input format: Location enum serialized as [variant, x, y]
+/// variant: reverse-odd variant ID, x and y are payload (0 for Bench/Dead)
+/// Returns a Location enum
+#[wasm_bindgen(js_name = runTestOutput)]
+pub fn run_test_output(args_js: Vec<JsValue>) -> Result<String, JsValue> {
+    let mut args: Vec<FuncArg> = Vec::new();
+    
+    for (i, v) in args_js.iter().enumerate() {
+        let s = v.as_string().unwrap_or_else(|| v.as_f64().unwrap().to_string());
+        let felt = Felt252::from_dec_str(&s).unwrap_or_else(|_| Felt252::from(0));
+        log(&format!("TestOutput Arg {}: Single({})", i, s));
+        args.push(FuncArg::Single(felt));
+    }
+    
+    log(&format!("Total args for test_output: {}", args.len()));
+    
+    let cairo_run_config = Cairo1RunConfig {
+        args: &args,
+        layout: LayoutName::all_cairo,
+        relocate_mem: true,
+        trace_enabled: true,
+        serialize_output: true,
+        ..Default::default()
+    };
+
+    let sierra_program = {
+        let program_str = include_str!("../cairo/test_output.sierra");
+        wrap_error!(ProgramParser::new().parse(program_str))?
+    };
+
+    let (_, _, serialized_output) = wrap_error!(cairo1_run::cairo_run_program(
+        &sierra_program,
+        cairo_run_config
+    ))?;
+
+    let output = serialized_output.unwrap();
+
+    log(&format!("test_output output: {}", output));
+
+    Ok(output)
+}
+
 /// Run the simulate Cairo program
 /// 
 /// Input format: Array where each element is either:
