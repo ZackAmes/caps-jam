@@ -90,6 +90,15 @@
   let testInputError: string | null = null;
   let testInputRaw: string | null = null;
 
+  // Test output state
+  let testOutputLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
+  let testOutputVariant = locationVariantIds['Bench'];  // Reverse-odd: Bench=5, Board=3, Dead=1
+  let testOutputX = 3;
+  let testOutputY = 3;
+  let testOutputError: string | null = null;
+  let testOutputRaw: string | null = null;
+  let testOutputResult: { variant: number; x: number; y: number } | null = null;
+
   // Simulate test state
   let simulateError: string | null = null;
   let simulateRaw: string | null = null;
@@ -482,6 +491,65 @@
     }
   }
 
+  async function runTestOutput() {
+    if (!wasmModule) {
+      testOutputError = 'WASM module not loaded';
+      return;
+    }
+
+    testOutputError = null;
+    testOutputResult = null;
+    testOutputRaw = null;
+
+    try {
+      // Build Location enum serialization (same as test_input)
+      // Location { Bench, Board(Vec2), Dead }
+      // Always send variant + 2 values (padded with 0 if no payload)
+      let locationFelts: string[] = [];
+      if (testOutputLocationType === 'Board') {
+        locationFelts = [testOutputVariant.toString(), testOutputX.toString(), testOutputY.toString()];
+      } else {
+        // Bench or Dead - pad with zeros
+        locationFelts = [testOutputVariant.toString(), '0', '0'];
+      }
+      
+      console.log('Test output args:', locationFelts);
+      
+      testOutputRaw = await wasmModule.runTestOutput(locationFelts);
+      console.log('Raw test_output output:', testOutputRaw);
+      
+      if (!testOutputRaw) {
+        testOutputError = 'No output from WASM';
+        return;
+      }
+      
+      // Parse output: Location enum serialized as variant + payload
+      // For Location: variant (u8) + if Board: x (u8), y (u8)
+      // For Bench/Dead: variant only (no payload)
+      // Reverse-odd variant IDs: Bench=5, Board=3, Dead=1
+      const felts = testOutputRaw.split(/\s+/).filter((s: string) => s.length > 0);
+      if (felts.length >= 1) {
+        const variant = Number(felts[0]);
+        let x = 0;
+        let y = 0;
+        
+        // If variant is 3 (Board), we should have x and y
+        if (variant === 3 && felts.length >= 3) {
+          x = Number(felts[1]);
+          y = Number(felts[2]);
+        }
+        
+        testOutputResult = { variant, x, y };
+      } else {
+        testOutputError = `Expected at least 1 value, got ${felts.length}`;
+      }
+    } catch (e: any) {
+      const msg = e.message || String(e);
+      testOutputError = parseCairoError(msg);
+      console.error('Test output error:', e);
+    }
+  }
+
   async function runSimulate() {
     if (!wasmModule) {
       simulateError = 'WASM module not loaded';
@@ -837,6 +905,86 @@
           <summary>Raw Output</summary>
           <pre class="raw-output">{testInputRaw}</pre>
         </details>
+      {/if}
+    </section>
+
+    <hr />
+
+    <!-- Test 2.5: Enum Output Test -->
+    <section class="test-section">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2>Test 2.5: Enum Output Test</h2>
+          <p class="description">Test returning Location enum from Cairo to WASM</p>
+        </div>
+        <label class="toggle-label">
+          <input type="checkbox" bind:checked={showAdvanced} />
+          Show variant IDs
+        </label>
+      </div>
+      
+      {#if testOutputError}
+        <div class="error">{testOutputError}</div>
+      {/if}
+
+      <div class="input-grid">
+        <div class="input-group">
+          <h4>Location Enum Input</h4>
+          <label>
+            Type:
+            <select bind:value={testOutputLocationType} on:change={() => {
+              testOutputVariant = locationVariantIds[testOutputLocationType];
+            }}>
+              <option value="Bench">Bench</option>
+              <option value="Board">Board</option>
+              <option value="Dead">Dead</option>
+            </select>
+            <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
+          </label>
+          {#if testOutputLocationType === 'Board'}
+            <label>
+              X: <input type="number" bind:value={testOutputX} min="0" max="6" />
+            </label>
+            <label>
+              Y: <input type="number" bind:value={testOutputY} min="0" max="6" />
+            </label>
+          {:else}
+            <label>
+              X: <input type="number" bind:value={testOutputX} min="0" max="6" disabled />
+            </label>
+            <label>
+              Y: <input type="number" bind:value={testOutputY} min="0" max="6" disabled />
+            </label>
+          {/if}
+          <label>
+            Variant ID: <input type="number" bind:value={testOutputVariant} min="0" max="10" />
+            <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
+          </label>
+        </div>
+      </div>
+
+      <button on:click={runTestOutput}>Run Test Output</button>
+
+      {#if testOutputResult}
+        <div class="result success">
+          <h3>✅ Parsed Location Enum</h3>
+          <div class="stats">
+            <h4>Location</h4>
+            <p><strong>Variant:</strong> {testOutputResult.variant} ({testOutputResult.variant === 5 ? 'Bench' : testOutputResult.variant === 3 ? 'Board' : testOutputResult.variant === 1 ? 'Dead' : 'Unknown'})</p>
+            {#if testOutputResult.variant === 3}
+              <p><strong>X:</strong> {testOutputResult.x}</p>
+              <p><strong>Y:</strong> {testOutputResult.y}</p>
+            {/if}
+          </div>
+          <p class="explanation">If these match your inputs, enum output serialization is working correctly!</p>
+        </div>
+      {/if}
+      
+      {#if testOutputRaw}
+        <div class="result">
+          <h3>Raw Output</h3>
+          <pre class="raw-output">{testOutputRaw}</pre>
+        </div>
       {/if}
     </section>
 

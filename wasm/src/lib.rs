@@ -136,7 +136,6 @@ pub fn run_test_output(args_js: Vec<JsValue>) -> Result<String, JsValue> {
         layout: LayoutName::all_cairo,
         relocate_mem: true,
         trace_enabled: true,
-        serialize_output: true,
         ..Default::default()
     };
 
@@ -145,12 +144,21 @@ pub fn run_test_output(args_js: Vec<JsValue>) -> Result<String, JsValue> {
         wrap_error!(ProgramParser::new().parse(program_str))?
     };
 
-    let (_, _, serialized_output) = wrap_error!(cairo1_run::cairo_run_program(
+    let (mut runner, return_values, _) = wrap_error!(cairo1_run::cairo_run_program(
         &sierra_program,
         cairo_run_config
     ))?;
 
-    let output = serialized_output.unwrap();
+    // Use write_output like scarb-execute does
+    let mut output_buffer = String::new();
+    wrap_error!(runner.vm.write_output(&mut output_buffer))?;
+    let mut output = output_buffer.trim_end().to_string();
+    
+    // If write_output is empty (Cairo 1 programs return values, not write to output builtin),
+    // format the return values directly
+    if output.is_empty() {
+        output = return_values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join("\n");
+    }
 
     log(&format!("test_output output: {}", output));
 
