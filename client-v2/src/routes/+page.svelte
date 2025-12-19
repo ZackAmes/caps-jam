@@ -90,14 +90,44 @@
   let testInputError: string | null = null;
   let testInputRaw: string | null = null;
 
-  // Test output state
-  let testOutputLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
-  let testOutputVariant = locationVariantIds['Bench'];  // Reverse-odd: Bench=5, Board=3, Dead=1
-  let testOutputX = 3;
-  let testOutputY = 3;
+  // Test output state - dedicated variables
+  let testOutputGameId = '1';
+  let testOutputPlayer1 = '123';
+  let testOutputPlayer2 = '456';
+  let testOutputTurnCount = '0';
+  let testOutputGameOver = false;
+  let testOutputLastTimestamp = '0';
+  
+  let testOutputCapId = '1';
+  let testOutputCapOwner = '123';
+  let testOutputCapLocationType: 'Bench' | 'Board' | 'Dead' = 'Bench';
+  let testOutputCapLocVariant = locationVariantIds['Bench'];
+  let testOutputCapLocX = '3';
+  let testOutputCapLocY = '3';
+  let testOutputCapSetId = '0';
+  let testOutputCapType = '0';
+  let testOutputCapDmgTaken = '0';
+  let testOutputCapShield = '0';
+  
+  let testOutputEffectGameId = '1';
+  let testOutputEffectId = '1';
+  let testOutputEffectType: 'None' | 'DamageBuff' | 'Shield' | 'Heal' | 'DOT' | 'MoveBonus' | 'AttackBonus' | 'BonusRange' | 'MoveDiscount' | 'AttackDiscount' | 'AbilityDiscount' | 'ExtraEnergy' | 'Stun' | 'Double' = 'None';
+  let testOutputEffectTypeVariant = effectTypeVariantIds['None'];
+  let testOutputEffectTypePayload = 0;  // u8 payload for EffectType
+  let testOutputEffectTarget: 'None' | 'Cap' | 'Square' = 'None';
+  let testOutputEffectTargetVariant = effectTargetVariantIds['None'];
+  let testOutputEffectTargetCapId = '0';  // u64 for Cap variant
+  let testOutputEffectTargetSquareX = 0;
+  let testOutputEffectTargetSquareY = 0;
+  let testOutputEffectRemainingTriggers = '0';
+  
   let testOutputError: string | null = null;
   let testOutputRaw: string | null = null;
-  let testOutputResult: { variant: number; x: number; y: number } | null = null;
+  let testOutputResult: {
+    game: { id: string; player1: string; player2: string; turn_count: string; over: boolean; last_timestamp: string };
+    cap: { id: string; owner: string; location: { type: string; x?: number; y?: number }; set_id: string; cap_type: string; dmg_taken: string; shield_amt: string };
+    effect: { game_id: string; effect_id: string; effect_type: { variant: string; payload?: number }; effect_target: { variant: string; cap_id?: string; x?: number; y?: number }; remaining_triggers: string };
+  } | null = null;
 
   // Simulate test state
   let simulateError: string | null = null;
@@ -502,46 +532,266 @@
     testOutputRaw = null;
 
     try {
-      // Build Location enum serialization (same as test_input)
-      // Location { Bench, Board(Vec2), Dead }
-      // Always send variant + 2 values (padded with 0 if no payload)
-      let locationFelts: string[] = [];
-      if (testOutputLocationType === 'Board') {
-        locationFelts = [testOutputVariant.toString(), testOutputX.toString(), testOutputY.toString()];
+      // Serialize Game struct: id, player1, player2, caps_ids array, turn_count, over, effect_ids array, last_action_timestamp
+      const gameArgs: (string | string[])[] = [
+        testOutputGameId,
+        testOutputPlayer1,
+        testOutputPlayer2,
+        [testOutputCapId],  // caps_ids array with single cap
+        testOutputTurnCount,
+        testOutputGameOver ? '1' : '0',
+        [testOutputEffectId],  // effect_ids array with single effect
+        testOutputLastTimestamp,
+      ];
+
+      // Serialize Cap: id, owner, loc_variant, loc_x, loc_y, set_id, cap_type, dmg_taken, shield_amt
+      // Location enum: always send variant + 2 values (Vec2), pad with 0 if no payload
+      const capLocX = testOutputCapLocationType === 'Board' ? testOutputCapLocX : '0';
+      const capLocY = testOutputCapLocationType === 'Board' ? testOutputCapLocY : '0';
+      const capFields: string[] = [
+        testOutputCapId,
+        testOutputCapOwner,
+        testOutputCapLocVariant.toString(),
+        capLocX,
+        capLocY,
+        testOutputCapSetId,
+        testOutputCapType,
+        testOutputCapDmgTaken,
+        testOutputCapShield,
+      ];
+
+      // Serialize Effect: game_id, effect_id, effect_type enum, effect_target enum, remaining_triggers
+      // EffectType: all variants have u8 payload (1 value), so pad to 1 value
+      // EffectTarget: longest payload is Vec2 (2 values) for Square, so pad all to 2 values
+      const effectTypeFelts: string[] = [
+        testOutputEffectTypeVariant.toString(),
+        testOutputEffectTypePayload.toString(),  // u8 payload
+      ];
+      
+      // EffectTarget enum serialization - pad to max payload size (Vec2 = 2 values)
+      // Max payload: Square has Vec2 (2 values), Cap has u64 (1 value), None has 0 values
+      // When padding variants with payloads, repeat the payload value instead of padding with zeros
+      let effectTargetFelts: string[] = [];
+      if (testOutputEffectTarget === 'Cap') {
+        // Cap variant: variant + u64 (cap_id) + repeat cap_id for padding = variant + 2 payload values
+        effectTargetFelts = [
+          testOutputEffectTargetVariant.toString(),
+          testOutputEffectTargetCapId,
+          testOutputEffectTargetCapId,  // Repeat cap_id for padding (not zero)
+        ];
+      } else if (testOutputEffectTarget === 'Square') {
+        // Square variant: variant + Vec2 (x, y) = variant + 2 payload values (already at max)
+        effectTargetFelts = [
+          testOutputEffectTargetVariant.toString(),
+          testOutputEffectTargetSquareX.toString(),
+          testOutputEffectTargetSquareY.toString(),
+        ];
       } else {
-        // Bench or Dead - pad with zeros
-        locationFelts = [testOutputVariant.toString(), '0', '0'];
+        // None variant: variant + 2 zeros padding = variant + 2 payload values (no payload to repeat)
+        effectTargetFelts = [
+          testOutputEffectTargetVariant.toString(),
+          '0',
+          '0',
+        ];
       }
       
-      console.log('Test output args:', locationFelts);
+      const effectFields: string[] = [
+        testOutputEffectGameId,
+        testOutputEffectId,
+        ...effectTypeFelts,      // variant + payload (2 values)
+        ...effectTargetFelts,    // variant + payload (3 values, but we'll flatten)
+        testOutputEffectRemainingTriggers,
+      ];
+
+      // Full input: game fields + cap fields + effect fields
+      const serialized: (string | string[])[] = [
+        ...gameArgs,      // Game struct fields (8 args: singles + arrays)
+        ...capFields,     // Cap struct fields (9 args)
+        ...effectFields,  // Effect struct fields (5 args)
+      ];
+
+      console.log('Test output serialized input:', serialized);
       
-      testOutputRaw = await wasmModule.runTestOutput(locationFelts);
+      testOutputRaw = await wasmModule.runTestOutput(serialized);
       console.log('Raw test_output output:', testOutputRaw);
       
-      if (!testOutputRaw) {
-        testOutputError = 'No output from WASM';
-        return;
-      }
-      
-      // Parse output: Location enum serialized as variant + payload
-      // For Location: variant (u8) + if Board: x (u8), y (u8)
-      // For Bench/Dead: variant only (no payload)
-      // Reverse-odd variant IDs: Bench=5, Board=3, Dead=1
-      const felts = testOutputRaw.split(/\s+/).filter((s: string) => s.length > 0);
-      if (felts.length >= 1) {
-        const variant = Number(felts[0]);
-        let x = 0;
-        let y = 0;
+      if (testOutputRaw) {
+        // Parse new format: SERIALIZED: ... \n RETURN_VALUES: \n [0] value1 \n [1] value2 ...
+        const lines = testOutputRaw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
-        // If variant is 3 (Board), we should have x and y
-        if (variant === 3 && felts.length >= 3) {
-          x = Number(felts[1]);
-          y = Number(felts[2]);
+        let serializedLine = '';
+        const returnValues: { index: number; value: string }[] = [];
+        let inReturnValues = false;
+        
+        for (const line of lines) {
+          if (line.startsWith('SERIALIZED: ')) {
+            serializedLine = line.substring('SERIALIZED: '.length);
+          } else if (line === 'RETURN_VALUES:') {
+            inReturnValues = true;
+          } else if (inReturnValues && line.startsWith('[') && line.includes(']')) {
+            const match = line.match(/\[(\d+)\]\s+(.+)/);
+            if (match) {
+              returnValues.push({ index: Number(match[1]), value: match[2] });
+            }
+          }
         }
         
-        testOutputResult = { variant, x, y };
+        console.log('Serialized output:', serializedLine);
+        console.log('Return values:', returnValues);
+        
+        // Parse serialized output for structure (arrays, etc.)
+        let normalized = serializedLine.replace(/\[([^\]]*)\]/g, (_match, contents) => {
+          const elements = contents.trim();
+          if (elements === '') return '0';
+          const items = elements.split(/\s+/).filter((s: string) => s.length > 0);
+          return `${items.length} ${elements}`;
+        });
+        
+        const felts = normalized.split(/\s+/).filter((s: string) => s.length > 0);
+        console.log('Normalized felts from serialized:', felts);
+        
+        // Return values structure:
+        // Game: id(0), player1(1), player2(2), caps_ids_ptr(3), caps_ids_len(4), turn_count(5), over(6), effect_ids_ptr(7), effect_ids_len(8), last_timestamp(9)
+        // Cap: id(10), owner(11), loc_variant(12), loc_x(13), loc_y(14), set_id(15), cap_type(16), dmg_taken(17), shield_amt(18)
+        // Effect: game_id(19), effect_id(20), effect_type_variant(21), effect_target_variant(22), remaining_triggers(23)
+        
+        // Parse Game from serialized output
+        let idx = 0;
+        const gameId = felts[idx++];
+        const player1 = felts[idx++];
+        const player2 = felts[idx++];
+        const capsIdsLen = Number(felts[idx++]);
+        const capsIds: string[] = [];
+        for (let i = 0; i < capsIdsLen; i++) {
+          capsIds.push(felts[idx++]);
+        }
+        const turnCount = felts[idx++];
+        const over = felts[idx++] === '1' || felts[idx - 1] === 'true';
+        const effectIdsLen = Number(felts[idx++]);
+        const effectIds: string[] = [];
+        for (let i = 0; i < effectIdsLen; i++) {
+          effectIds.push(felts[idx++]);
+        }
+        const lastTimestamp = felts[idx++];
+        
+        // Parse Cap from serialized output, but use return values for enum variant
+        const capId = felts[idx++];
+        const capOwner = felts[idx++];
+        // Get loc_variant from return values (index 12) - skip relocatable addresses
+        const locVariantRaw = returnValues.find(rv => rv.index === 12);
+        const locVariant = locVariantRaw && !locVariantRaw.value.includes(':') ? locVariantRaw.value : felts[idx++];
+        const locX = felts[idx++];
+        const locY = felts[idx++];
+        const setId = felts[idx++];
+        const capType = felts[idx++];
+        const dmgTaken = felts[idx++];
+        const shieldAmt = felts[idx++];
+        
+        // Parse Effect from serialized output, but use return values for enum variants
+        // Return values structure for Effect:
+        // game_id(19), effect_id(20), effect_type_variant(21), effect_type_payload(22),
+        // effect_target_variant(23), effect_target_payload1(24), effect_target_payload2(25), remaining_triggers(26)
+        const effectGameId = felts[idx++];
+        const effectId = felts[idx++];
+        
+        // EffectType: variant + u8 payload (2 values total)
+        // Get variant from return values (index 21) - skip relocatable addresses
+        const effectTypeVariantRaw = returnValues.find(rv => rv.index === 21);
+        const effectTypeVariant = effectTypeVariantRaw && !effectTypeVariantRaw.value.includes(':') ? effectTypeVariantRaw.value : felts[idx++];
+        const effectTypePayload = Number(felts[idx++]);  // u8 payload
+        
+        // EffectTarget: variant + 2 payload values (3 values total: variant + 2 values for Vec2 padding)
+        // Get variant from return values (index 23) - skip relocatable addresses
+        const effectTargetVariantRaw = returnValues.find(rv => rv.index === 23);
+        const effectTargetVariant = effectTargetVariantRaw && !effectTargetVariantRaw.value.includes(':') ? effectTargetVariantRaw.value : felts[idx++];
+        const effectTargetPayload1 = felts[idx++];  // First payload value
+        const effectTargetPayload2 = felts[idx++];  // Second payload value (padding for None/Cap)
+        
+        const remainingTriggers = felts[idx++];
+        
+        // Parse EffectTarget based on variant
+        let effectTargetType: string;
+        let effectTargetCapId: string | undefined;
+        let effectTargetX: number | undefined;
+        let effectTargetY: number | undefined;
+        const effectTargetVariantNum = Number(effectTargetVariant);
+        if (effectTargetVariantNum === 5) {  // None
+          effectTargetType = 'None';
+        } else if (effectTargetVariantNum === 3) {  // Cap
+          effectTargetType = 'Cap';
+          effectTargetCapId = effectTargetPayload1;
+        } else if (effectTargetVariantNum === 1) {  // Square
+          effectTargetType = 'Square';
+          effectTargetX = Number(effectTargetPayload1);
+          effectTargetY = Number(effectTargetPayload2);
+        } else {
+          effectTargetType = `Unknown(${effectTargetVariant})`;
+        }
+        
+        // Parse EffectType variant name
+        let effectTypeName: string;
+        const effectTypeVariantNum = Number(effectTypeVariant);
+        // Reverse-odd mapping for 14 variants: None=27, DamageBuff=25, ..., Double=1
+        const effectTypeMap: Record<number, string> = {
+          27: 'None', 25: 'DamageBuff', 23: 'Shield', 21: 'Heal', 19: 'DOT',
+          17: 'MoveBonus', 15: 'AttackBonus', 13: 'BonusRange', 11: 'MoveDiscount',
+          9: 'AttackDiscount', 7: 'AbilityDiscount', 5: 'ExtraEnergy', 3: 'Stun', 1: 'Double'
+        };
+        effectTypeName = effectTypeMap[effectTypeVariantNum] || `Unknown(${effectTypeVariant})`;
+        
+        // Determine location type from variant ID (reverse-odd: Bench=5, Board=3, Dead=1)
+        let locationType: string;
+        const locVariantNum = Number(locVariant);
+        if (locVariantNum === 5) {
+          locationType = 'Bench';
+        } else if (locVariantNum === 3) {
+          locationType = 'Board';
+        } else if (locVariantNum === 1) {
+          locationType = 'Dead';
+        } else {
+          locationType = `Unknown(${locVariant})`;
+        }
+        
+        testOutputResult = {
+          game: {
+            id: gameId,
+            player1: player1,
+            player2: player2,
+            turn_count: turnCount,
+            over: over,
+            last_timestamp: lastTimestamp,
+          },
+          cap: {
+            id: capId,
+            owner: capOwner,
+            location: {
+              type: locationType,
+              x: locationType === 'Board' ? Number(locX) : undefined,
+              y: locationType === 'Board' ? Number(locY) : undefined,
+            },
+            set_id: setId,
+            cap_type: capType,
+            dmg_taken: dmgTaken,
+            shield_amt: shieldAmt,
+          },
+          effect: {
+            game_id: effectGameId,
+            effect_id: effectId,
+            effect_type: {
+              variant: effectTypeName,
+              payload: effectTypePayload,
+            },
+            effect_target: {
+              variant: effectTargetType,
+              cap_id: effectTargetCapId,
+              x: effectTargetX,
+              y: effectTargetY,
+            },
+            remaining_triggers: remainingTriggers,
+          },
+        };
       } else {
-        testOutputError = `Expected at least 1 value, got ${felts.length}`;
+        testOutputError = 'No output from WASM';
       }
     } catch (e: any) {
       const msg = e.message || String(e);
@@ -910,12 +1160,12 @@
 
     <hr />
 
-    <!-- Test 2.5: Enum Output Test -->
+    <!-- Test 2.5: Output Serialization Test -->
     <section class="test-section">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <h2>Test 2.5: Enum Output Test</h2>
-          <p class="description">Test returning Location enum from Cairo to WASM</p>
+          <h2>Test 2.5: Output Serialization Test</h2>
+          <p class="description">Test output serialization: main(game: Game, cap: Cap, effect: Effect) -&gt; (Game, Cap, Effect)</p>
         </div>
         <label class="toggle-label">
           <input type="checkbox" bind:checked={showAdvanced} />
@@ -929,11 +1179,23 @@
 
       <div class="input-grid">
         <div class="input-group">
-          <h4>Location Enum Input</h4>
+          <h4>Game</h4>
+          <label>id: <input type="text" bind:value={testOutputGameId} /></label>
+          <label>player1: <input type="text" bind:value={testOutputPlayer1} /></label>
+          <label>player2: <input type="text" bind:value={testOutputPlayer2} /></label>
+          <label>turn_count: <input type="text" bind:value={testOutputTurnCount} /></label>
+          <label>over: <input type="checkbox" bind:checked={testOutputGameOver} /></label>
+          <label>last_action_timestamp: <input type="text" bind:value={testOutputLastTimestamp} /></label>
+        </div>
+
+        <div class="input-group">
+          <h4>Cap</h4>
+          <label>id: <input type="text" bind:value={testOutputCapId} /></label>
+          <label>owner: <input type="text" bind:value={testOutputCapOwner} /></label>
           <label>
-            Type:
-            <select bind:value={testOutputLocationType} on:change={() => {
-              testOutputVariant = locationVariantIds[testOutputLocationType];
+            Location:
+            <select bind:value={testOutputCapLocationType} on:change={() => {
+              testOutputCapLocVariant = locationVariantIds[testOutputCapLocationType];
             }}>
               <option value="Bench">Bench</option>
               <option value="Board">Board</option>
@@ -941,25 +1203,73 @@
             </select>
             <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
           </label>
-          {#if testOutputLocationType === 'Board'}
-            <label>
-              X: <input type="number" bind:value={testOutputX} min="0" max="6" />
-            </label>
-            <label>
-              Y: <input type="number" bind:value={testOutputY} min="0" max="6" />
-            </label>
+          {#if testOutputCapLocationType === 'Board'}
+            <label>loc_x: <input type="text" bind:value={testOutputCapLocX} /></label>
+            <label>loc_y: <input type="text" bind:value={testOutputCapLocY} /></label>
           {:else}
-            <label>
-              X: <input type="number" bind:value={testOutputX} min="0" max="6" disabled />
-            </label>
-            <label>
-              Y: <input type="number" bind:value={testOutputY} min="0" max="6" disabled />
-            </label>
+            <label>loc_x: <input type="text" bind:value={testOutputCapLocX} disabled /></label>
+            <label>loc_y: <input type="text" bind:value={testOutputCapLocY} disabled /></label>
+          {/if}
+          {#if showAdvanced}
+            <label>loc_variant: <input type="text" bind:value={testOutputCapLocVariant} /></label>
+          {/if}
+          <label>set_id: <input type="text" bind:value={testOutputCapSetId} /></label>
+          <label>cap_type: <input type="text" bind:value={testOutputCapType} /></label>
+          <label>dmg_taken: <input type="text" bind:value={testOutputCapDmgTaken} /></label>
+          <label>shield_amt: <input type="text" bind:value={testOutputCapShield} /></label>
+        </div>
+
+        <div class="input-group">
+          <h4>Effect</h4>
+          <label>game_id: <input type="text" bind:value={testOutputEffectGameId} /></label>
+          <label>effect_id: <input type="text" bind:value={testOutputEffectId} /></label>
+          <label>
+            EffectType:
+            <select bind:value={testOutputEffectType} on:change={() => {
+              testOutputEffectTypeVariant = effectTypeVariantIds[testOutputEffectType];
+            }}>
+              <option value="None">None</option>
+              <option value="DamageBuff">DamageBuff</option>
+              <option value="Shield">Shield</option>
+              <option value="Heal">Heal</option>
+              <option value="DOT">DOT</option>
+              <option value="MoveBonus">MoveBonus</option>
+              <option value="AttackBonus">AttackBonus</option>
+              <option value="BonusRange">BonusRange</option>
+              <option value="MoveDiscount">MoveDiscount</option>
+              <option value="AttackDiscount">AttackDiscount</option>
+              <option value="AbilityDiscount">AbilityDiscount</option>
+              <option value="ExtraEnergy">ExtraEnergy</option>
+              <option value="Stun">Stun</option>
+              <option value="Double">Double</option>
+            </select>
+          </label>
+          <label>
+            EffectType Payload (u8): <input type="number" bind:value={testOutputEffectTypePayload} min="0" max="255" />
+          </label>
+          {#if showAdvanced}
+            <label>effect_type variant: <input type="text" bind:value={testOutputEffectTypeVariant} /></label>
           {/if}
           <label>
-            Variant ID: <input type="number" bind:value={testOutputVariant} min="0" max="10" />
-            <span class="hint">Bench=5, Board=3, Dead=1 (reverse-odd, 3 variants)</span>
+            EffectTarget:
+            <select bind:value={testOutputEffectTarget} on:change={() => {
+              testOutputEffectTargetVariant = effectTargetVariantIds[testOutputEffectTarget];
+            }}>
+              <option value="None">None</option>
+              <option value="Cap">Cap</option>
+              <option value="Square">Square</option>
+            </select>
           </label>
+          {#if testOutputEffectTarget === 'Cap'}
+            <label>Cap ID (u64): <input type="text" bind:value={testOutputEffectTargetCapId} /></label>
+          {:else if testOutputEffectTarget === 'Square'}
+            <label>Square X: <input type="number" bind:value={testOutputEffectTargetSquareX} min="0" max="6" /></label>
+            <label>Square Y: <input type="number" bind:value={testOutputEffectTargetSquareY} min="0" max="6" /></label>
+          {/if}
+          {#if showAdvanced}
+            <label>effect_target variant: <input type="text" bind:value={testOutputEffectTargetVariant} /></label>
+          {/if}
+          <label>remaining_triggers: <input type="text" bind:value={testOutputEffectRemainingTriggers} /></label>
         </div>
       </div>
 
@@ -967,16 +1277,51 @@
 
       {#if testOutputResult}
         <div class="result success">
-          <h3>✅ Parsed Location Enum</h3>
-          <div class="stats">
-            <h4>Location</h4>
-            <p><strong>Variant:</strong> {testOutputResult.variant} ({testOutputResult.variant === 5 ? 'Bench' : testOutputResult.variant === 3 ? 'Board' : testOutputResult.variant === 1 ? 'Dead' : 'Unknown'})</p>
-            {#if testOutputResult.variant === 3}
-              <p><strong>X:</strong> {testOutputResult.x}</p>
-              <p><strong>Y:</strong> {testOutputResult.y}</p>
-            {/if}
+          <h3>✅ Output Serialization Complete</h3>
+          
+          <div class="game-result">
+            <h4>Game</h4>
+            <div class="stats">
+              <p><strong>ID:</strong> {testOutputResult.game.id}</p>
+              <p><strong>Player 1:</strong> {testOutputResult.game.player1}</p>
+              <p><strong>Player 2:</strong> {testOutputResult.game.player2}</p>
+              <p><strong>Turn Count:</strong> {testOutputResult.game.turn_count}</p>
+              <p><strong>Over:</strong> {testOutputResult.game.over ? 'Yes' : 'No'}</p>
+              <p><strong>Last Action Timestamp:</strong> {testOutputResult.game.last_timestamp}</p>
+            </div>
           </div>
-          <p class="explanation">If these match your inputs, enum output serialization is working correctly!</p>
+
+          <div class="cap-result">
+            <h4>Cap</h4>
+            <div class="stats">
+              <p><strong>ID:</strong> {testOutputResult.cap.id}</p>
+              <p><strong>Owner:</strong> {testOutputResult.cap.owner}</p>
+              <p><strong>Location:</strong> {testOutputResult.cap.location.type}{testOutputResult.cap.location.type === 'Board' ? ` (${testOutputResult.cap.location.x}, ${testOutputResult.cap.location.y})` : ''}</p>
+              <p><strong>Set ID:</strong> {testOutputResult.cap.set_id}</p>
+              <p><strong>Cap Type:</strong> {testOutputResult.cap.cap_type}</p>
+              <p><strong>Damage Taken:</strong> {testOutputResult.cap.dmg_taken}</p>
+              <p><strong>Shield:</strong> {testOutputResult.cap.shield_amt}</p>
+            </div>
+          </div>
+
+          <div class="effect-result">
+            <h4>Effect</h4>
+            <div class="stats">
+              <p><strong>Game ID:</strong> {testOutputResult.effect.game_id}</p>
+              <p><strong>Effect ID:</strong> {testOutputResult.effect.effect_id}</p>
+              <p><strong>EffectType:</strong> {testOutputResult.effect.effect_type.variant}{testOutputResult.effect.effect_type.payload !== undefined ? ` (payload: ${testOutputResult.effect.effect_type.payload})` : ''}</p>
+              <p><strong>EffectTarget:</strong> {testOutputResult.effect.effect_target.variant}
+                {#if testOutputResult.effect.effect_target.cap_id !== undefined}
+                  (Cap ID: {testOutputResult.effect.effect_target.cap_id})
+                {:else if testOutputResult.effect.effect_target.x !== undefined && testOutputResult.effect.effect_target.y !== undefined}
+                  (Square: {testOutputResult.effect.effect_target.x}, {testOutputResult.effect.effect_target.y})
+                {/if}
+              </p>
+              <p><strong>Remaining Triggers:</strong> {testOutputResult.effect.remaining_triggers}</p>
+            </div>
+          </div>
+          
+          <p class="explanation">If these match your inputs, output serialization is working correctly!</p>
         </div>
       {/if}
       
@@ -1405,3 +1750,4 @@ Actions: [{simActionCapId}, {simActionVariant}, {isMoveAction ? simActionDirecti
     font-family: 'Monaco', 'Menlo', monospace;
   }
 </style>
+
