@@ -91,8 +91,11 @@
         backdrop-filter: blur(10px);
         border-top: 2px solid rgba(255, 255, 255, 0.1);
         overflow-x: auto;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        touch-action: pan-x; /* Allow horizontal scrolling only */
+        flex-shrink: 0;
     }
 
     .hand-bar::-webkit-scrollbar {

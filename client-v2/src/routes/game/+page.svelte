@@ -56,28 +56,6 @@
         event.preventDefault();
     }
 
-    onMount(() => {
-        const handlePointerMove = (event: PointerEvent) => {
-            if (draggingHandPiece) {
-                draggingHandPiece.x = event.clientX;
-                draggingHandPiece.y = event.clientY;
-            }
-        };
-
-        const handlePointerUp = () => {
-            if (draggingHandPiece) {
-                draggingHandPiece = null;
-            }
-        };
-
-        window.addEventListener('pointermove', handlePointerMove);
-        window.addEventListener('pointerup', handlePointerUp);
-
-        return () => {
-            window.removeEventListener('pointermove', handlePointerMove);
-            window.removeEventListener('pointerup', handlePointerUp);
-        };
-    });
 
     function handleHandPieceDrop(x: number, y: number) {
         if (!draggingHandPiece) return;
@@ -216,6 +194,56 @@
             actionMenuPosition = { x: tileX, y: tileZ };
         }
     }
+
+    // Prevent default touch behaviors and handle drag tracking
+    onMount(() => {
+        const preventDefault = (e: TouchEvent) => {
+            if (e.touches.length > 1) {
+                e.preventDefault(); // Prevent pinch zoom
+            }
+        };
+
+        const preventScroll = (e: TouchEvent) => {
+            // Only prevent if we're not dragging a hand piece
+            if (!draggingHandPiece) {
+                e.preventDefault();
+            }
+        };
+
+        document.addEventListener('touchmove', preventScroll, { passive: false });
+        document.addEventListener('touchstart', preventDefault, { passive: false });
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+
+        const handlePointerMove = (event: PointerEvent) => {
+            if (draggingHandPiece) {
+                draggingHandPiece.x = event.clientX;
+                draggingHandPiece.y = event.clientY;
+            }
+        };
+
+        const handlePointerUp = () => {
+            if (draggingHandPiece) {
+                draggingHandPiece = null;
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+
+        return () => {
+            document.removeEventListener('touchmove', preventScroll);
+            document.removeEventListener('touchstart', preventDefault);
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
+        };
+    });
 </script>
 
 <div class="game-container">
@@ -310,14 +338,32 @@
 
 
 <style>
+    :global(html, body) {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        touch-action: none;
+        -webkit-overflow-scrolling: none;
+        position: fixed;
+    }
+
     .game-container {
         width: 100vw;
         height: 100vh;
+        height: 100dvh; /* Use dynamic viewport height for mobile */
         display: flex;
         flex-direction: column;
         background: #f5f5f5;
         overflow: hidden;
-        position: relative;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        touch-action: none;
+        -webkit-overflow-scrolling: none;
     }
 
     .energy-bar {
@@ -358,6 +404,17 @@
         flex: 1;
         position: relative;
         overflow: hidden;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        -webkit-overflow-scrolling: none;
+    }
+
+    :global(.canvas-wrapper canvas) {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        touch-action: none;
     }
 
     .action-menu {
