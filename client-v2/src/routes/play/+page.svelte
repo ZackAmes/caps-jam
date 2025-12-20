@@ -5,7 +5,6 @@
     import { OrbitControls } from '@threlte/extras';
     import GameBoard from '$lib/game/GameBoard.svelte';
     import HandBar from '$lib/game/HandBar.svelte';
-    import ActionButtons from '$lib/game/ActionButtons.svelte';
     import { createMockGameState } from '$lib/game/gameState';
 
     let gameState = $state(createMockGameState());
@@ -152,20 +151,6 @@
         </Canvas>
     </div>
 
-    {#if selectedPiece}
-        <ActionButtons 
-            piece={gameState.boardPieces.find(p => p.id === selectedPiece.id)!}
-            onAction={handleActionClick}
-            onCancel={cancelSelection}
-            position={{ x: selectedPiece.x, y: selectedPiece.y }}
-        />
-    {/if}
-
-    <HandBar 
-        hand={gameState.hand}
-        selectedIndex={selectedHandPiece}
-        onPieceClick={handleHandPieceClick}
-    />
 </div>
 
 <style>

@@ -34,6 +34,15 @@ pub fn process_actions(
         _ => 7, // third turn and beyond
     };
 
+    let mut action_count: u8 = match game.turn_count {
+        0 => 0,
+        1 => 1, // p1 first turn
+        2 => 1, // p2 first turn
+        3 => 2, // p1 second turn
+        4 => 2, // p2 second turn
+        _ => 4, // third turn and beyond
+    };
+
     let mut i = 0;
     while i < turn.len() {
         let action = turn.at(i);

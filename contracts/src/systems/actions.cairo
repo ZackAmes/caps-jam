@@ -255,16 +255,14 @@ pub mod actions {
 
             if game.turn_count % 2 == 0 {
                 assert!(
-                    true
                     //temp to test without changing controllers constantly
-         //           get_caller_address() == game.player1, "You are not the turn player, 1s turn",
+                    get_caller_address() == game.player1, "You are not the turn player, 1s turn",
                 );
-            } else {
+            } else if game.turn_count % 2 == 1 {
                 assert!(
-                    true
-         //           get_caller_address() == game.player2, "You are not the turn player, 2s turn",
+                    get_caller_address() == game.player2, "You are not the turn player, 2s turn",
                 );
-            }
+            } 
 
             let (mut start_of_turn_effects, mut move_step_effects, mut end_of_turn_effects) =
                 get_active_effects(
