@@ -1,9 +1,0 @@
-[build]
-builder = "railpack"
-
-[build.config]
-packages = ["bun", "nodejs"]
-buildCommand = "cd client && bun install && bun run build"
-
-[deploy]
-startCommand = "your-start-command-here"
