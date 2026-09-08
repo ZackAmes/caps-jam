@@ -91,18 +91,19 @@ fn _effect_snapshots(effects: @Array<Effect>) -> Span<EffectSnapshot> {
 pub mod actions {
     use caps::logic::hand::{HAND_SIZE, is_in_hand, requeue};
     use caps::logic::ops::{apply_damage, apply_heal, apply_op};
+    use caps::logic::passives::bonus;
     use caps::logic::rules::{
         BASE_INCOME, add_energy, capture_ready_turn, is_goal, objective_income, spend_action,
     };
+    use caps::logic::track::within_range;
     use caps::models::cap::{Cap, Location, get_position, is_on_board};
-    use caps::models::effect::{Effect, EffectTarget, EffectTrait, EffectType, Passive, PassiveType};
+    use caps::models::effect::{Effect, EffectTarget, EffectTrait, EffectType, PassiveKind};
     use caps::models::game::{Action, ActionType, Game, Global, Hand};
     use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
     use caps::models::set_data::{
         AbilityContext, ActorInfo, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, TargetType,
-        apply_damage_reduction, conditional_attack_bonus,
     };
-    use core::num::traits::Zero;
+    use core::num::traits::{SaturatingAdd, Zero};
     use dojo::model::ModelStorage;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use super::{
@@ -127,7 +128,7 @@ pub mod actions {
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         fn rules_version(self: @ContractState) -> u8 {
-            2
+            3
         }
 
         fn get_game_count(self: @ContractState) -> u64 {
@@ -190,6 +191,7 @@ pub mod actions {
             let set: Set = world.read_model(game.set_id);
             let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
 
+            let definitions = self._definitions(game.set_id, @alive_caps(@world, @game));
             for action in turn.span() {
                 assert!(!game.over, "Action after victory");
                 // Every preceding action/ability has been persisted and resolved.
@@ -230,11 +232,17 @@ pub mod actions {
                         if target_idx < caps.len() {
                             let target = *caps.at(target_idx);
                             assert!(target.player_slot != slot, "Friendly tile occupied");
-                            let target_def = dispatcher
-                                .get_cap_type(target.cap_type)
-                                .expect('Unknown target');
-                            let mut attack = def.attack
-                                + conditional_attack_bonus(def.passive, cap, @caps);
+                            let mut attack = def
+                                .attack
+                                .saturating_add(
+                                    bonus(
+                                        PassiveKind::AttackBonus,
+                                        cap,
+                                        @caps,
+                                        @definitions,
+                                        game.layout,
+                                    ),
+                                );
                             // Consume next-attack buffs only on contact combat.
                             let mut remaining = array![];
                             for e in effects.span() {
@@ -243,7 +251,7 @@ pub mod actions {
                                     match effect.effect_type {
                                         EffectType::DamageBuff(n) |
                                         EffectType::AttackBonus(n) => {
-                                            attack += n.into();
+                                            attack = attack.saturating_add(n.into());
                                             effect.trigger();
                                         },
                                         _ => {},
@@ -254,7 +262,18 @@ pub mod actions {
                                 }
                             }
                             effects = remaining;
-                            attack = apply_damage_reduction(target_def.passive, attack);
+                            let reduction = bonus(
+                                PassiveKind::DamageReduction,
+                                target,
+                                @caps,
+                                @definitions,
+                                game.layout,
+                            );
+                            attack = if attack > reduction {
+                                attack - reduction
+                            } else {
+                                0
+                            };
                             apply_damage(
                                 ref caps, SetOpDamage { target_cap: target.id, amount: attack },
                             );
@@ -279,23 +298,20 @@ pub mod actions {
                             assert!(pos == from, "Must target self");
                         } else {
                             assert!(is_walkable(game.layout, pos), "Invalid target tile");
-                            let dx = if from.x > pos.x {
-                                from.x - pos.x
-                            } else {
-                                pos.x - from.x
-                            };
-                            let dy = if from.y > pos.y {
-                                from.y - pos.y
-                            } else {
-                                pos.y - from.y
-                            };
-                            let mut in_range = false;
-                            for off in def.ability_range.span() {
-                                if *off.x == dx && *off.y == dy {
-                                    in_range = true;
-                                }
-                            }
-                            assert!(in_range, "Target out of range");
+                            let range: u16 = def.ability_range.into();
+                            let range = range
+                                .saturating_add(
+                                    bonus(
+                                        PassiveKind::AbilityRangeBonus,
+                                        cap,
+                                        @caps,
+                                        @definitions,
+                                        game.layout,
+                                    ),
+                                );
+                            assert!(
+                                within_range(game.layout, from, pos, range), "Target out of range",
+                            );
                             let ti = index_at(@caps, pos);
                             match def.ability_target {
                                 TargetType::TeamCap => {
@@ -360,6 +376,27 @@ pub mod actions {
                                 SetOp::ExtraActions(n) => {
                                     assert!(n <= 4 && actions + n <= 8, "Action bonus too large");
                                     actions += n;
+                                },
+                                SetOp::Damage(d) => {
+                                    let ti = index_of_id(@caps, d.target_cap);
+                                    if ti < caps.len() {
+                                        let reduction = bonus(
+                                            PassiveKind::DamageReduction,
+                                            *caps.at(ti),
+                                            @caps,
+                                            @definitions,
+                                            game.layout,
+                                        );
+                                        let amount = if d.amount > reduction {
+                                            d.amount - reduction
+                                        } else {
+                                            0
+                                        };
+                                        apply_damage(
+                                            ref caps,
+                                            SetOpDamage { target_cap: d.target_cap, amount },
+                                        );
+                                    }
                                 },
                                 SetOp::Heal(h) => {
                                     let ti = index_of_id(@caps, h.target_cap);
@@ -672,43 +709,16 @@ pub mod actions {
             let mut world = self.world_default();
             let slot: u8 = (game.turn_count % 2).try_into().unwrap();
             let mut caps = alive_caps(@world, @game);
-            let sources = caps.clone();
-            for source in sources.span() {
-                if *source.player_slot == slot && is_on_board(source) {
-                    let passive = self._get_passive(game.set_id, *source.cap_type);
-                    let ops = caps::models::set_data::AuraTrait::aura_ops(*source, passive, @caps);
-                    for op in ops.span() {
-                        if let SetOp::ApplyEffect(a) = *op {
-                            let mut exists = false;
-                            for e in effects.span() {
-                                if *e.target == EffectTarget::Cap(a.target_cap)
-                                    && *e.effect_type == a.effect {
-                                    exists = true;
-                                }
-                            }
-                            if !exists {
-                                apply_op(
-                                    ref caps,
-                                    ref effects,
-                                    *source.id,
-                                    slot,
-                                    game.id,
-                                    game.layout,
-                                    ref game.next_effect_id,
-                                    *op,
-                                );
-                            }
-                        }
-                    };
-                }
-            }
+            let definitions = self._definitions(game.set_id, @caps);
             let mut income: u16 = BASE_INCOME.into() + objective_income(@caps, slot).into();
             for c in caps.span() {
                 if *c.player_slot == slot && is_on_board(c) {
-                    let passive = self._get_passive(game.set_id, *c.cap_type);
-                    if let PassiveType::EnergyGeneration(n) = passive.passive_type {
-                        income += n.into();
-                    }
+                    income = income
+                        .saturating_add(
+                            bonus(
+                                PassiveKind::EnergyGeneration, *c, @caps, @definitions, game.layout,
+                            ),
+                        );
                 }
             }
             let mut remaining = array![];
@@ -719,7 +729,7 @@ pub mod actions {
                     if c.player_slot == slot && is_on_board(@c) {
                         match effect.effect_type {
                             EffectType::ExtraEnergy(n) => {
-                                income += n.into();
+                                income = income.saturating_add(n.into());
                                 effect.trigger();
                             },
                             EffectType::Stun(_) => {
@@ -754,6 +764,7 @@ pub mod actions {
         ) {
             let mut world = self.world_default();
             let mut caps = alive_caps(@world, @game);
+            let definitions = self._definitions(game.set_id, @caps);
             let mut remaining = array![];
             for e in effects.span() {
                 let mut effect = *e;
@@ -764,9 +775,20 @@ pub mod actions {
                         && is_on_board(caps.at(idx)) {
                         match effect.effect_type {
                             EffectType::DOT(n) => {
-                                apply_damage(
-                                    ref caps, SetOpDamage { target_cap: id, amount: n.into() },
+                                let reduction = bonus(
+                                    PassiveKind::DamageReduction,
+                                    *caps.at(idx),
+                                    @caps,
+                                    @definitions,
+                                    game.layout,
                                 );
+                                let damage: u16 = n.into();
+                                let amount = if damage > reduction {
+                                    damage - reduction
+                                } else {
+                                    0
+                                };
+                                apply_damage(ref caps, SetOpDamage { target_cap: id, amount });
                                 effect.trigger();
                             },
                             EffectType::Heal(n) => {
@@ -792,18 +814,16 @@ pub mod actions {
                 if cap.player_slot == slot {
                     cap.stunned_turns = 0;
                     if is_on_board(@cap) {
-                        let passive = self._get_passive(game.set_id, cap.cap_type);
-                        if let PassiveType::Regeneration(r) = passive.passive_type {
-                            let (hp, _, _, _) = self._stats(game.set_id, cap.cap_type);
-                            let healed: u32 = cap.health.into() + r.amount.into();
-                            cap
-                                .health =
-                                    if healed > hp.into() {
-                                        hp
-                                    } else {
-                                        healed.try_into().unwrap()
-                                    };
-                        }
+                        let amount = bonus(
+                            PassiveKind::Regeneration, cap, @caps, @definitions, game.layout,
+                        );
+                        let (hp, _, _, _) = self._stats(game.set_id, cap.cap_type);
+                        let healed = cap.health.saturating_add(amount);
+                        cap.health = if healed > hp {
+                            hp
+                        } else {
+                            healed
+                        };
                     }
                 }
                 world.write_model(@cap);
@@ -827,16 +847,25 @@ pub mod actions {
             };
         }
 
-        /// Fetch the passive for a piece type from the set contract.
-        /// Returns None if the set doesn't define it.
-        fn _get_passive(ref self: ContractState, set_id: u64, cap_type: u16) -> Passive {
+        /// Read each piece definition once per phase. Passive conditions use fresh board state.
+        fn _definitions(ref self: ContractState, set_id: u64, caps: @Array<Cap>) -> Array<CapType> {
             let world = self.world_default();
             let set: Set = world.read_model(set_id);
             let dispatcher = ISetInterfaceDispatcher { contract_address: set.address };
-            match dispatcher.get_cap_type(cap_type) {
-                Option::Some(ct) => ct.passive,
-                Option::None => Passive { passive_type: PassiveType::None },
+            let mut definitions: Array<CapType> = array![];
+            for c in caps.span() {
+                let mut found = false;
+                for d in definitions.span() {
+                    if *d.id == *c.cap_type {
+                        found = true;
+                    }
+                }
+                if !found {
+                    definitions
+                        .append(dispatcher.get_cap_type(*c.cap_type).expect('Unknown piece'));
+                }
             }
+            definitions
         }
 
         fn world_default(self: @ContractState) -> dojo::world::WorldStorage {

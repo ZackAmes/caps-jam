@@ -54,12 +54,8 @@ export interface CapTypeDef {
   abilityCost: number;
   abilityDescription: string;
   abilityTarget: number; // TargetType enum index
-  abilityRange: Array<[number, number]>;
-  passiveType: number; // PassiveType enum index (0 = None)
-  passiveAmount: number;
-  passiveCondition: number; // Condition enum index
-  passiveRadius: number;
-  passiveEffectType: number; // EffectType enum index (for Aura)
+  abilityRange: number;
+  passives: Passive[];
 }
 
 export interface TurnAction {
@@ -69,3 +65,12 @@ export interface TurnAction {
   y: number;
 }
 
+
+export type PassiveKind = 'AttackBonus' | 'DamageReduction' | 'AbilityRangeBonus' | 'EnergyGeneration' | 'Regeneration';
+export type Relation = 'Ally' | 'Enemy' | 'Any';
+export type PassiveCondition =
+  | { kind: 'AlliesOnBoard' | 'AllyWithin' | 'EnemyWithin' | 'HealthBelowPercent'; value: number }
+  | { kind: 'OnEnemyHalf' }
+  | { kind: 'PieceInRow' | 'PieceInColumn'; relation: Relation };
+export type PassiveTarget = { kind: 'SelfCap' } | { kind: 'AlliesWithin' | 'EnemiesWithin' | 'AllWithin'; radius: number };
+export interface Passive { kind: PassiveKind; amount: number; target: PassiveTarget; conditions: PassiveCondition[] }

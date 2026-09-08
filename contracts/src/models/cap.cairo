@@ -32,25 +32,6 @@ pub enum Location {
     Dead,
 }
 
-/// Chebyshev distance between two cells (for adjacency & range checks).
-pub fn dist(a: Vec2, b: Vec2) -> u32 {
-    let dx: u32 = if a.x > b.x {
-        (a.x - b.x).into()
-    } else {
-        (b.x - a.x).into()
-    };
-    let dy: u32 = if a.y > b.y {
-        (a.y - b.y).into()
-    } else {
-        (b.y - a.y).into()
-    };
-    if dx > dy {
-        dx
-    } else {
-        dy
-    }
-}
-
 /// Get board position if on board.
 pub fn get_position(cap: @Cap) -> Option<Vec2> {
     match (*cap).location {

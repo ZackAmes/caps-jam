@@ -1,6 +1,6 @@
 import { Account, RpcProvider, constants } from 'starknet';
 import { loadConfig } from './config';
-import { CapsV2Adapter } from './game/v2';
+import { CapsV3Adapter } from './game/v3';
 import { greedyStrategy } from './strategies/greedy';
 import { FileStore } from './store';
 import { BotWorker, message } from './worker';
@@ -17,9 +17,9 @@ async function main() {
   const chainId = await provider.getChainId();
   if (chainId !== constants.StarknetChainId.SN_SEPOLIA) throw new Error('This bot is configured for Sepolia only');
   const account = new Account({ provider, address: config.address, signer: config.privateKey });
-  const adapter = new CapsV2Adapter(provider, account, config.actionsAddress);
+  const adapter = new CapsV3Adapter(provider, account, config.actionsAddress);
   await adapter.checkCompatibility();
-  const identity = `${chainId}:${BigInt(config.actionsAddress)}:${BigInt(config.address)}:rules2`;
+  const identity = `${chainId}:${BigInt(config.actionsAddress)}:${BigInt(config.address)}:rules3`;
   const store = new FileStore(config.statePath);
   const unlock = store.lock();
   const abort = new AbortController();

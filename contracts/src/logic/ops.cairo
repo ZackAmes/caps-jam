@@ -1,4 +1,4 @@
-use caps::logic::track::is_walkable;
+use caps::logic::track::{is_valid_step, is_walkable};
 use caps::models::cap::{Cap, Location};
 use caps::models::effect::{Effect, EffectTarget, EffectTrait, EffectType};
 use caps::models::game::Vec2;
@@ -203,7 +203,7 @@ pub fn apply_push(ref caps: Array<Cap>, op: SetOpPush, layout: u8) -> bool {
     let mut i: u8 = 0;
     while i < op.steps {
         let next = step_dir(Vec2 { x: cur_x, y: cur_y }, op.direction);
-        if !is_walkable(layout, next) || occupied(@caps, next) {
+        if !is_valid_step(layout, Vec2 { x: cur_x, y: cur_y }, next) || occupied(@caps, next) {
             break;
         }
         cur_x = next.x;

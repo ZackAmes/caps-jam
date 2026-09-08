@@ -1,5 +1,8 @@
 # CAPS bot
 
+This branch requires rules v3. Its checked-in manifest still points at v2; deploy the
+v3 contracts and sync the manifest before running it. The live v2 bot runs from `~/caps`.
+
 A standalone Sepolia player with its own account. Anyone can challenge the address in
 [account.public.json](account.public.json), or use **Play against Bot** in the game lobby.
 The worker polls every 15 seconds and processes one transaction at a time across its games.
@@ -43,7 +46,7 @@ Stop the old worker before starting the replacement.
 
 - `src/worker.ts` handles discovery, turn ownership, retrying, and checkpoints. It has no
   board logic. `src/ports.ts` defines its adapter and strategy interfaces.
-- `src/game/v2.ts` owns ABI reads, transaction encoding, and constructing a v2 position.
+- `src/game/v3.ts` owns ABI reads, transaction encoding, and constructing a v3 position.
   Unsupported rules versions, sets, and layouts are rejected rather than guessed.
 - `src/strategies/greedy.ts` is a pure function. Replace it and select the replacement in
   `src/main.ts` to change play style without touching accounts or polling.

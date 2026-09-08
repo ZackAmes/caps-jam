@@ -1,11 +1,11 @@
-import type { LayoutConfig } from '@caps/game-core/board';
+import { getLayout, type LayoutConfig } from '@caps/game-core/board';
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handIds, previewTurn } from '@caps/game-core/preview';
 import type { ChainCap, ChainGame, ChainHand, CapTypeDef } from '@caps/game-core/types';
-const layout: LayoutConfig = { id: 0, name: 'Perimeter', description: 'Test perimeter', width: 5, height: 5, p1Deploy: [2,0], p2Deploy: [2,4], isWalkable: (x,y) => x>=0 && y>=0 && x<5 && y<5 && (x===0 || x===4 || y===0 || y===4) };
+const layout = getLayout(0);
 const piece = (id: number, playerSlot=0, capType=1, x:number|null=null, y:number|null=null): ChainCap => ({id, owner:'0x123', playerSlot, capType, setId:0, x,y,health:6,shield:0,stunnedTurns:0,availableTurn:0,dead:false});
-const definition = (id:number):CapTypeDef => ({id,name:'Piece',description:'',maxHealth:6,attack:2,moveRange:1,attackRange:1,playCost:0,moveCost:0,abilityCost:2,abilityDescription:'',abilityTarget:id===5?1:3,abilityRange:[[1,0],[0,1],[1,1]],passiveType:0,passiveAmount:0,passiveCondition:0,passiveRadius:0,passiveEffectType:0});
+const definition = (id:number):CapTypeDef => ({id,name:'Piece',description:'',maxHealth:6,attack:2,moveRange:1,attackRange:1,playCost:0,moveCost:0,abilityCost:2,abilityDescription:'',abilityTarget:id===5?1:3,abilityRange:1,passives:[]});
 const defs = new Map([0,1,2,3,4,5].map(i=>[i,definition(i)]));
 const game = (caps:ChainCap[], turnCount=0):ChainGame => ({id:1,player1:'0x123',player2:'0x123',layout:0,setId:0,turnCount,over:false,winner:'0x0',winnerSlot:2,energy:3,p1Energy:3,p2Energy:1,effectIds:[],caps});
 const hand:ChainHand = {gameId:1,playerSlot:0,roster:[1,3,5,7,9,11],handSize:4,window:[1,3,5,7]};

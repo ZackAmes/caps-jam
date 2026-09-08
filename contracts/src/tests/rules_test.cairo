@@ -11,7 +11,7 @@ use dojo_cairo_test::{
 };
 use starknet::{ContractAddress, testing};
 
-fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
+pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
     let ns = NamespaceDef {
         namespace: "caps",
         resources: [
@@ -23,6 +23,7 @@ fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
             TestResource::Model(m_Set::TEST_CLASS_HASH),
             TestResource::Contract(actions::TEST_CLASS_HASH),
             TestResource::Contract(set_zero::TEST_CLASS_HASH),
+            TestResource::Contract(caps::tests::foundation_test::passive_test_set::TEST_CLASS_HASH),
         ]
             .span(),
     };
@@ -46,7 +47,7 @@ fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
     (world, api, id)
 }
 
-fn put(ref world: WorldStorage, id: u64, x: u8, y: u8) {
+pub fn put(ref world: WorldStorage, id: u64, x: u8, y: u8) {
     let mut c: Cap = world.read_model(id);
     c.location = Location::Board(Vec2 { x, y });
     world.write_model_test(@c);
@@ -266,13 +267,14 @@ fn ability_triggers_automatic_capture_too() {
     put(ref world, 4, 0, 0);
     put(ref world, 5, 1, 0);
     put(ref world, 7, 0, 1);
+    put(ref world, 3, 2, 0);
     let mut game: Game = world.read_model(id);
     game.energy = 3;
     world.write_model_test(@game);
-    api.take_turn(id, array![act(5, ActionType::Ability(Vec2 { x: 0, y: 1 }))]);
+    api.take_turn(id, array![act(5, ActionType::Ability(Vec2 { x: 2, y: 0 }))]);
     let captured: Cap = world.read_model(4);
     assert!(captured.location == Location::Bench, "ability resolves capture");
-    let shielded: Cap = world.read_model(7);
+    let shielded: Cap = world.read_model(3);
     assert!(shielded.shield == 3, "friendly targeting");
 }
 

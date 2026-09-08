@@ -1,4 +1,4 @@
-use caps::models::effect::{Passive, PassiveType};
+use caps::models::effect::{Passive, PassiveKind, PassiveTarget};
 use caps::models::game::Vec2;
 use caps::models::set_data::{
     AbilityContext, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, SetOpShield, SetOutput,
@@ -26,8 +26,15 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 ability_cost: 0,
                 ability_description: "None",
                 ability_target: TargetType::None,
-                ability_range: array![],
-                passive: Passive { passive_type: PassiveType::EnergyGeneration(1) },
+                ability_range: 0,
+                passives: array![
+                    Passive {
+                        kind: PassiveKind::EnergyGeneration,
+                        amount: 1,
+                        target: PassiveTarget::SelfCap,
+                        conditions: array![].span(),
+                    },
+                ],
             },
         )
     } else if id == 1 {
@@ -46,10 +53,8 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 ability_cost: 2,
                 ability_description: "Deal 2 damage to an enemy in range",
                 ability_target: TargetType::OpponentCap,
-                ability_range: array![
-                    Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 },
-                ],
-                passive: Passive { passive_type: PassiveType::None },
+                ability_range: 1,
+                passives: array![],
             },
         )
     } else if id == 2 {
@@ -68,10 +73,8 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 ability_cost: 2,
                 ability_description: "Give an ally 3 shield",
                 ability_target: TargetType::TeamCap,
-                ability_range: array![
-                    Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 },
-                ],
-                passive: Passive { passive_type: PassiveType::None },
+                ability_range: 1,
+                passives: array![],
             },
         )
     } else if id == 3 {
@@ -90,10 +93,8 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 ability_cost: 2,
                 ability_description: "Heal an ally 3",
                 ability_target: TargetType::TeamCap,
-                ability_range: array![
-                    Vec2 { x: 1, y: 0 }, Vec2 { x: 0, y: 1 }, Vec2 { x: 1, y: 1 },
-                ],
-                passive: Passive { passive_type: PassiveType::None },
+                ability_range: 1,
+                passives: array![],
             },
         )
     } else if id == 4 {
@@ -110,14 +111,10 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 play_cost: 0,
                 move_cost: 0,
                 ability_cost: 3,
-                ability_description: "Deal 4 damage to an enemy within 3",
+                ability_description: "Deal 4 damage to an enemy within 3 path steps",
                 ability_target: TargetType::OpponentCap,
-                ability_range: array![
-                    Vec2 { x: 1, y: 0 }, Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 },
-                    Vec2 { x: 0, y: 1 }, Vec2 { x: 0, y: 2 }, Vec2 { x: 1, y: 1 },
-                    Vec2 { x: 2, y: 2 }, Vec2 { x: 3, y: 3 },
-                ],
-                passive: Passive { passive_type: PassiveType::None },
+                ability_range: 3,
+                passives: array![],
             },
         )
     } else if id == 5 {
@@ -136,8 +133,8 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 ability_cost: 2,
                 ability_description: "Gain 1 extra move this turn",
                 ability_target: TargetType::SelfCap,
-                ability_range: array![],
-                passive: Passive { passive_type: PassiveType::None },
+                ability_range: 1,
+                passives: array![],
             },
         )
     } else {

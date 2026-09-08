@@ -1,0 +1,100 @@
+# Mechanics foundation (rules v3)
+
+Implemented on `mechanics-foundation`; not deployed. The live Sepolia world, client
+manifest, and background bot remain on v2 until a coordinated deployment.
+
+## Board topology and distance
+
+`rules/boards.json` is the topology source of truth. Each path is an ordered list of
+tiles. Consecutive entries create undirected edges. Shared tiles are junctions, where
+pieces can choose any connected edge. Tiles that merely touch on the grid do not
+become connected. Every edge costs exactly one step, even for diagonals, bends, or
+future paths whose consecutive tiles have distant rendering coordinates.
+
+Distance is the shortest connected route. Same valid tile: zero. Invalid or disconnected
+tile: unreachable. Occupancy does not change distance; blocking and targeting ownership
+are checked separately. Range does not imply line of sight or require intervening tiles
+to be empty. A friendly-target ability includes self at distance zero; self-only targeting
+requires the acting piece exactly. Normal movement still traverses exactly one edge and cannot pass through
+a piece. Capture checks all directly connected neighbors. Cardinal Push operations
+must also follow a valid edge; Teleport intentionally bypasses intermediate movement.
+
+Examples: perimeter `(1,0)` to `(0,1)` costs two steps through the corner, not one.
+Across the perimeter from `(2,0)` to `(2,4)` costs eight; on the cross it costs four.
+On the X layout, `(0,0)` to `(1,1)` is one step.
+
+The client and AI construct the graph from the JSON. `scripts/generate-boards.py`
+generates contract distance tables from the same source to avoid onchain graph searches.
+After editing paths, run the generator. `python3 scripts/generate-boards.py --check`
+checks that the committed tables are current.
+
+## Continuous passives
+
+Each piece definition has a list of passives. A passive has:
+
+- **Kind:** attack bonus, damage reduction, ability range bonus, energy generation, or regeneration.
+- **Amount:** nonnegative integer.
+- **Target:** self, other allies within N path steps, enemies within N steps, or all other pieces within N steps.
+- **Conditions:** zero or more predicates on the source and board. All must hold.
+
+An empty condition list means active for as long as the source is on the board.
+Bench/captured/dead sources never contribute. Stun prevents actions, but does not turn
+off board-presence passives. Auras exclude their source; add a self-targeted passive
+when the source should also receive the bonus.
+
+Conditions include friendly piece count (including self), another ally or enemy within
+N path steps, health strictly below a percentage of base max health, being on the enemy
+half, and another piece in the same row or column. Row/column conditions explicitly
+select friendly, enemy, or either, always exclude self, and use grid coordinates.
+Side identity uses player slot, not wallet address, so solo games behave correctly.
+
+For example, a self attack bonus conditional on another friendly piece in the same row:
+
+```ts
+{
+  kind: 'AttackBonus',
+  amount: 2,
+  target: { kind: 'SelfCap' },
+  conditions: [{ kind: 'PieceInRow', relation: 'Ally' }]
+}
+```
+
+Replace `conditions` with `[]` for an unconditional on-board bonus. Replace the target
+with `{ kind: 'AlliesWithin', radius: 2 }` to make it a conditional aura instead.
+Multiple conditions combine with AND; separate passive entries stack independently.
+
+## Timing and stacking
+
+Continuous bonuses are derived, not written as persistent effects. Conditions are
+re-evaluated against current board state whenever a bonus is consumed, including
+between queued actions and individual ability operations. Moving, killing, capturing,
+or repositioning a source/prerequisite immediately changes later evaluations. There
+are no stale aura buffs to clean up or refresh and no periodic aura stacking.
+
+Every eligible source/entry contributes once. Bonuses add, saturating at 65,535.
+Conditions read base board facts, not derived bonuses; there is no recursive activation.
+Attack bonuses apply to contact attacks. Damage reduction applies before shields to
+contact damage, active ability damage, and DOT. Ability range bonuses add path steps.
+
+Economy and regeneration use the same eligibility engine but pay out at explicit times:
+energy at the recipient owner's turn start, healing at their turn end. Losing a passive
+does not claw back energy already earned or healing already received. Regeneration
+eligibility is evaluated from the post-effect board before passive healing is applied.
+The usual energy cap and maximum-health clamp still apply.
+
+## Boundaries and compatibility
+
+Timed status effects remain separate from passives. Their older unused enum variants
+are not newly implemented by this change. No new roster is required to use the framework;
+Set Zero keeps its existing roles and Generator is expressed as an unconditional passive.
+The Blaster now uses a radius of three path steps instead of an incomplete offset list.
+
+The client and AI share the passive evaluator and path logic. Active ability simulation
+still implements Set Zero explicitly; arbitrary new active operations need preview
+support. Movement/attack metadata does not grant multi-edge normal movement.
+
+This changes the `CapType` set ABI (`passives` list and scalar path-step ability range).
+`rules_version()` is 3 and both client and bot reject v2. Deploy actions and Set Zero
+together into a fresh v3 world, register the set, sync the manifest, then switch client
+and bot. Use a separate checkpoint for the v3 bot. Do not upgrade only one contract or
+silently reinterpret ongoing v2 games with the new path connections.

@@ -3,7 +3,8 @@
     import { previewTurn } from '@caps/game-core/preview';
     import { createGame, createSoloGame, takeTurn, getGame, getHand, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
-    import { getLayout, isValidStep, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
+    import { getLayout, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
+    import { passiveActive, passiveBonus } from '@caps/game-core/passives';
     import { passiveLabel } from '$lib/dojo/labels';
     import type { ChainGame, ChainCap, TurnAction, ChainHand, CapTypeDef } from '@caps/game-core/types';
 
@@ -95,7 +96,7 @@
         if (cap.x === null || cap.y === null) return out;
         if (!game || remainingEnergy < def.abilityCost) return out;
         for (let x = 0; x < activeLayout.width; x++) for (let y = 0; y < activeLayout.height; y++) {
-            if (!def.abilityRange.some(([dx, dy]) => Math.abs(x - cap.x!) === dx && Math.abs(y - cap.y!) === dy)) continue;
+            if (pathDistance(activeLayout, [cap.x, cap.y], [x, y]) > Math.min(65535, def.abilityRange + passiveBonus('AbilityRangeBonus', cap, simCaps, capDefMap, activeLayout))) continue;
             if (!activeLayout.isWalkable(x, y)) continue;
             const occ = capAt(x, y);
             switch (def.abilityTarget) {
@@ -191,16 +192,10 @@
         const out = new Map<string, { type: 'move' | 'fight'; dmg?: number }>();
         if (cap.x === null || cap.y === null) return out;
         const dmg = capDefFor(cap)?.attack ?? 0;
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                if (dx === 0 && dy === 0) continue;
-                const x = cap.x + dx, y = cap.y + dy;
-                if (!activeLayout.isWalkable(x, y)) continue;
-                if (!isValidStep(game!.layout, [cap.x, cap.y], [x, y])) continue;
-                const occ = capAt(x, y);
-                if (!occ) out.set(`${x},${y}`, { type: 'move' });
-                else if (!isMyCap(occ) && occ.id !== cap.id) out.set(`${x},${y}`, { type: 'fight', dmg });
-            }
+        for (const [x, y] of activeLayout.neighbors([cap.x, cap.y])) {
+            const occ = capAt(x, y);
+            if (!occ) out.set(`${x},${y}`, { type: 'move' });
+            else if (!isMyCap(occ)) out.set(`${x},${y}`, { type: 'fight', dmg: Math.max(0, dmg + passiveBonus('AttackBonus', cap, simCaps, capDefMap, activeLayout) - passiveBonus('DamageReduction', occ, simCaps, capDefMap, activeLayout)) });
         }
         return out;
     }
@@ -741,7 +736,7 @@
                                     <div class="hp">{c.health}</div>
                                     {#if c.shield > 0}<div class="shield-badge">🛡{c.shield}</div>{/if}
                                     {#if c.stunnedTurns > 0}<div class="stun-badge">💫</div>{/if}
-                                    {#if capDefFor(c) && capDefFor(c)!.passiveType > 0}
+                                    {#if capDefFor(c) && capDefFor(c)!.passives.length > 0}
                                         <div class="passive-badge">✦</div>
                                     {/if}
                                 </div>
@@ -805,9 +800,10 @@
                                 {selDef.abilityDescription}
                             </div>
                         {/if}
-                        {#if selDef.passiveType > 0}
-                            <div class="pi-passive">✦ {passiveLabel(selDef)}</div>
-                        {/if}
+                        {#each selDef.passives as passive}
+                            {@const source = capById(selectedCapId)}
+                            <div class="pi-passive">✦ {passiveLabel(passive)} — {source && passiveActive(passive, source, selDef.maxHealth, simCaps, activeLayout) ? 'Active' : 'Inactive'}</div>
+                        {/each}
                     </div>
                 {/if}
             {/if}

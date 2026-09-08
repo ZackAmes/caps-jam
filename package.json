@@ -11,8 +11,9 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "bun test client/tests bot/tests",
+    "test": "python3 scripts/generate-boards.py --check && bun test client/tests bot/tests",
     "check": "bun run --cwd client check && bun run --cwd bot check",
-    "bot": "bun run --cwd bot src/main.ts"
+    "bot": "bun run --cwd bot src/main.ts",
+    "generate:boards": "python3 scripts/generate-boards.py"
   }
 }

@@ -1,12 +1,12 @@
-# CAPS — current rules (v2)
+# CAPS — implemented rules (v3, not yet deployed)
 
-This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
+See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive and path semantics. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
 
 ## Objective and board
 
 Reach the center of the opponent's back row with any piece. Player 1 starts at `(2,0)` and wins at `(2,4)`; Player 2 starts at `(2,4)` and wins at `(2,0)`. All four 5×5 track layouts share these bases. Reaching a goal ends the match immediately, including movement caused by an ability. There are no towers or elimination-based win checks.
 
-Deployment uses your own base square, which must be empty. Movement is one orthogonal or diagonal step to an adjacent walkable tile. Moving into an enemy attacks: shields absorb damage first, and the attacker takes the square only if the enemy dies. Friendly pieces block movement. Death removes a piece permanently; capture is different.
+Deployment uses your own base square, which must be empty. Movement is one edge along an explicitly connected path. Grid proximity alone does not connect tiles. Moving into an enemy attacks: shields absorb damage first, and the attacker takes the square only if the enemy dies. Friendly pieces block movement. Death removes a piece permanently; capture is different.
 
 ## Turns and abilities
 
@@ -23,7 +23,7 @@ The contract applies each queued action to the latest state, resolves victory/ca
 
 ## Automatic surround capture
 
-After each action or ability finishes, capture any piece whose **every adjacent walkable square** is occupied by opposing pieces. Empty or friendly adjacent squares provide an escape. All captures are determined from the same board snapshot and applied simultaneously. No capture action exists.
+After each action or ability finishes, capture any piece whose **every directly connected path neighbor** is occupied by opposing pieces. Empty or friendly adjacent squares provide an escape. All captures are determined from the same board snapshot and applied simultaneously. No capture action exists.
 
 Captured pieces return to their owner's bench at full health, without shields, stuns or attached effects, and move to the back of that owner's draw queue. They cannot deploy during the owner's next two turns and become eligible on the third. For example, a P2 piece captured on global turn 0 cannot deploy on P2 turns 1 and 3, and becomes eligible on turn 5. A piece captured during its own turn skips its next two owner turns too.
 
@@ -53,17 +53,17 @@ Control means current occupation at turn start; control is not retained after le
 | 1 | Striker | 6 | 2 | Deal 2 damage to an enemy | 2 |
 | 2 | Guardian | 10 | 1 | Give an ally 3 shield | 2 |
 | 3 | Medic | 7 | 1 | Heal an ally 3, capped at its real maximum HP | 2 |
-| 4 | Blaster | 5 | 1 | Deal 4 damage to an enemy in its targeting pattern | 3 |
+| 4 | Blaster | 5 | 1 | Deal 4 damage to an enemy within three path steps | 3 |
 | 5 | Runner | 6 | 2 | Gain one extra move this turn | 2 |
 
-Ability ranges are absolute offset patterns mirrored across both axes; they are the same for both sides. Self-targeted abilities require the acting piece's own square.
+Ability ranges are shortest-path step counts, identical for both sides and independent of grid distance or intervening pieces. Self-targeted abilities require the acting piece's own square.
 
 ## Development and compatibility
 
 The hardcoded Sepolia test account remains intentional while Controller is unavailable. Solo games use that account for both sides, but every piece has an explicit player slot; ownership checks, targeting, colors, income, cooldowns and victory use the slot correctly.
 
-These changes alter the Game, Cap, Hand and set ABI. Use a **fresh world and fresh games**, redeploy Set Zero, register it as set 0, and sync the new manifest before running this client against Sepolia. `rules_version()` returns 2; the client checks it before creating/loading a game to avoid interpreting an old deployment with the new schema. Existing deployed games are not migrated by these code changes.
+The v3 foundation changes the set ABI and board connections. Use a fresh v3 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 3; the client and bot reject incompatible deployments.
 
-Deployed September 5, 2026 on Sepolia: world `0x76621c09cb35987c3760b3bd22573327305ccfdb45aa10493f284552505e92d`. The client manifest targets this v2 world.
+The existing manifest and running service still target the September 5, 2026 **v2** Sepolia world (`0x76621c09cb35987c3760b3bd22573327305ccfdb45aa10493f284552505e92d`). This branch has not changed that deployment.
 
 The client previews the reference set's actions and abilities. The onchain contract is authoritative; arbitrary future sets will need corresponding preview support.

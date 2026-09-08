@@ -1,4 +1,4 @@
-import type { ChainGame, ChainHand, CapTypeDef } from './types';
+import type { ChainGame, ChainHand, CapTypeDef, Passive, PassiveKind, PassiveCondition, Relation } from './types';
 const num = (s: string): number => Number(BigInt(s));
 
 export function decodeHand(f: string[]): ChainHand | null {
@@ -57,47 +57,35 @@ export function decodeCapType(f: string[]): CapTypeDef | null {
   const abilityCost = num(f[i++]);
   const abilityDescription = readText();
   const abilityTarget = num(f[i++]);
-  const rangeLen = num(f[i++]);
-  const abilityRange: Array<[number, number]> = [];
-  for (let k = 0; k < rangeLen; k++) {
-    const rx = num(f[i++]);
-    const ry = num(f[i++]);
-    abilityRange.push([rx, ry]);
-  }
-  // Passive: struct { passive_type: PassiveType }
-  // PassiveType is an enum — parse variant index + payload
-  const passiveVariant = num(f[i++]);
-  let passiveType = 0;
-  let passiveAmount = 0;
-  let passiveCondition = 0;
-  let passiveRadius = 0;
-  let passiveEffectType = 0;
-  if (passiveVariant === 1) {
-    // Aura: SetPassiveAura { effect: EffectType, radius: u8 }
-    passiveType = 1;
-    passiveEffectType = num(f[i++]);
-    if (passiveEffectType !== 0) i++; // effect magnitude
-    passiveRadius = num(f[i++]);
-  } else if (passiveVariant === 2) {
-    // DamageReduction: SetPassiveDamageReduction { amount: u16 }
-    passiveType = 2;
-    passiveAmount = num(f[i++]);
-  } else if (passiveVariant === 3) {
-    // ConditionalAttack: SetPassiveConditionalAttack { amount: u16, condition: Condition }
-    passiveType = 3;
-    passiveAmount = num(f[i++]);
-    passiveCondition = num(f[i++]);
-    if ([1, 3, 4].includes(passiveCondition)) i++; // condition threshold
-  } else if (passiveVariant === 4) {
-    // Regeneration: SetPassiveRegeneration { amount: u16 }
-    passiveType = 4;
-    passiveAmount = num(f[i++]);
-  } else if (passiveVariant === 6) {
-    passiveType = 6;
-    passiveAmount = num(f[i++]);
-  } else if (passiveVariant === 5) {
-    // FreeFirstAttack: unit variant, no payload
-    passiveType = 5;
+  const abilityRange = num(f[i++]);
+  const passives: Passive[] = [];
+  const kinds: PassiveKind[] = ['AttackBonus', 'DamageReduction', 'AbilityRangeBonus', 'EnergyGeneration', 'Regeneration'];
+  const relations: Relation[] = ['Ally', 'Enemy', 'Any'];
+  const count = num(f[i++]);
+  for (let p = 0; p < count; p++) {
+    const kind = kinds[num(f[i++])];
+    if (!kind) throw new Error('Unknown passive kind');
+    const amount = num(f[i++]);
+    const targetIndex = num(f[i++]);
+    const targetKinds = ['SelfCap', 'AlliesWithin', 'EnemiesWithin', 'AllWithin'] as const;
+    const targetKind = targetKinds[targetIndex];
+    if (!targetKind) throw new Error('Unknown passive target');
+    const target = targetKind === 'SelfCap' ? { kind: targetKind } : { kind: targetKind, radius: num(f[i++]) };
+    const conditions: PassiveCondition[] = [];
+    const length = num(f[i++]);
+    for (let c = 0; c < length; c++) {
+      const variant = num(f[i++]);
+      if (variant < 4) {
+        const kind = (['AlliesOnBoard', 'AllyWithin', 'EnemyWithin', 'HealthBelowPercent'] as const)[variant];
+        conditions.push({ kind, value: num(f[i++]) });
+      } else if (variant === 4) conditions.push({ kind: 'OnEnemyHalf' });
+      else if (variant === 5 || variant === 6) {
+        const relation = relations[num(f[i++])];
+        if (!relation) throw new Error('Unknown passive relation');
+        conditions.push({ kind: variant === 5 ? 'PieceInRow' : 'PieceInColumn', relation });
+      } else throw new Error('Unknown passive condition');
+    }
+    passives.push({ kind, amount, target, conditions });
   }
 
   return {
@@ -114,11 +102,7 @@ export function decodeCapType(f: string[]): CapTypeDef | null {
     abilityDescription,
     abilityTarget,
     abilityRange,
-    passiveType,
-    passiveAmount,
-    passiveCondition,
-    passiveRadius,
-    passiveEffectType,
+    passives,
   };
 }
 

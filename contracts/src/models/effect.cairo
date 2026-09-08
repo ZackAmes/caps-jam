@@ -34,7 +34,7 @@ pub enum EffectType {
     MoveBonus: u8,
     /// Attacks deal +N damage.
     AttackBonus: u8,
-    /// Extend ability range by N (chebyshev).
+    /// Reserved timed-effect variant; use AbilityRangeBonus passives for live path range.
     BonusRange: u8,
     /// Move costs N less energy.
     MoveDiscount: u8,
@@ -109,59 +109,49 @@ pub impl EffectImpl of EffectTrait {
     }
 }
 
-// ── Passives ──
-// Passive abilities are always-on piece traits declared by the set
-// contract in CapType. The core evaluates them at defined trigger
-// points — sets cannot run arbitrary code.
-
-/// A passive ability declared on a CapType.
+// Continuous passives are derived from the current board, never stored as timed effects.
 #[derive(Copy, Drop, Serde, Debug, Introspect)]
 pub struct Passive {
-    pub passive_type: PassiveType,
-}
-
-/// Cairo enums only support tuple payloads — each passive type gets its
-/// own single-field struct (same pattern as SetOp).
-#[derive(Copy, Drop, Serde, PartialEq, Default, Debug, Introspect)]
-pub enum PassiveType {
-    #[default]
-    None,
-    Aura: SetPassiveAura,
-    DamageReduction: SetPassiveDamageReduction,
-    ConditionalAttack: SetPassiveConditionalAttack,
-    Regeneration: SetPassiveRegeneration,
-    FreeFirstAttack,
-    /// Energy generated at the start of this piece's owner's turn while on board.
-    EnergyGeneration: u8,
+    pub kind: PassiveKind,
+    pub amount: u16,
+    pub target: PassiveTarget,
+    /// All conditions must hold for the source. Empty means always while on board.
+    pub conditions: Span<Condition>,
 }
 
 #[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
-pub struct SetPassiveAura {
-    pub effect: EffectType,
-    pub radius: u8,
-}
-#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
-pub struct SetPassiveDamageReduction {
-    pub amount: u16,
-}
-#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
-pub struct SetPassiveConditionalAttack {
-    pub amount: u16,
-    pub condition: Condition,
-}
-#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
-pub struct SetPassiveRegeneration {
-    pub amount: u16,
+pub enum PassiveKind {
+    AttackBonus,
+    DamageReduction,
+    AbilityRangeBonus,
+    EnergyGeneration,
+    Regeneration,
 }
 
-/// Conditions the core can evaluate. Tuple payloads (Cairo enum style).
-#[derive(Copy, Drop, Serde, PartialEq, Default, Debug, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
+pub enum PassiveTarget {
+    SelfCap,
+    /// Auras exclude the source; use a separate SelfCap passive to include it.
+    AlliesWithin: u8,
+    EnemiesWithin: u8,
+    AllWithin: u8,
+}
+
+#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
+pub enum Relation {
+    Ally,
+    Enemy,
+    Any,
+}
+
+#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
 pub enum Condition {
-    #[default]
-    None,
-    MinAlliesOnBoard: u8,
-    HasAdjacentAlly,
-    EnemyInRange: u8,
-    HealthBelow: u8,
+    AlliesOnBoard: u8,
+    AllyWithin: u8,
+    EnemyWithin: u8,
+    HealthBelowPercent: u8,
     OnEnemyHalf,
+    /// Excludes the source. Rows/columns refer to board coordinates, not path distance.
+    PieceInRow: Relation,
+    PieceInColumn: Relation,
 }

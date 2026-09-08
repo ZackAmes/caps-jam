@@ -69,7 +69,7 @@ pub fn objective_income(caps: @Array<Cap>, slot: u8) -> u8 {
 }
 
 pub fn add_energy(stored: u8, income: u16) -> u8 {
-    let total: u16 = stored.into() + income;
+    let total: u32 = stored.into() + income.into();
     if total > ENERGY_CAP.into() {
         ENERGY_CAP
     } else {

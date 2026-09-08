@@ -5,7 +5,7 @@ import { getLayout, type LayoutConfig } from '@caps/game-core/board';
 import type { ChainGame, ChainHand, CapTypeDef, TurnAction } from '@caps/game-core/types';
 import type { GameAdapter, GameInfo } from '../ports';
 
-export interface PositionV2 {
+export interface PositionV3 {
   game: ChainGame;
   hand: ChainHand;
   definitions: Map<number, CapTypeDef>;
@@ -13,7 +13,7 @@ export interface PositionV2 {
 }
 
 /** All ABI and rules-version assumptions live here, outside the polling worker. */
-export class CapsV2Adapter implements GameAdapter<ChainGame, PositionV2, TurnAction> {
+export class CapsV3Adapter implements GameAdapter<ChainGame, PositionV3, TurnAction> {
   private definitions = new Map<string, CapTypeDef>();
   constructor(private provider: RpcProvider, private account: Account, private actionsAddress: string) {}
 
@@ -23,7 +23,7 @@ export class CapsV2Adapter implements GameAdapter<ChainGame, PositionV2, TurnAct
 
   async checkCompatibility() {
     const [version] = await this.call('rules_version');
-    if (Number(version) !== 2) throw new Error(`Unsupported CAPS rules version ${Number(version)}; add an adapter before running this bot.`);
+    if (Number(version) !== 3) throw new Error(`Unsupported CAPS rules version ${Number(version)}; add an adapter before running this bot.`);
     await this.gameCount(); // The deployment must also expose the discovery endpoint.
   }
 
@@ -34,7 +34,7 @@ export class CapsV2Adapter implements GameAdapter<ChainGame, PositionV2, TurnAct
     return game ? { id: game.id, turn: game.turnCount, over: game.over, players: [game.player1, game.player2], state: game } : null;
   }
 
-  async prepare(info: GameInfo<ChainGame>): Promise<PositionV2> {
+  async prepare(info: GameInfo<ChainGame>): Promise<PositionV3> {
     const game = info.state;
     if (game.setId !== 0) throw new Error(`Reference strategy does not support set ${game.setId}`);
     if (![0, 1, 2, 3].includes(game.layout)) throw new Error(`Unsupported layout ${game.layout}`);

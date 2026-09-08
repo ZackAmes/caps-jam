@@ -8,6 +8,7 @@
     "./board": "./src/board.ts",
     "./decode": "./src/decode.ts",
     "./preview": "./src/preview.ts",
-    "./encode": "./src/encode.ts"
+    "./encode": "./src/encode.ts",
+    "./passives": "./src/passives.ts"
   }
 }

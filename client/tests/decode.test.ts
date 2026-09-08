@@ -11,9 +11,9 @@ function text(value:string):string[] {
 }
 test('piece text parses full words, pending bytes, and UTF-8',()=>{
  const description='This description spans more than thirty-one bytes.';
- const data=['0','0',...text('Generator'),...text(description),'5','1','1','1','0','0','0',...text('Energy ⚡'),'0','0','6','1'];
+ const data=['0','0',...text('Generator'),...text(description),'5','1','1','1','0','0','0',...text('Energy ⚡'),'0','0','1','3','1','0','0'];
  const def=decodeCapType(data)!;
- assert.equal(def.name, 'Generator');assert.equal(def.description, description);assert.equal(def.abilityDescription, 'Energy ⚡');assert.equal(def.passiveAmount, 1);assert.equal(def.passiveType, 6);
+ assert.equal(def.name, 'Generator');assert.equal(def.description, description);assert.equal(def.abilityDescription, 'Energy ⚡');assert.deepEqual(def.passives, [{kind:'EnergyGeneration',amount:1,target:{kind:'SelfCap'},conditions:[]}]);
 });
 test('game parses side, cooldown, death, and independent energy fields',()=>{
  const data=[0,1,'0x123','0x123',0,0,5,0,0,2,2,3,4,0,4,2,4,7,12345,2,
@@ -26,4 +26,17 @@ test('game parses side, cooldown, death, and independent energy fields',()=>{
 test('hand has queue and available window with no old cursor',()=>{
  assert.deepEqual(decodeHand([0,1,0,3,7,9,11,4,2,9,11].map(felt)), {gameId:1,playerSlot:0,roster:[7,9,11],handSize:4,window:[9,11]});
  assert.equal(decodeHand(['1']), null);
+});
+
+test('v3 definitions preserve multiple passive targets and condition payloads',()=>{
+ const data=['0','5',...text('Conditional'),...text(''),'6','2','1','1','0','0','2',...text('Test'),'2','3',
+  '2', // passives
+  '0','2','0','2','5','0','3','50', // attack +2, self, same friendly row AND below 50%
+  '1','4','1','2','0']; // reduction +4, allies within two, unconditional
+ const def=decodeCapType(data)!;
+ assert.equal(def.abilityRange,3);
+ assert.deepEqual(def.passives,[
+  {kind:'AttackBonus',amount:2,target:{kind:'SelfCap'},conditions:[{kind:'PieceInRow',relation:'Ally'},{kind:'HealthBelowPercent',value:50}]},
+  {kind:'DamageReduction',amount:4,target:{kind:'AlliesWithin',radius:2},conditions:[]},
+ ]);
 });

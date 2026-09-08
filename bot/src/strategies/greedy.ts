@@ -1,12 +1,14 @@
+import { pathDistances, pathDistance } from '@caps/game-core/board';
+import { passiveBonus } from '@caps/game-core/passives';
 import { previewTurn } from '@caps/game-core/preview';
 import type { ChainCap, TurnAction } from '@caps/game-core/types';
-import type { PositionV2 } from '../game/v2';
+import type { PositionV3 } from '../game/v3';
 import type { Strategy } from '../ports';
 
 type Preview = ReturnType<typeof previewTurn>;
 
 /** Small deterministic beam search. No RPC, signing, account keys, or worker state. */
-export const greedyStrategy: Strategy<PositionV2, TurnAction> = {
+export const greedyStrategy: Strategy<PositionV3, TurnAction> = {
   name: 'greedy-v1',
   chooseTurn(position) {
     const simulate = (queue: TurnAction[]) => previewTurn(position.game, position.hand, position.definitions, position.layout, queue);
@@ -37,16 +39,14 @@ export const greedyStrategy: Strategy<PositionV2, TurnAction> = {
   },
 };
 
-function candidates(p: PositionV2, state: Preview, slot: number): TurnAction[] {
+function candidates(p: PositionV3, state: Preview, slot: number): TurnAction[] {
   const actions: TurnAction[] = [];
   const deploy = slot === 0 ? p.layout.p1Deploy : p.layout.p2Deploy;
   if (state.actions > 0) for (const id of state.hand) actions.push({ capId: id, kind: 'Play', x: deploy[0], y: deploy[1] });
   for (const cap of state.caps) {
     if (cap.playerSlot !== slot || cap.dead || cap.x === null || cap.y === null || cap.stunnedTurns) continue;
     if (state.actions + state.moves > 0) {
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-        if ((dx || dy) && p.layout.isWalkable(cap.x + dx, cap.y + dy)) actions.push({ capId: cap.id, kind: 'Move', x: cap.x + dx, y: cap.y + dy });
-      }
+      for (const [x, y] of p.layout.neighbors([cap.x, cap.y])) actions.push({ capId: cap.id, kind: 'Move', x, y });
     }
     const def = p.definitions.get(cap.capType);
     if (!def?.abilityTarget || state.usedAbilities.has(cap.id) || def.abilityCost > state.energy) continue;
@@ -58,24 +58,12 @@ function candidates(p: PositionV2, state: Preview, slot: number): TurnAction[] {
   return actions;
 }
 
-function goalDistances(p: PositionV2, slot: number): Map<string, number> {
+function goalDistances(p: PositionV3, slot: number): Map<string, number> {
   const goal = slot === 0 ? p.layout.p2Deploy : p.layout.p1Deploy;
-  const queue: [number, number][] = [goal];
-  const distances = new Map([[goal.join(','), 0]]);
-  for (let i = 0; i < queue.length; i++) {
-    const [x, y] = queue[i];
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-      const next: [number, number] = [x + dx, y + dy];
-      if (p.layout.isWalkable(...next) && !distances.has(next.join(','))) {
-        distances.set(next.join(','), distances.get(`${x},${y}`)! + 1);
-        queue.push(next);
-      }
-    }
-  }
-  return distances;
+  return pathDistances(p.layout, goal);
 }
 
-function score(p: PositionV2, state: Preview, slot: number, distances: Map<string, number>): number {
+function score(p: PositionV3, state: Preview, slot: number, distances: Map<string, number>): number {
   if (state.winnerSlot !== null) return state.winnerSlot === slot ? 1_000_000 : -1_000_000;
   let value = state.energy * 0.5;
   let closest = 20;
@@ -92,8 +80,8 @@ function score(p: PositionV2, state: Preview, slot: number, distances: Map<strin
       closest = Math.min(closest, distance);
       value += (8 - distance) * 3;
       if (cap.y === 2 && (cap.x === 0 || cap.x === 4)) value += 5;
-      if (cap.capType === 0) value += 2;
-    } else if (!goalDefended && Math.max(Math.abs(cap.x! - ownGoal[0]), Math.abs(cap.y! - ownGoal[1])) <= 1) {
+      value += 2 * passiveBonus('EnergyGeneration', cap, state.caps, p.definitions, p.layout);
+    } else if (!goalDefended && pathDistance(p.layout, [cap.x!, cap.y!], ownGoal) <= 1) {
       value -= 1000;
     }
   }

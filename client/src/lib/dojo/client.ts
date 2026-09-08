@@ -56,7 +56,7 @@ async function requireCurrentRules(): Promise<void> {
   rulesVerification ??= provider.callContract({
     contractAddress: ACTIONS, entrypoint: 'rules_version', calldata: [],
   }).then(version => {
-    if (Number(version[0]) !== 2) throw new Error('This deployment uses an unsupported CAPS rules version.');
+    if (Number(version[0]) !== 3) throw new Error('This deployment uses an unsupported CAPS rules version.');
   }).catch((error: unknown) => {
     rulesVerification = null;
     throw error;

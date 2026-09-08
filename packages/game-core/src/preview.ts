@@ -1,4 +1,5 @@
-import type { LayoutConfig } from './board';
+import { pathDistance, type LayoutConfig } from './board';
+import { passiveBonus } from './passives';
 import type { ChainCap, ChainGame, ChainHand, CapTypeDef, TurnAction } from './types';
 
 export function handIds(roster: number[], caps: ChainCap[], turn: number, size = 4): number[] {
@@ -10,16 +11,8 @@ export function handIds(roster: number[], caps: ChainCap[], turn: number, size =
 
 export function surrounded(caps: ChainCap[], layout: LayoutConfig, c: ChainCap): boolean {
   if (c.x === null || c.y === null || c.dead) return false;
-  let neighbors = 0;
-  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-    if (!dx && !dy) continue;
-    const x = c.x + dx, y = c.y + dy;
-    if (x < 0 || y < 0 || x >= layout.width || y >= layout.height || !layout.isWalkable(x, y)) continue;
-    neighbors++;
-    const other = caps.find(p => !p.dead && p.x === x && p.y === y);
-    if (!other || other.playerSlot === c.playerSlot) return false;
-  }
-  return neighbors > 0;
+  const neighbors = layout.neighbors([c.x, c.y]);
+  return neighbors.length > 0 && neighbors.every(([x, y]) => caps.some(p => !p.dead && p.x === x && p.y === y && p.playerSlot !== c.playerSlot));
 }
 
 /** Preview the reference set. The contract remains authoritative on submission. */
@@ -31,6 +24,7 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
   let roster = [...(hand?.roster ?? [])];
   const requeue = (id: number) => { roster = [...roster.filter(x => x !== id), id]; };
   const damage = (c: ChainCap, amount: number) => {
+    amount = Math.max(0, amount - passiveBonus('DamageReduction', c, caps, defs, layout));
     const absorbed = Math.min(amount, c.shield);
     c.shield -= absorbed;
     c.health = Math.max(0, c.health - (amount - absorbed));
@@ -54,11 +48,10 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
       if (a.x !== spot[0] || a.y !== spot[1] || target) throw new Error('Deploy square occupied or invalid');
       c.x = a.x; c.y = a.y; requeue(c.id);
     } else if (a.kind === 'Move') {
-      if (c.x === null || c.y === null || !layout.isWalkable(a.x, a.y) || a.x < 0 || a.y < 0 || a.x >= layout.width || a.y >= layout.height || Math.max(Math.abs(a.x - c.x), Math.abs(a.y - c.y)) !== 1) throw new Error('Move one adjacent step');
+      if (c.x === null || c.y === null || !layout.isWalkable(a.x, a.y) || a.x < 0 || a.y < 0 || a.x >= layout.width || a.y >= layout.height || pathDistance(layout, [c.x, c.y], [a.x, a.y]) !== 1) throw new Error('Move one adjacent step');
       if (target) {
         if (target.playerSlot === c.playerSlot) throw new Error('Friendly piece occupies that square');
-        const td = defs.get(target.capType);
-        damage(target, Math.max(0, def.attack - (td?.passiveType === 2 ? td.passiveAmount : 0)));
+        damage(target, Math.min(65535, def.attack + passiveBonus('AttackBonus', c, caps, defs, layout)));
         if (target.dead) { c.x = a.x; c.y = a.y; }
       } else { c.x = a.x; c.y = a.y; }
     } else {
@@ -68,8 +61,7 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
       if (def.abilityTarget === 1) {
         if (c.x !== a.x || c.y !== a.y) throw new Error('Must target self');
       } else {
-        const dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);
-        if (!def.abilityRange.some(([x,y]) => x === dx && y === dy)) throw new Error('Target out of range');
+        if (pathDistance(layout, [c.x, c.y], [a.x, a.y]) > Math.min(65535, def.abilityRange + passiveBonus('AbilityRangeBonus', c, caps, defs, layout))) throw new Error('Target out of range');
         if (def.abilityTarget <= 4 && !target) throw new Error('No target');
         if (def.abilityTarget === 2 && target?.playerSlot !== c.playerSlot) throw new Error('Target an ally');
         if (def.abilityTarget === 3 && target?.playerSlot === c.playerSlot) throw new Error('Target an enemy');
