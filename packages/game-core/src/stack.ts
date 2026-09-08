@@ -1,6 +1,13 @@
 import { pathDistance, type LayoutConfig } from './board';
 import { passiveBonus, onBoard } from './passives';
 import type { AbilityStack, StackEntry, DelayedImpact, ChainCap, CapTypeDef } from './types';
+/** Copy values explicitly so reactive Proxy inputs work without sharing mutable state. */
+function copyImpact(impact: DelayedImpact): DelayedImpact {
+  return { ...impact, selection: { ...impact.selection } };
+}
+export function copyStack(stack: AbilityStack): AbilityStack {
+  return { ...stack, entries: stack.entries.map(entry => ({ ...entry, impact: copyImpact(entry.impact) })) };
+}
 export function schedule(stack: AbilityStack, sourceId: number, playerSlot: number, turn: number, delay: number, impact: DelayedImpact, layout: LayoutConfig): void {
   if (!Number.isInteger(delay) || delay < 1 || delay > 8) throw new Error('Delay must be 1 to 8');
   if (stack.entries.length >= 32) throw new Error('Ability stack is full');
@@ -9,7 +16,7 @@ export function schedule(stack: AbilityStack, sourceId: number, playerSlot: numb
   if ((target.kind === 'Row' || target.kind === 'Column') && (!Number.isInteger(target.index) || target.index < 0 || target.index >= (target.kind === 'Row' ? layout.height : layout.width))) throw new Error('Invalid line');
   if (target.kind === 'Within' && (!layout.isWalkable(target.x, target.y) || !Number.isInteger(target.radius) || target.radius < 0 || target.radius > 24)) throw new Error('Invalid zone');
   if (target.kind === 'Piece' && (!Number.isSafeInteger(target.id) || target.id < 1)) throw new Error('Invalid piece target');
-  stack.entries.push({ id: ++stack.nextId, sourceId, playerSlot, announcedTurn: turn, readyTurn: turn + delay + 1, impact: structuredClone(impact) });
+  stack.entries.push({ id: ++stack.nextId, sourceId, playerSlot, announcedTurn: turn, readyTurn: turn + delay + 1, impact: copyImpact(impact) });
 }
 export function counterPending(stack: AbilityStack, id: number): void { stack.entries = stack.entries.filter(e => e.id !== id); }
 export function popReady(stack: AbilityStack, boundary: number): StackEntry | null {
@@ -53,7 +60,7 @@ export function describeImpact(entry: StackEntry): string {
 
 /** Forecast the stack only; normal end-turn effects/income remain the caller's responsibility. */
 export function resolveReadyStack(pending: AbilityStack, board: ChainCap[], definitions: Map<number, CapTypeDef>, layout: LayoutConfig, boundary: number) {
-  const stack = structuredClone(pending);
+  const stack = copyStack(pending);
   let caps = board.map(c => ({...c}));
   const resolved: number[] = [];
   for (let entry = popReady(stack, boundary); entry; entry = popReady(stack, boundary)) {

@@ -1,5 +1,5 @@
 import { pathDistance, type LayoutConfig } from './board';
-import { schedule } from './stack';
+import { schedule, copyStack } from './stack';
 import type { AbilityStack } from './types';
 import { passiveBonus } from './passives';
 import type { ChainCap, ChainGame, ChainHand, CapTypeDef, TurnAction } from './types';
@@ -19,7 +19,7 @@ export function surrounded(caps: ChainCap[], layout: LayoutConfig, c: ChainCap):
 
 /** Preview the reference set. The contract remains authoritative on submission. */
 export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<number, CapTypeDef>, layout: LayoutConfig, queue: TurnAction[], pending: AbilityStack = { gameId: game.id, nextId: 0, entries: [] }) {
-  const stack = structuredClone(pending);
+  const stack = copyStack(pending);
   const caps = game.caps.map(c => ({ ...c }));
   let energy = game.energy, actions = 1, moves = 0;
   let winnerSlot: number | null = game.over ? game.winnerSlot : null;

@@ -77,3 +77,31 @@ test('delayed zones use path distance and column selections span the board',()=>
  stack.entries[0].impact.selection={kind:'Column',index:0};
  assert.deepEqual(resolveImpact(stack.entries[0],caps,defs,layout).map(c=>c.health),[2,2]);
 });
+
+// Svelte $state wraps objects and nested values in proxies, which structuredClone rejects.
+function reactive<T extends object>(value: T): T {
+ return new Proxy(value, { get(target, key, receiver) {
+  const child = Reflect.get(target, key, receiver);
+  return child !== null && typeof child === 'object' ? reactive(child) : child;
+ } });
+}
+test('game loading previews an empty reactive stack without a DataCloneError', () => {
+ const pending = reactive(empty());
+ const game = {id:1,caps:[],energy:1,over:false,turnCount:0} as unknown as ChainGame;
+ const result = previewTurn(game, null, defs, layout, [], pending);
+ assert.deepEqual(result.stack, empty());
+ assert.equal(result.energy, 1);
+});
+test('reactive delayed impacts can be copied, scheduled and resolved without mutating input', () => {
+ const pending = empty();
+ schedule(pending, 1, 0, 0, 1, reactive(impact()), layout);
+ const before = JSON.stringify(pending);
+ const game = {id:1,caps:[piece(1,0,1,0)],energy:1,over:false,turnCount:1} as unknown as ChainGame;
+ const result = previewTurn(game, null, defs, layout, [], reactive(pending));
+ if (result.stack.entries[0].impact.selection.kind === 'Row') result.stack.entries[0].impact.selection.index = 4;
+ assert.equal(JSON.stringify(pending), before);
+ const resolved = resolveReadyStack(reactive(pending), game.caps, defs, layout, 2);
+ assert.equal(resolved.caps[0].health, 2);
+ assert.equal(resolved.stack.entries.length, 0);
+ assert.equal(JSON.stringify(pending), before);
+});
