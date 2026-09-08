@@ -1,5 +1,6 @@
 use caps::models::effect::{EffectType, Passive};
 use caps::models::game::Vec2;
+use caps::models::stack::{Schedule, StackEntry};
 
 /// Piece definition. OWNED BY THE SET CONTRACT — this struct is only a
 /// data exchange format between the set contract and the core. Stats are
@@ -68,6 +69,8 @@ pub struct AbilityContext {
     pub caps: Span<CapInfo>,
     /// All live effects in this game.
     pub effects: Span<EffectSnapshot>,
+    /// Public pending abilities, oldest first.
+    pub stack: Span<StackEntry>,
 }
 
 /// The acting piece, flattened for set consumption.
@@ -125,6 +128,9 @@ pub enum SetOp {
     /// Turn-local allowances, granted to the activating player.
     ExtraMoves: u8,
     ExtraActions: u8,
+    Schedule: Schedule,
+    /// Counter an announced effect by its stable stack id. Costs are not refunded.
+    CounterPending: u64,
 }
 
 // One struct per op. Verbosity is the price of Cairo's enum limitations —

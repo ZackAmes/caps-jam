@@ -1,19 +1,20 @@
 import { CallData, type Account, type RpcProvider } from 'starknet';
-import { decodeGame, decodeHand, decodeCapType } from '@caps/game-core/decode';
+import { decodeGame, decodeHand, decodeCapType, decodeStack } from '@caps/game-core/decode';
 import { encodeActions } from '@caps/game-core/encode';
 import { getLayout, type LayoutConfig } from '@caps/game-core/board';
-import type { ChainGame, ChainHand, CapTypeDef, TurnAction } from '@caps/game-core/types';
+import type { ChainGame, ChainHand, CapTypeDef, TurnAction, AbilityStack } from '@caps/game-core/types';
 import type { GameAdapter, GameInfo } from '../ports';
 
-export interface PositionV3 {
+export interface PositionV4 {
   game: ChainGame;
   hand: ChainHand;
   definitions: Map<number, CapTypeDef>;
   layout: LayoutConfig;
+  stack: AbilityStack;
 }
 
 /** All ABI and rules-version assumptions live here, outside the polling worker. */
-export class CapsV3Adapter implements GameAdapter<ChainGame, PositionV3, TurnAction> {
+export class CapsV4Adapter implements GameAdapter<ChainGame, PositionV4, TurnAction> {
   private definitions = new Map<string, CapTypeDef>();
   constructor(private provider: RpcProvider, private account: Account, private actionsAddress: string) {}
 
@@ -23,7 +24,7 @@ export class CapsV3Adapter implements GameAdapter<ChainGame, PositionV3, TurnAct
 
   async checkCompatibility() {
     const [version] = await this.call('rules_version');
-    if (Number(version) !== 3) throw new Error(`Unsupported CAPS rules version ${Number(version)}; add an adapter before running this bot.`);
+    if (Number(version) !== 4) throw new Error(`Unsupported CAPS rules version ${Number(version)}; add an adapter before running this bot.`);
     await this.gameCount(); // The deployment must also expose the discovery endpoint.
   }
 
@@ -34,7 +35,7 @@ export class CapsV3Adapter implements GameAdapter<ChainGame, PositionV3, TurnAct
     return game ? { id: game.id, turn: game.turnCount, over: game.over, players: [game.player1, game.player2], state: game } : null;
   }
 
-  async prepare(info: GameInfo<ChainGame>): Promise<PositionV3> {
+  async prepare(info: GameInfo<ChainGame>): Promise<PositionV4> {
     const game = info.state;
     if (game.setId !== 0) throw new Error(`Reference strategy does not support set ${game.setId}`);
     if (![0, 1, 2, 3].includes(game.layout)) throw new Error(`Unsupported layout ${game.layout}`);
@@ -51,7 +52,7 @@ export class CapsV3Adapter implements GameAdapter<ChainGame, PositionV3, TurnAct
       }
       definitions.set(type, def);
     }
-    return { game, hand, definitions, layout: getLayout(game.layout) };
+    return { game, hand, definitions, layout: getLayout(game.layout), stack: decodeStack(await this.call('get_stack', [game.id])) };
   }
 
   async sendTurn(game: GameInfo<ChainGame>, actions: TurnAction[]): Promise<string> {

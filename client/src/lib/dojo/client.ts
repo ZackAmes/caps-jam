@@ -1,6 +1,6 @@
 import { encodeActions } from '@caps/game-core/encode';
 import { CallData, type Call } from 'starknet';
-import { decodeGame, decodeHand, decodeCapType } from '@caps/game-core/decode';
+import { decodeGame, decodeHand, decodeCapType, decodeStack } from '@caps/game-core/decode';
 import { provider, ACTIONS } from './transport';
 import { getAccount } from './account';
 import { LAYOUT_PERIMETER_5X5 } from '@caps/game-core/board';
@@ -56,7 +56,7 @@ async function requireCurrentRules(): Promise<void> {
   rulesVerification ??= provider.callContract({
     contractAddress: ACTIONS, entrypoint: 'rules_version', calldata: [],
   }).then(version => {
-    if (Number(version[0]) !== 3) throw new Error('This deployment uses an unsupported CAPS rules version.');
+    if (Number(version[0]) !== 4) throw new Error('This deployment uses an unsupported CAPS rules version.');
   }).catch((error: unknown) => {
     rulesVerification = null;
     throw error;
@@ -131,4 +131,9 @@ export async function getGame(gameId: number): Promise<ChainGame | null> {
     calldata: CallData.compile([gameId]),
   });
   return decodeGame(raw as unknown as string[]);
+}
+
+export async function getStack(gameId: number) {
+  await requireCurrentRules();
+  return decodeStack(await provider.callContract({ contractAddress: ACTIONS, entrypoint: 'get_stack', calldata: CallData.compile([gameId]) }));
 }

@@ -1,7 +1,7 @@
 # CAPS bot
 
-This branch requires rules v3. Its checked-in manifest still points at v2; deploy the
-v3 contracts and sync the manifest before running it. The live v2 bot runs from `~/caps`.
+This branch requires rules v4. Its checked-in manifest still points at v2; deploy the
+v4 contracts and sync the manifest before running it. The live v2 bot runs from `~/caps`.
 
 A standalone Sepolia player with its own account. Anyone can challenge the address in
 [account.public.json](account.public.json), or use **Play against Bot** in the game lobby.
@@ -46,7 +46,7 @@ Stop the old worker before starting the replacement.
 
 - `src/worker.ts` handles discovery, turn ownership, retrying, and checkpoints. It has no
   board logic. `src/ports.ts` defines its adapter and strategy interfaces.
-- `src/game/v3.ts` owns ABI reads, transaction encoding, and constructing a v3 position.
+- `src/game/v4.ts` owns ABI reads, transaction encoding, and constructing a v4 position.
   Unsupported rules versions, sets, and layouts are rejected rather than guessed.
 - `src/strategies/greedy.ts` is a pure function. Replace it and select the replacement in
   `src/main.ts` to change play style without touching accounts or polling.
@@ -56,7 +56,7 @@ Stop the old worker before starting the replacement.
 
 The first policy searches up to three actions with a beam width of eight. It favors
 winning, advancing toward the goal, defending an immediate threat, material, energy
-objectives, and Generators. It can combine abilities with movement. It is deterministic
+objectives, and Generators. It can combine abilities with movement and forecasts pending stack damage when choosing a response. It is deterministic
 and has no opponent lookahead, training, or hidden information.
 
 Discovery walks `get_game_count` in batches of 20, retains unfinished challenges, and

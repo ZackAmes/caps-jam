@@ -1,9 +1,11 @@
 <script lang="ts">
     import botAccount from '../../../../bot/account.public.json';
     import { previewTurn } from '@caps/game-core/preview';
-    import { createGame, createSoloGame, takeTurn, getGame, getHand, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
+    import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
     import { getLayout, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
+    import { describeImpact } from '@caps/game-core/stack';
+    import type { AbilityStack } from '@caps/game-core/types';
     import { passiveActive, passiveBonus } from '@caps/game-core/passives';
     import { passiveLabel } from '$lib/dojo/labels';
     import type { ChainGame, ChainCap, TurnAction, ChainHand, CapTypeDef } from '@caps/game-core/types';
@@ -55,12 +57,13 @@
     let abilityTargetMode = $state(false);
     let selectedCapId = $state<number | null>(null);
     let queuedActions: TurnAction[] = $state([]);
+    let pendingStack = $state<AbilityStack>({gameId:0,nextId:0,entries:[]});
     let committing = $state(false);
 
     let activeLayout = $derived<LayoutConfig>(getLayout(game ? game.layout : selectedLayout));
     let isSolo = $derived<boolean>(!!game && game.player1 === game.player2);
 
-    let preview = $derived(game ? previewTurn(game, hand, capDefMap, activeLayout, queuedActions) : null);
+    let preview = $derived(game ? previewTurn(game, hand, capDefMap, activeLayout, queuedActions, pendingStack) : null);
     let remainingEnergy = $derived(preview?.energy ?? 0);
     let simCaps = $derived(preview?.caps ?? []);
 
@@ -204,7 +207,7 @@
         if (!game || !canAct()) return false;
         const next = [...queuedActions, { capId, kind, x, y }];
         try {
-            previewTurn(game, hand, capDefMap, activeLayout, next);
+            previewTurn(game, hand, capDefMap, activeLayout, next, pendingStack);
             queuedActions = next;
             status = `Queued ${kind} → (${x},${y})`;
             errorMsg = null;
@@ -471,7 +474,7 @@
             const nextGame = await getGame(id);
             if (!nextGame) throw new Error(`Game ${id} not found`);
             const slot = nextGame.turnCount % 2;
-            const [nextHand, nextOpponentHand] = await Promise.all([getHand(id, slot), getHand(id, 1 - slot)]);
+            const [nextHand, nextOpponentHand, nextStack] = await Promise.all([getHand(id, slot), getHand(id, 1 - slot), getStack(id)]);
             const uniqueTypes = [...new Set(nextGame.caps.map(c => c.capType))];
             const definitions = await Promise.all(uniqueTypes.map(ct => getCapTypeCached(id, ct)));
             const newMap = new Map<number, CapTypeDef>();
@@ -483,6 +486,7 @@
             selectedCapId = null;
             abilityTargetMode = false;
             capDefMap = newMap;
+            pendingStack = nextStack;
             hand = nextHand;
             opponentHand = nextOpponentHand;
             game = nextGame;
@@ -661,6 +665,18 @@
             {#if preview?.winnerSlot !== null && preview?.winnerSlot !== undefined && !game.over}
                 <p class="gameover">Goal reached in preview — submit to confirm.</p>
             {/if}
+            {#if preview && preview.stack.entries.length > 0}
+                <section class="pending-stack" aria-label="Pending ability stack" aria-live="polite">
+                    <strong>Pending abilities · newest resolves first</strong>
+                    <p class="hint">Respond during your turn. An older effect waits for every effect above it.</p>
+                    {#each [...preview.stack.entries].reverse() as entry (entry.id)}
+                        <div class="pending-entry">
+                            <strong>#{entry.id} · P{entry.playerSlot + 1}</strong> {describeImpact(entry)}
+                            <small>{entry.readyTurn <= game.turnCount + 1 ? 'Ready at this turn’s end' : `Ready in ${entry.readyTurn - game.turnCount} turn endings`}</small>
+                        </div>
+                    {/each}
+                </section>
+            {/if}
             <!-- Board: static tiles + gliding pieces layer -->
             <div
                 class="board"
@@ -695,6 +711,7 @@
                         class:goal-tile={x === 2 && (y === 0 || y === 4)}
                         class:energy-tile={y === 2 && (x === 0 || x === 4)}
                         class:deploy-tile={isDeploy && !occ}
+                        class:pending-danger={walkable && !!preview?.stack.entries.some(e => e.impact.kind === 'Damage' && e.impact.selection.kind === 'Row' && e.impact.selection.index === y)}
                         class:target-move={!!targetInfo && targetInfo.type === 'move'}
                         class:target-fight={!!targetInfo && targetInfo.type === 'fight'}
                         class:target-ability={isAbilityTgt}
@@ -1007,6 +1024,10 @@
         color: #fecaca;
     }
 
+    .pending-stack { border: 1px solid #b45309; border-radius: 8px; padding: 0.65rem; background: #271d13; }
+    .pending-entry { padding: 0.45rem 0; border-top: 1px solid #64452b; font-size: 0.85rem; }
+    .pending-entry small { display: block; color: #fbbf24; }
+    .tile.pending-danger::after { content: ''; position: absolute; inset: 4px; border: 1px dashed #f59e0b; border-radius: 3px; pointer-events: none; }
     /* Board */
     .board {
         position: relative;

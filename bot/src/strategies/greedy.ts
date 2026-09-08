@@ -1,17 +1,18 @@
+import { resolveReadyStack, resolveImpact } from '@caps/game-core/stack';
 import { pathDistances, pathDistance } from '@caps/game-core/board';
 import { passiveBonus } from '@caps/game-core/passives';
 import { previewTurn } from '@caps/game-core/preview';
 import type { ChainCap, TurnAction } from '@caps/game-core/types';
-import type { PositionV3 } from '../game/v3';
+import type { PositionV4 } from '../game/v4';
 import type { Strategy } from '../ports';
 
 type Preview = ReturnType<typeof previewTurn>;
 
 /** Small deterministic beam search. No RPC, signing, account keys, or worker state. */
-export const greedyStrategy: Strategy<PositionV3, TurnAction> = {
+export const greedyStrategy: Strategy<PositionV4, TurnAction> = {
   name: 'greedy-v1',
   chooseTurn(position) {
-    const simulate = (queue: TurnAction[]) => previewTurn(position.game, position.hand, position.definitions, position.layout, queue);
+    const simulate = (queue: TurnAction[]) => previewTurn(position.game, position.hand, position.definitions, position.layout, queue, position.stack);
     const slot = position.game.turnCount % 2;
     const distances = goalDistances(position, slot);
     let best = { queue: [] as TurnAction[], state: simulate([]), score: -Infinity };
@@ -39,7 +40,7 @@ export const greedyStrategy: Strategy<PositionV3, TurnAction> = {
   },
 };
 
-function candidates(p: PositionV3, state: Preview, slot: number): TurnAction[] {
+function candidates(p: PositionV4, state: Preview, slot: number): TurnAction[] {
   const actions: TurnAction[] = [];
   const deploy = slot === 0 ? p.layout.p1Deploy : p.layout.p2Deploy;
   if (state.actions > 0) for (const id of state.hand) actions.push({ capId: id, kind: 'Play', x: deploy[0], y: deploy[1] });
@@ -58,14 +59,22 @@ function candidates(p: PositionV3, state: Preview, slot: number): TurnAction[] {
   return actions;
 }
 
-function goalDistances(p: PositionV3, slot: number): Map<string, number> {
+function goalDistances(p: PositionV4, slot: number): Map<string, number> {
   const goal = slot === 0 ? p.layout.p2Deploy : p.layout.p1Deploy;
   return pathDistances(p.layout, goal);
 }
 
-function score(p: PositionV3, state: Preview, slot: number, distances: Map<string, number>): number {
+function score(p: PositionV4, state: Preview, slot: number, distances: Map<string, number>): number {
   if (state.winnerSlot !== null) return state.winnerSlot === slot ? 1_000_000 : -1_000_000;
+  // Response moves are scored after effects due at this turn boundary.
+  const before = state;
+  state = { ...state, caps: resolveReadyStack(state.stack, state.caps, p.definitions, p.layout, p.game.turnCount + 1).caps };
   let value = state.energy * 0.5;
+  // Small, deliberately optimistic estimate for newly announced delayed effects.
+  for (const entry of before.stack.entries.filter(e => e.id > p.stack.nextId)) {
+    const forecast = resolveImpact(entry, before.caps, p.definitions, p.layout);
+    for (let i = 0; i < forecast.length; i++) value += (forecast[i].health - before.caps[i].health) * (forecast[i].playerSlot === slot ? 1 : -1) * 0.75;
+  }
   let closest = 20;
   const ownGoal = slot === 0 ? p.layout.p1Deploy : p.layout.p2Deploy;
   const goalDefended = state.caps.some(c => c.playerSlot === slot && c.x === ownGoal[0] && c.y === ownGoal[1]);

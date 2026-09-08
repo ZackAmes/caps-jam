@@ -9,6 +9,7 @@
     "./decode": "./src/decode.ts",
     "./preview": "./src/preview.ts",
     "./encode": "./src/encode.ts",
-    "./passives": "./src/passives.ts"
+    "./passives": "./src/passives.ts",
+    "./stack": "./src/stack.ts"
   }
 }

@@ -16,6 +16,7 @@ pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
         namespace: "caps",
         resources: [
             TestResource::Model(m_Game::TEST_CLASS_HASH),
+            TestResource::Model(caps::models::stack::m_AbilityStack::TEST_CLASS_HASH),
             TestResource::Model(m_Hand::TEST_CLASS_HASH),
             TestResource::Model(m_Global::TEST_CLASS_HASH),
             TestResource::Model(m_Cap::TEST_CLASS_HASH),
@@ -23,6 +24,7 @@ pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
             TestResource::Model(m_Set::TEST_CLASS_HASH),
             TestResource::Contract(actions::TEST_CLASS_HASH),
             TestResource::Contract(set_zero::TEST_CLASS_HASH),
+            TestResource::Contract(caps::tests::stack_test::response_test_set::TEST_CLASS_HASH),
             TestResource::Contract(caps::tests::foundation_test::passive_test_set::TEST_CLASS_HASH),
         ]
             .span(),

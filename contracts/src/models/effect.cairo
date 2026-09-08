@@ -137,12 +137,18 @@ pub enum PassiveTarget {
     AllWithin: u8,
 }
 
-#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
+#[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect, DojoStore)]
 pub enum Relation {
     Ally,
     Enemy,
     Any,
 }
+impl RelationDefault of Default<Relation> {
+    fn default() -> Relation {
+        Relation::Any
+    }
+}
+
 
 #[derive(Copy, Drop, Serde, PartialEq, Debug, Introspect)]
 pub enum Condition {

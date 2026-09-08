@@ -1,4 +1,4 @@
-import type { ChainGame, ChainHand, CapTypeDef, Passive, PassiveKind, PassiveCondition, Relation } from './types';
+import type { ChainGame, ChainHand, CapTypeDef, Passive, PassiveKind, PassiveCondition, Relation, AbilityStack, StackEntry, ImpactKind, ImpactSelection } from './types';
 const num = (s: string): number => Number(BigInt(s));
 
 export function decodeHand(f: string[]): ChainHand | null {
@@ -171,3 +171,31 @@ export function decodeGame(f: string[]): ChainGame | null {
   return game;
 }
 
+
+
+export function decodeStack(f: string[]): AbilityStack {
+  let i = 0;
+  const read = () => {
+    if (i >= f.length) throw new Error('Truncated ability stack');
+    return num(f[i++]);
+  };
+  const gameId = read(), nextId = read(), count = read();
+  if (count > 32) throw new Error('Invalid ability stack size');
+  const entries: StackEntry[] = [];
+  for (let n = 0; n < count; n++) {
+    const id = read(), sourceId = read(), playerSlot = read(), announcedTurn = read(), readyTurn = read();
+    const kind = (['Damage', 'Heal', 'Shield'] as ImpactKind[])[read()];
+    const variant = read();
+    let selection: ImpactSelection;
+    if (variant === 0) selection = { kind: 'Piece', id: read() };
+    else if (variant === 1 || variant === 2) selection = { kind: variant === 1 ? 'Row' : 'Column', index: read() };
+    else if (variant === 3) selection = { kind: 'Within', x: read(), y: read(), radius: read() };
+    else throw new Error('Unknown delayed selection');
+    const relation = (['Ally', 'Enemy', 'Any'] as Relation[])[read()];
+    const amount = read();
+    if (!kind || !relation || playerSlot > 1) throw new Error('Invalid delayed impact');
+    entries.push({ id, sourceId, playerSlot, announcedTurn, readyTurn, impact: {kind,selection,relation,amount} });
+  }
+  if (i !== f.length) throw new Error('Unexpected ability stack fields');
+  return { gameId, nextId, entries };
+}

@@ -1,6 +1,6 @@
-# CAPS — implemented rules (v3, not yet deployed)
+# CAPS — implemented rules (v4, not yet deployed)
 
-See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive and path semantics. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
+See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive/path semantics and [DELAYED_ABILITIES.md](DELAYED_ABILITIES.md) for the ability stack. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
 
 ## Objective and board
 
@@ -20,6 +20,10 @@ Abilities spend their listed energy independently of the normal action. Each pie
 Move-only allowances are spent before general actions. All unused allowances expire at turn end. The reference Runner spends 2 energy to grant one extra move. An ability may precede or follow the normal action, including an ability on a newly deployed piece.
 
 The contract applies each queued action to the latest state, resolves victory/capture, then handles the next action. A queued action after victory is invalid. The client drops subsequent queued actions when an earlier action is removed, because they may depend on it.
+
+## Delayed abilities
+
+Abilities may announce effects on a public stack. A delay of one grants the opponent a full response turn. Ready effects resolve newest first; an unready top blocks older effects. Targets are selected from the board at resolution, and announced effects survive source removal. Responses use normal turns. See the delayed-ability document for full ordering and counter rules.
 
 ## Automatic surround capture
 
@@ -53,7 +57,7 @@ Control means current occupation at turn start; control is not retained after le
 | 1 | Striker | 6 | 2 | Deal 2 damage to an enemy | 2 |
 | 2 | Guardian | 10 | 1 | Give an ally 3 shield | 2 |
 | 3 | Medic | 7 | 1 | Heal an ally 3, capped at its real maximum HP | 2 |
-| 4 | Blaster | 5 | 1 | Deal 4 damage to an enemy within three path steps | 3 |
+| 4 | Blaster | 5 | 1 | After one opponent turn, deal 4 damage to all pieces in a chosen row | 3 |
 | 5 | Runner | 6 | 2 | Gain one extra move this turn | 2 |
 
 Ability ranges are shortest-path step counts, identical for both sides and independent of grid distance or intervening pieces. Self-targeted abilities require the acting piece's own square.
@@ -62,7 +66,7 @@ Ability ranges are shortest-path step counts, identical for both sides and indep
 
 The hardcoded Sepolia test account remains intentional while Controller is unavailable. Solo games use that account for both sides, but every piece has an explicit player slot; ownership checks, targeting, colors, income, cooldowns and victory use the slot correctly.
 
-The v3 foundation changes the set ABI and board connections. Use a fresh v3 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 3; the client and bot reject incompatible deployments.
+The v4 foundation changes the set ABI, board connections, and adds stored pending abilities. Use a fresh v4 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 4; the client and bot reject incompatible deployments.
 
 The existing manifest and running service still target the September 5, 2026 **v2** Sepolia world (`0x76621c09cb35987c3760b3bd22573327305ccfdb45aa10493f284552505e92d`). This branch has not changed that deployment.
 

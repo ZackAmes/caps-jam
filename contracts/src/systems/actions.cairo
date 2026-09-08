@@ -4,12 +4,14 @@ use caps::logic::track::{
 use caps::models::cap::{Cap, Location};
 use caps::models::game::{Action, Game, Hand, Vec2};
 use caps::models::set_data::CapType;
+use caps::models::stack::AbilityStack;
 use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IActions<T> {
     fn rules_version(self: @T) -> u8;
     fn get_game_count(self: @T) -> u64;
+    fn get_stack(self: @T, game_id: u64) -> AbilityStack;
     fn take_turn_if_current(ref self: T, game_id: u64, expected_turn: u64, turn: Array<Action>);
     /// Register a set contract (governance in production).
     fn register_set(
@@ -95,6 +97,7 @@ pub mod actions {
     use caps::logic::rules::{
         BASE_INCOME, add_energy, capture_ready_turn, is_goal, objective_income, spend_action,
     };
+    use caps::logic::stack::{counter, pop_ready, resolve, schedule};
     use caps::logic::track::within_range;
     use caps::models::cap::{Cap, Location, get_position, is_on_board};
     use caps::models::effect::{Effect, EffectTarget, EffectTrait, EffectType, PassiveKind};
@@ -103,6 +106,7 @@ pub mod actions {
     use caps::models::set_data::{
         AbilityContext, ActorInfo, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, TargetType,
     };
+    use caps::models::stack::AbilityStack;
     use core::num::traits::{SaturatingAdd, Zero};
     use dojo::model::ModelStorage;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
@@ -128,7 +132,14 @@ pub mod actions {
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         fn rules_version(self: @ContractState) -> u8 {
-            3
+            4
+        }
+
+        fn get_stack(self: @ContractState, game_id: u64) -> AbilityStack {
+            let world = self.world_default();
+            let mut stack: AbilityStack = world.read_model(game_id);
+            stack.game_id = game_id;
+            stack
         }
 
         fn get_game_count(self: @ContractState) -> u64 {
@@ -183,6 +194,8 @@ pub mod actions {
                     game.player2
                 }), "Not your turn",
             );
+            let mut stack: AbilityStack = world.read_model(game_id);
+            stack.game_id = game_id;
             let mut energy = game.energy;
             let mut actions: u8 = 1;
             let mut moves: u8 = 0;
@@ -361,6 +374,7 @@ pub mod actions {
                             },
                             caps: infos.span(),
                             effects: _effect_snapshots(@effects),
+                            stack: stack.entries.span(),
                         };
                         let output = dispatcher.activate_ability(ctx, pos);
                         assert!(
@@ -369,6 +383,17 @@ pub mod actions {
                         );
                         for op in output.ops {
                             match *op {
+                                SetOp::Schedule(request) => {
+                                    schedule(
+                                        ref stack,
+                                        cap.id,
+                                        slot,
+                                        game.turn_count,
+                                        game.layout,
+                                        request,
+                                    );
+                                },
+                                SetOp::CounterPending(id) => { counter(ref stack, id); },
                                 SetOp::ExtraMoves(n) => {
                                     assert!(n <= 4 && moves + n <= 8, "Move bonus too large");
                                     moves += n;
@@ -454,6 +479,29 @@ pub mod actions {
                 self._end_turn(ref game, ref effects, slot);
                 self._resolve_board(ref game, ref effects);
             }
+            if !game.over {
+                let boundary = game.turn_count + 1;
+                loop {
+                    let entry = match pop_ready(ref stack, boundary) {
+                        Option::Some(entry) => entry,
+                        Option::None => { break; },
+                    };
+                    let mut caps = alive_caps(@world, @game);
+                    let current_definitions = self._definitions(game.set_id, @caps);
+                    resolve(entry, ref caps, @current_definitions, game.layout);
+                    for c in caps.span() {
+                        world.write_model(c);
+                    }
+                    self._resolve_board(ref game, ref effects);
+                    if game.over {
+                        break;
+                    }
+                };
+            }
+            if game.over {
+                stack.entries = array![];
+            }
+            world.write_model(@stack);
             game.turn_count += 1;
             if !game.over {
                 self._begin_turn(ref game, ref effects);

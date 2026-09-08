@@ -3,6 +3,9 @@
 Implemented on `mechanics-foundation`; not deployed. The live Sepolia world, client
 manifest, and background bot remain on v2 until a coordinated deployment.
 
+The branch now also includes [delayed abilities and the stack](DELAYED_ABILITIES.md),
+which advance the protocol to v4. The passive/path semantics below remain applicable.
+
 ## Board topology and distance
 
 `rules/boards.json` is the topology source of truth. Each path is an ordered list of
@@ -94,7 +97,7 @@ still implements Set Zero explicitly; arbitrary new active operations need previ
 support. Movement/attack metadata does not grant multi-edge normal movement.
 
 This changes the `CapType` set ABI (`passives` list and scalar path-step ability range).
-`rules_version()` is 3 and both client and bot reject v2. Deploy actions and Set Zero
-together into a fresh v3 world, register the set, sync the manifest, then switch client
-and bot. Use a separate checkpoint for the v3 bot. Do not upgrade only one contract or
+`rules_version()` is now 4 after the stack extension; client and bot reject earlier versions. Deploy actions and Set Zero
+together into a fresh v4 world, register the set, sync the manifest, then switch client
+and bot. Use a separate checkpoint for the v4 bot. Do not upgrade only one contract or
 silently reinterpret ongoing v2 games with the new path connections.

@@ -8,6 +8,7 @@ pub mod models {
     pub mod game;
     pub mod set;
     pub mod set_data;
+    pub mod stack;
 }
 
 pub mod sets {
@@ -20,6 +21,7 @@ pub mod logic {
     pub mod ops;
     pub mod passives;
     pub mod rules;
+    pub mod stack;
     pub mod track;
 }
 
@@ -27,4 +29,5 @@ pub mod logic {
 mod tests {
     mod foundation_test;
     mod rules_test;
+    mod stack_test;
 }

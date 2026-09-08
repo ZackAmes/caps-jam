@@ -74,3 +74,13 @@ export type PassiveCondition =
   | { kind: 'PieceInRow' | 'PieceInColumn'; relation: Relation };
 export type PassiveTarget = { kind: 'SelfCap' } | { kind: 'AlliesWithin' | 'EnemiesWithin' | 'AllWithin'; radius: number };
 export interface Passive { kind: PassiveKind; amount: number; target: PassiveTarget; conditions: PassiveCondition[] }
+
+export type ImpactKind = 'Damage' | 'Heal' | 'Shield';
+export type ImpactSelection =
+  | { kind: 'Piece'; id: number }
+  | { kind: 'Row'; index: number }
+  | { kind: 'Column'; index: number }
+  | { kind: 'Within'; x: number; y: number; radius: number };
+export interface DelayedImpact { kind: ImpactKind; selection: ImpactSelection; relation: Relation; amount: number }
+export interface StackEntry { id: number; sourceId: number; playerSlot: number; announcedTurn: number; readyTurn: number; impact: DelayedImpact }
+export interface AbilityStack { gameId: number; nextId: number; entries: StackEntry[] }

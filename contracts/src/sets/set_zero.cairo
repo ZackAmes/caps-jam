@@ -1,9 +1,10 @@
-use caps::models::effect::{Passive, PassiveKind, PassiveTarget};
+use caps::models::effect::{Passive, PassiveKind, PassiveTarget, Relation};
 use caps::models::game::Vec2;
 use caps::models::set_data::{
     AbilityContext, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, SetOpShield, SetOutput,
     TargetType,
 };
+use caps::models::stack::{DelayedImpact, ImpactKind, Schedule, Selection};
 
 /// SET ZERO — the reference piece set. 6 pieces: a generator + 5
 /// units exercising different ability patterns. Stats and abilities are
@@ -98,12 +99,12 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
             },
         )
     } else if id == 4 {
-        // Blaster — ranged burst. "Deal 4 damage to an enemy at range 3."
+        // Blaster — delayed row blast; the opponent gets a full response turn.
         Option::Some(
             CapType {
                 id: 4,
                 name: "Blaster",
-                description: "Long range burst.",
+                description: "Telegraphs a row-wide blast so opponents can respond.",
                 max_health: 5,
                 attack: 1,
                 move_range: 1,
@@ -111,8 +112,8 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 play_cost: 0,
                 move_cost: 0,
                 ability_cost: 3,
-                ability_description: "Deal 4 damage to an enemy within 3 path steps",
-                ability_target: TargetType::OpponentCap,
+                ability_description: "After 1 opponent turn, deal 4 damage to all pieces in the chosen row",
+                ability_target: TargetType::AnySquare,
                 ability_range: 3,
                 passives: array![],
             },
@@ -177,11 +178,20 @@ pub fn use_ability(ctx: AbilityContext, target: Vec2) -> SetOutput {
                 );
         }
     } else if actor_type == 4 {
-        // Blaster: deal 4 damage to the enemy at `target`.
-        let target_cap = cap_at(caps_snapshot, target);
-        if target_cap.is_some() {
-            ops.append(SetOp::Damage(SetOpDamage { target_cap: target_cap.unwrap(), amount: 4 }));
-        }
+        ops
+            .append(
+                SetOp::Schedule(
+                    Schedule {
+                        delay: 1,
+                        impact: DelayedImpact {
+                            kind: ImpactKind::Damage,
+                            selection: Selection::Row(target.y),
+                            relation: Relation::Any,
+                            amount: 4,
+                        },
+                    },
+                ),
+            );
     } else if actor_type == 5 {
         ops.append(SetOp::ExtraMoves(1));
     }

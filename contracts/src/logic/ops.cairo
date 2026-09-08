@@ -99,7 +99,8 @@ pub fn apply_op(
         SetOp::Cleanse(c) => apply_cleanse(ref caps, ref effects, c),
         SetOp::CleansePositive(c) => apply_cleanse_positive(ref caps, ref effects, c),
         // Summon needs core coordination (minting) — intercepted by actions.
-        SetOp::Summon(_) | SetOp::ExtraMoves(_) | SetOp::ExtraActions(_) => false,
+        SetOp::Summon(_) | SetOp::ExtraMoves(_) | SetOp::ExtraActions(_) | SetOp::Schedule(_) |
+        SetOp::CounterPending(_) => false,
         // Zones are a v2 feature.
     }
 }
@@ -138,11 +139,14 @@ pub fn apply_heal(ref caps: Array<Cap>, op: SetOpHeal) -> bool {
     if cap.location == Location::Dead || op.amount == 0 || cap.health >= op.max_health {
         return false;
     }
-    if cap.health + op.amount > op.max_health {
-        cap.health = op.max_health;
-    } else {
-        cap.health += op.amount;
-    }
+    let healed: u32 = cap.health.into() + op.amount.into();
+    cap
+        .health =
+            if healed > op.max_health.into() {
+                op.max_health
+            } else {
+                healed.try_into().unwrap()
+            };
     replace_at(ref caps, idx, cap);
     true
 }

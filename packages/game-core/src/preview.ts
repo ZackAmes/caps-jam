@@ -1,4 +1,6 @@
 import { pathDistance, type LayoutConfig } from './board';
+import { schedule } from './stack';
+import type { AbilityStack } from './types';
 import { passiveBonus } from './passives';
 import type { ChainCap, ChainGame, ChainHand, CapTypeDef, TurnAction } from './types';
 
@@ -16,7 +18,8 @@ export function surrounded(caps: ChainCap[], layout: LayoutConfig, c: ChainCap):
 }
 
 /** Preview the reference set. The contract remains authoritative on submission. */
-export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<number, CapTypeDef>, layout: LayoutConfig, queue: TurnAction[]) {
+export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<number, CapTypeDef>, layout: LayoutConfig, queue: TurnAction[], pending: AbilityStack = { gameId: game.id, nextId: 0, entries: [] }) {
+  const stack = structuredClone(pending);
   const caps = game.caps.map(c => ({ ...c }));
   let energy = game.energy, actions = 1, moves = 0;
   let winnerSlot: number | null = game.over ? game.winnerSlot : null;
@@ -71,7 +74,7 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
       else if (c.capType === 1 && target) damage(target, 2);
       else if (c.capType === 2 && target) target.shield += 3;
       else if (c.capType === 3 && target) target.health = Math.min(defs.get(target.capType)?.maxHealth ?? target.health, target.health + 3);
-      else if (c.capType === 4 && target) damage(target, 4);
+      else if (c.capType === 4) schedule(stack, c.id, c.playerSlot, game.turnCount, 1, {kind:'Damage',selection:{kind:'Row',index:a.y},relation:'Any',amount:4}, layout);
     }
     const winner = caps.find(c => !c.dead && c.x === 2 && c.y === (c.playerSlot === 0 ? 4 : 0));
     if (winner) winnerSlot = winner.playerSlot;
@@ -86,5 +89,5 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
     }
 
   }
-  return { caps, energy, actions, moves, usedAbilities, winnerSlot, hand: handIds(roster, caps, game.turnCount, hand?.handSize) };
+  return { caps, energy, actions, moves, usedAbilities, winnerSlot, stack, hand: handIds(roster, caps, game.turnCount, hand?.handSize) };
 }
