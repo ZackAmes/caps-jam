@@ -52,7 +52,20 @@
     const savedGameKey = `caps:last-game:${dojoConfig.worldAddress}`;
     let resumeId = $state<number | null>(null);
     let linkCopied = $state(false);
+    let boardMode = $state<'3d' | '2d'>('3d');
+    let ThreeBoard = $state<typeof import('$lib/scene/live-board.svelte').default | null>(null);
+    let boardNotice = $state('');
+    function fallbackBoard() {
+        boardMode = '2d';
+        boardNotice = '3D rendering is unavailable. You can continue playing in 2D.';
+    }
+    function setBoardMode(mode: '3d' | '2d') {
+        boardMode = mode; drag = null; downInfo = null;
+        try { localStorage.setItem('caps:board-view', mode); } catch { /* Optional preference. */ }
+    }
     onMount(() => {
+        try { if (localStorage.getItem('caps:board-view') === '2d') boardMode = '2d'; } catch { /* Optional preference. */ }
+        import('$lib/scene/live-board.svelte').then(module => { ThreeBoard = module.default; }).catch(fallbackBoard);
         const linked = Number(new URL(location.href).searchParams.get('game'));
         let saved = 0;
         try { saved = Number(localStorage.getItem(savedGameKey)); } catch { /* Storage may be unavailable. */ }
@@ -88,6 +101,13 @@
     let preview = $derived(game ? previewTurn(game, hand, capDefMap, activeLayout, queuedActions, pendingStack) : null);
     let remainingEnergy = $derived(preview?.energy ?? 0);
     let simCaps = $derived(preview?.caps ?? []);
+    let sceneTargets = $derived.by(() => {
+        const cap = selectedCapId === null ? undefined : capById(selectedCapId);
+        if (!cap || !canAct()) return new Map<string, string>();
+        return abilityTargetMode
+            ? new Map([...abilityTargets(cap).keys()].map(key => [key, 'ability']))
+            : new Map([...moveTargets(cap)].map(([key, target]) => [key, target.type]));
+    });
 
     function cellFromPoint(px: number, py: number): { x: number; y: number } | null {
         const el = document.elementFromPoint(px, py);
@@ -709,6 +729,23 @@
                     {/each}
                 </section>
             {/if}
+            <div class="board-toolbar">
+                <span>Board view</span>
+                <button aria-pressed={boardMode === '3d'} onclick={() => setBoardMode('3d')}>3D</button>
+                <button aria-pressed={boardMode === '2d'} onclick={() => setBoardMode('2d')}>2D</button>
+            </div>
+            {#if boardNotice}<p class="hint" role="status">{boardNotice}</p>{/if}
+            {#if boardMode === '3d'}
+                <svelte:boundary onerror={fallbackBoard}>
+                    {#if ThreeBoard}
+                        <ThreeBoard layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId}
+                            targets={sceneTargets} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onfailure={fallbackBoard} />
+                        <p class="hint">Tap a piece to inspect or select it, then tap a highlighted square. Use the hand below to deploy.</p>
+                    {:else}
+                        <p class="hint" role="status">Loading 3D board…</p>
+                    {/if}
+                </svelte:boundary>
+            {:else}
             <!-- Board: static tiles + gliding pieces layer -->
             <div
                 class="board"
@@ -800,6 +837,8 @@
                 </div>
             </div>
 
+            {/if}
+
             <!-- Drag ghost (follows finger) -->
             {#if drag}
                 {@const dc = capById(drag.capId)}
@@ -828,7 +867,7 @@
                     {/if}
                 </p>
             {:else if selectedCapId != null}
-                <p class="hint">Tap or drag a highlighted tile — ⚔ means attack</p>
+                <p class="hint">{abilityTargetMode ? 'Choose a purple target for the ability.' : 'Choose a highlighted square to move or attack.'}</p>
                 {@const selDef = capDefFor(capById(selectedCapId)!)}
                 {#if selDef && selDef.abilityTarget !== 0}
                     <button
@@ -883,11 +922,11 @@
                                 class="bench-piece"
                                 disabled={!canAct() || (preview?.actions ?? 0) === 0}
                                 title={capDefFor(c)?.abilityDescription}
-                                onpointerdown={onPointerDown}
-                                onpointermove={onPointerMove}
-                                onpointerup={onPointerUp}
-                                onpointercancel={onPointerCancel}
-                                onclick={(event) => { if (event.detail === 0) onTapBench(c.id); }}
+                                onpointerdown={boardMode === '2d' ? onPointerDown : undefined}
+                                onpointermove={boardMode === '2d' ? onPointerMove : undefined}
+                                onpointerup={boardMode === '2d' ? onPointerUp : undefined}
+                                onpointercancel={boardMode === '2d' ? onPointerCancel : undefined}
+                                onclick={(event) => { if (boardMode === '3d' || event.detail === 0) onTapBench(c.id); }}
                                 data-bench={c.id}
                             >{capDefFor(c)?.name ?? c.capType} · {c.health}hp</button>
                         {/each}
@@ -1076,6 +1115,9 @@
     .tile.pending-danger::after { content: ''; position: absolute; inset: 4px; border: 1px dashed #f59e0b; border-radius: 3px; pointer-events: none; }
     .paths { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); pointer-events: none; z-index: 2; }
     .paths line { stroke: #94a3b8; stroke-width: 0.55; stroke-linecap: round; opacity: 0.6; }
+    .board-toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+    .board-toolbar span { margin-right: auto; color: #94a3b8; font-size: 0.85rem; }
+    .board-toolbar button[aria-pressed="true"] { border-color: #60a5fa; color: #bfdbfe; background: #1e3a5f; }
     /* Board */
     .board {
         position: relative;

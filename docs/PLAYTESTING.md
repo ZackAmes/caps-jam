@@ -7,7 +7,8 @@ Old-world game IDs are separate and cannot be resumed in this client.
 
 1. Open `/game`, choose **Use test account**, select a board, then **Play against Bot**.
 2. Tap a hand piece to deploy at your base. Tap your board piece and a highlighted
-   connected square to move or attack. You can also drag pieces.
+   connected square to move or attack. The default 3D board uses tap/click controls.
+   Switch to **2D** above the board for the flat board and drag controls.
 3. Inspect a piece to read its ability and passive conditions. Abilities spend energy;
    deploying or moving spends the normal action. A Runner can grant an extra move.
 4. **Submit Turn** commits your plan. **Pass turn** ends a turn with no actions.
@@ -31,7 +32,7 @@ Its background service needs this host to stay awake and online.
 - Inspect passive text and active status as pieces move. Energy income includes occupied
   side objectives and on-board Generators, up to a carried balance of five.
 - Deploy a Blaster after cycling the initial hand. Announce its row attack with three
-  energy. The dashed row and pending list should appear in your plan; submitting announces
+  energy. The orange threat markers (dashed rows in 2D) and pending list should appear in your plan; submitting announces
   it without immediate damage. The opponent gets a full turn to respond.
 - Move out of a threatened row before ending the response turn. Pieces still in the row,
   including friendly pieces, take four damage subject to shield and damage reduction.
@@ -56,3 +57,12 @@ hand rotation, capture cooldown, goal wins, and bot discovery/retry behavior.
 For a stuck bot on this host, inspect `journalctl --user -u caps-bot.service -n 30`.
 The active checkpoint is `bot/state/checkpoint-v4.json`; do not replace it with a checkpoint
 from the old world. Account keys and bot state remain local and ignored by Git.
+
+## 3D board
+
+The main `/game` route renders the live board with Three.js through Threlte. The old
+`/three` demo now redirects to the game. Both views use the same preview, selection,
+ability targets, hand, and transaction submission; switching views keeps the current plan.
+The camera stays fixed to preserve row orientation and make touch selection predictable.
+WebGL initialization failure or context loss switches back to the 2D board automatically.
+The view preference is stored locally. The 3D bundle loads separately from the core client.
