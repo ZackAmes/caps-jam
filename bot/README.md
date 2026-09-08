@@ -1,7 +1,7 @@
 # CAPS bot
 
-This branch requires rules v4. Its checked-in manifest still points at v2; deploy the
-v4 contracts and sync the manifest before running it. The live v2 bot runs from `~/caps`.
+The checked-in manifest targets the September 8, 2026 rules v4 Sepolia deployment.
+The background bot runs from `~/caps` with a separate v4 checkpoint.
 
 A standalone Sepolia player with its own account. Anyone can challenge the address in
 [account.public.json](account.public.json), or use **Play against Bot** in the game lobby.

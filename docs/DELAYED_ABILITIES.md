@@ -1,7 +1,7 @@
 # Delayed abilities and the stack (rules v4)
 
-Implemented on `mechanics-foundation`, not deployed. The live v2 client/world/bot are
-unchanged. This extends the v3 passive/path foundation.
+Deployed to the fresh September 8, 2026 v4 Sepolia world. Client and bot use the
+same v4 manifest. This extends the v3 passive/path foundation.
 
 ## Timing and responses
 
@@ -115,7 +115,7 @@ responses. Its forecast covers stack impacts, not the older timed-status-effect 
 `get_stack(game_id)` exposes the stored state. `rules_version()` is 4, and the client/bot
 reject older deployments. The new model and the changed set context require a coordinated
 fresh deployment of world/actions/Set Zero, manifest synchronization, and a new bot
-checkpoint. Do not point the v4 client at the still-live v2 manifest.
+checkpoint. Do not reuse a checkpoint from a different world.
 
 Tests cover turn windows, LIFO blocking, shielding responses, counters, source death, live
 row selection, goal precedence, saturation, area mitigation, serialization, and AI escape.

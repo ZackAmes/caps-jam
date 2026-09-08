@@ -1,4 +1,4 @@
-# CAPS — implemented rules (v4, not yet deployed)
+# CAPS — implemented rules (v4)
 
 See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive/path semantics and [DELAYED_ABILITIES.md](DELAYED_ABILITIES.md) for the ability stack. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
 
@@ -68,6 +68,6 @@ The hardcoded Sepolia test account remains intentional while Controller is unava
 
 The v4 foundation changes the set ABI, board connections, and adds stored pending abilities. Use a fresh v4 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 4; the client and bot reject incompatible deployments.
 
-The existing manifest and running service still target the September 5, 2026 **v2** Sepolia world (`0x76621c09cb35987c3760b3bd22573327305ccfdb45aa10493f284552505e92d`). This branch has not changed that deployment.
+The client manifest and bot target the September 8, 2026 **v4** Sepolia world (`0x64b3825d2b0343b2b33778a2426dcfb54d8968e5078e6ecc140eed10889af99`). Set Zero is registered as set 0. Old v2 games remain in the previous world and are not migrated.
 
 The client previews the reference set's actions and abilities. The onchain contract is authoritative; arbitrary future sets will need corresponding preview support.

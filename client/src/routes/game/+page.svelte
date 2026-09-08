@@ -1,4 +1,7 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
+    import { dojoConfig } from '$lib/dojo/config';
+    import { viewerSlot, pathEdges, effectTiming } from '$lib/game/presentation';
     import botAccount from '../../../../bot/account.public.json';
     import { previewTurn } from '@caps/game-core/preview';
     import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
@@ -46,6 +49,23 @@
         setTimeout(() => { addrCopied = false; }, 1500);
     }
 
+    const savedGameKey = `caps:last-game:${dojoConfig.worldAddress}`;
+    let resumeId = $state<number | null>(null);
+    let linkCopied = $state(false);
+    onMount(() => {
+        const linked = Number(new URL(location.href).searchParams.get('game'));
+        let saved = 0;
+        try { saved = Number(localStorage.getItem(savedGameKey)); } catch { /* Storage may be unavailable. */ }
+        const id = linked || saved;
+        if (Number.isSafeInteger(id) && id > 0) { resumeId = id; gameIdInput = String(id); }
+    });
+    async function copyGameLink() {
+        if (!game) return;
+        const url = new URL(location.href); url.searchParams.set('game', String(game.id));
+        try { await navigator.clipboard.writeText(url.href); linkCopied = true; }
+        catch { errorMsg = 'Copy the game link from your address bar.'; }
+    }
+
     let opponent = $state('');
     let selectedLayout = $state<number>(LAYOUT_PERIMETER_5X5);
     let gameIdInput = $state('1');
@@ -60,6 +80,8 @@
     let pendingStack = $state<AbilityStack>({gameId:0,nextId:0,entries:[]});
     let committing = $state(false);
 
+    let mySlot = $derived(game ? viewerSlot(game, account) : null);
+    let otherHand = $derived(game && mySlot === game.turnCount % 2 ? opponentHand : hand);
     let activeLayout = $derived<LayoutConfig>(getLayout(game ? game.layout : selectedLayout));
     let isSolo = $derived<boolean>(!!game && game.player1 === game.player2);
 
@@ -141,15 +163,9 @@
         return game.turnCount % 2 === 0 ? game.player1 : game.player2;
     }
 
-    function myOwner(): string | null {
-        if (!account || !game) return null;
-        return isSolo ? turnPlayerAddress() : account;
-    }
-
     function isMyCap(c: ChainCap): boolean {
         if (!account || !game) return false;
-        const slot = isSolo ? game.turnCount % 2 : (BigInt(account) === BigInt(game.player1) ? 0 : 1);
-        return c.playerSlot === slot && BigInt(c.owner) === BigInt(account);
+        return c.playerSlot === mySlot;
     }
 
     function isMyTurn(): boolean {
@@ -166,17 +182,15 @@
     }
 
     function myBenchCaps(): ChainCap[] {
-        const owner = myOwner();
-        if (!owner) return [];
-        const ids = new Set(preview?.hand ?? []);
-        return benchCaps().filter(c => c.playerSlot === game!.turnCount % 2 && ids.has(c.id));
+        if (mySlot === null || !game) return [];
+        const ids = new Set(isMyTurn() ? preview?.hand : opponentHand?.window);
+        return benchCaps().filter(c => c.playerSlot === mySlot && ids.has(c.id));
     }
 
     /** Bench pieces waiting for the hand cycle to come around. */
     function lockedBenchCount(): number {
-        const owner = myOwner();
-        if (!owner) return 0;
-        const all = benchCaps().filter(c => c.playerSlot === game!.turnCount % 2);
+        if (mySlot === null) return 0;
+        const all = benchCaps().filter(c => c.playerSlot === mySlot);
         return all.length - myBenchCaps().length;
     }
 
@@ -193,6 +207,7 @@
     /** For a cap on the board: legal 1-step targets (empty moves + enemy contacts). */
     function moveTargets(cap: ChainCap): Map<string, { type: 'move' | 'fight'; dmg?: number }> {
         const out = new Map<string, { type: 'move' | 'fight'; dmg?: number }>();
+        if (!canAct() || !isMyCap(cap) || cap.stunnedTurns > 0 || abilityTargetMode || (preview?.actions ?? 0) + (preview?.moves ?? 0) === 0) return out;
         if (cap.x === null || cap.y === null) return out;
         const dmg = capDefFor(cap)?.attack ?? 0;
         for (const [x, y] of activeLayout.neighbors([cap.x, cap.y])) {
@@ -490,6 +505,15 @@
             hand = nextHand;
             opponentHand = nextOpponentHand;
             game = nextGame;
+            selectedLayout = game.layout;
+            resumeId = id;
+            gameIdInput = String(id);
+            linkCopied = false;
+            try {
+                localStorage.setItem(savedGameKey, String(id));
+                const url = new URL(location.href); url.searchParams.set('game', String(id));
+                history.replaceState(history.state, '', url);
+            } catch { /* Loading still works without browser storage. */ }
             status = `Loaded game #${id}`;
             log(`Loaded game #${id} (turn ${game.turnCount}, layout ${game.layout})`);
         } catch (e: any) {
@@ -559,7 +583,7 @@
     <header class="topbar">
         <h1>CAPS</h1>
         {#if account}
-            {#if devMode}<span class="dev-badge">DEV</span>{/if}
+            {#if devMode}<span class="dev-badge">SEPOLIA TEST</span>{/if}
             <button class="addr" onclick={copyAddress} title="Tap to copy full address">
                 {addrCopied ? '✓ Copied' : `${account.slice(0, 6)}…${account.slice(-4)}`}
                 <span class="copy-icon">{addrCopied ? '' : '⧉'}</span>
@@ -575,12 +599,15 @@
             {/if}
             {#if !account}
                 <button class="primary big" onclick={handleConnect} disabled={busy !== null}>
-                    {devMode ? 'Enter Dev Mode' : 'Connect Controller'}
+                    {devMode ? 'Use test account' : 'Connect Controller'}
                 </button>
                 {#if busy}
                     <div class="busy"><span class="spinner"></span>{busy}</div>
                 {/if}
             {:else}
+                {#if resumeId}
+                    <button class="big" onclick={handleLoad} disabled={busy !== null}>Resume game #{resumeId}</button>
+                {/if}
                 <div class="field">
                     <label for="layout-select">Board Layout</label>
                     <select id="layout-select" bind:value={selectedLayout}>
@@ -636,9 +663,10 @@
         <section class="gameview">
             <div class="meta">
                 <button class="back" onclick={() => { game = null; queuedActions = []; selectedCapId = null; hand = null; }}>← Lobby</button>
-                <span class="badge">#{game.id}</span>
+                <span class="badge">#{game.id} · Turn {game.turnCount + 1}</span>
+                <button onclick={copyGameLink}>{linkCopied ? 'Copied' : 'Copy link'}</button>
                 <span class="turn-badge {game.turnCount % 2 === 0 ? 'p1' : 'p2'}">
-                    {game.turnCount % 2 === 0 ? "P1" : "P2"}
+                    {isSolo ? `P${game.turnCount % 2 + 1}` : isMyTurn() ? 'Your turn' : 'Opponent’s turn'}
                 </span>
                 <span class="energy-badge" title="Energy remaining this turn">⚡ {remainingEnergy}/5</span>
                 <span>{preview?.actions ?? 1} action · {preview?.moves ?? 0} bonus moves</span>
@@ -646,7 +674,8 @@
 
             {#if game.over}
                 <div class="gameover">
-                    Player {game.winnerSlot + 1} reached the goal!
+                    {isSolo ? `Player ${game.winnerSlot + 1}` : game.winnerSlot === mySlot ? 'You' : 'Your opponent'} reached the goal!
+                    <button onclick={() => createAndLoad(isSolo ? undefined : game!.player1 === account ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button>
                 </div>
             {/if}
 
@@ -660,6 +689,8 @@
                 <div class="error" role="alert">{errorMsg}</div>
             {/if}
 
+            {#if !isMyTurn() && !game.over}<p class="hint" role="status">Waiting for your opponent. The board refreshes automatically.</p>{/if}
+            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
             <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
             <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
             {#if preview?.winnerSlot !== null && preview?.winnerSlot !== undefined && !game.over}
@@ -672,7 +703,7 @@
                     {#each [...preview.stack.entries].reverse() as entry (entry.id)}
                         <div class="pending-entry">
                             <strong>#{entry.id} · P{entry.playerSlot + 1}</strong> {describeImpact(entry)}
-                            <small>{entry.readyTurn <= game.turnCount + 1 ? 'Ready at this turn’s end' : `Ready in ${entry.readyTurn - game.turnCount} turn endings`}</small>
+                            <small>{entry.id > pendingStack.nextId ? 'Planned · announce by submitting this turn. ' : ''}{effectTiming(entry, preview.stack, game.turnCount, mySlot)}</small>
                         </div>
                     {/each}
                 </section>
@@ -736,6 +767,11 @@
                     </div>
                 {/each}
 
+                <svg class="paths" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    {#each pathEdges(activeLayout) as edge}
+                        <line x1={(edge.x1 + 0.5) / activeLayout.width * 100} y1={(edge.y1 + 0.5) / activeLayout.height * 100} x2={(edge.x2 + 0.5) / activeLayout.width * 100} y2={(edge.y2 + 0.5) / activeLayout.height * 100} />
+                    {/each}
+                </svg>
                 <!-- Pieces: absolutely positioned, glide between tiles -->
                 <div class="pieces-layer">
                     {#each simCaps as c (c.id)}
@@ -749,7 +785,7 @@
                                 style="left:{pct(c.x, activeLayout.width)};top:{pct(c.y, activeLayout.height)}"
                             >
                                 <div class="piece-body">
-                                    <div class="type">{c.capType}</div>
+                                    <div class="type" title={capDefFor(c)?.name}>{(capDefFor(c)?.name ?? String(c.capType)).slice(0, 3)}</div>
                                     <div class="hp">{c.health}</div>
                                     {#if c.shield > 0}<div class="shield-badge">🛡{c.shield}</div>{/if}
                                     {#if c.stunnedTurns > 0}<div class="stun-badge">💫</div>{/if}
@@ -797,7 +833,7 @@
                     <button
                         class="ability-btn"
                         onclick={abilityTargetModeStart}
-                        disabled={!game || remainingEnergy < selDef.abilityCost || preview?.usedAbilities.has(selectedCapId) || capById(selectedCapId)?.x === null}
+                        disabled={!canAct() || !isMyCap(capById(selectedCapId)!) || !!capById(selectedCapId)?.stunnedTurns || remainingEnergy < selDef.abilityCost || preview?.usedAbilities.has(selectedCapId) || capById(selectedCapId)?.x === null}
                     >
                         ✨ Ability (⚡{selDef.abilityCost})
                     </button>
@@ -808,9 +844,10 @@
             {#if selectedCapId != null}
                 {@const selDef = capDefFor(capById(selectedCapId)!)}
                 {#if selDef}
+                    {@const selected = capById(selectedCapId)!}
                     <div class="piece-info">
                         <div class="pi-name">{selDef.name}</div>
-                        <div class="pi-stats">❤{selDef.maxHealth} ⚔{selDef.attack} ⚡{selDef.abilityCost}</div>
+                        <div class="pi-stats">❤ {selected.health}/{selDef.maxHealth} · ⚔ {Math.min(65535, selDef.attack + passiveBonus('AttackBonus', selected, simCaps, capDefMap, activeLayout))} · 🛡 {selected.shield} shield / {passiveBonus('DamageReduction', selected, simCaps, capDefMap, activeLayout)} reduction</div>
                         {#if selDef.abilityDescription !== 'None' && selDef.abilityTarget !== 0}
                             <div class="pi-ability">
                                 <span class="pi-cost">⚡{selDef.abilityCost}</span>
@@ -825,9 +862,9 @@
                 {/if}
             {/if}
 
-            {#if opponentHand}
-                <div class="locked-note">P{opponentHand.playerSlot + 1} public hand:
-                    {opponentHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name ?? `Piece ${c.capType}` : ''; }).join(' · ') || 'Empty'}
+            {#if otherHand}
+                <div class="locked-note">P{otherHand.playerSlot + 1} public hand:
+                    {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name ?? `Piece ${c.capType}` : ''; }).join(' · ') || 'Empty'}
                 </div>
             {/if}
             <!-- Bench -->
@@ -838,11 +875,13 @@
             {/if}
             {#if myBenchCaps().length > 0}
                 <div class="bench">
-                    <span class="bench-label">Hand ({game.turnCount % 2 === 0 ? 'P1' : 'P2'})</span>
+                    <span class="bench-label">Your hand (P{(mySlot ?? 0) + 1})</span>
                     <div class="bench-pieces">
                         {#each myBenchCaps() as c (c.id)}
                             <button
                                 class="bench-piece"
+                                disabled={!canAct() || (preview?.actions ?? 0) === 0}
+                                title={capDefFor(c)?.abilityDescription}
                                 data-bench={c.id}
                             >{capDefFor(c)?.name ?? c.capType} · {c.health}hp</button>
                         {/each}
@@ -850,16 +889,17 @@
                 </div>
             {/if}
 
-            {#each benchCaps().filter(c => c.playerSlot === game!.turnCount % 2 && c.availableTurn > game!.turnCount) as c}
+            {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}
                 <p class="hint">{capDefFor(c)?.name ?? c.capType}: capture cooldown — {Math.ceil((c.availableTurn - (game.turnCount + (game.turnCount % 2 === c.playerSlot ? 0 : 1))) / 2)} owner turns remaining</p>
             {/each}
 
             <!-- Queued Actions -->
             {#if queuedActions.length > 0}
+                <p class="hint">Planned actions — the board previews immediate changes. Dashed rows mark delayed damage. Tap an action to undo it and any later actions.</p>
                 <div class="queued">
                     {#each queuedActions as qa, i}
                         <button class="queued-action" disabled={committing || busy !== null} onclick={() => removeQueuedAction(i)}>
-                            {qa.kind} ({qa.x},{qa.y}) ✕
+                            {capDefFor(capById(qa.capId)!)?.name ?? 'Piece'}: {qa.kind === 'Ability' ? 'ability' : qa.kind === 'Play' ? 'deploy' : 'move / attack'} · row {qa.y + 1}, col {qa.x + 1} ✕
                         </button>
                     {/each}
                 </div>
@@ -1028,6 +1068,8 @@
     .pending-entry { padding: 0.45rem 0; border-top: 1px solid #64452b; font-size: 0.85rem; }
     .pending-entry small { display: block; color: #fbbf24; }
     .tile.pending-danger::after { content: ''; position: absolute; inset: 4px; border: 1px dashed #f59e0b; border-radius: 3px; pointer-events: none; }
+    .paths { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); pointer-events: none; z-index: 2; }
+    .paths line { stroke: #94a3b8; stroke-width: 0.55; stroke-linecap: round; opacity: 0.6; }
     /* Board */
     .board {
         position: relative;

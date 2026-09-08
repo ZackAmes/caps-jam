@@ -1,9 +1,9 @@
 {
   "world": {
     "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
-    "address": "0x76621c09cb35987c3760b3bd22573327305ccfdb45aa10493f284552505e92d",
-    "seed": "caps-goals-v2-2026-09-05",
-    "name": "Caps vibe jam",
+    "address": "0x64b3825d2b0343b2b33778a2426dcfb54d8968e5078e6ecc140eed10889af99",
+    "seed": "caps-path-stack-v4-2026-09-08",
+    "name": "CAPS — Paths and Abilities",
     "entrypoints": [
       "uuid",
       "set_metadata",
@@ -33,8 +33,8 @@
   },
   "contracts": [
     {
-      "address": "0x3b974a6f0c981535d8b16d062b704ccaaf2fa1a0a15a7099f464c78b15ca3af",
-      "class_hash": "0x4b6bcac9f6cbead67c9c5942b03b5902b73f3e161c1465800abbea2cd307e0c",
+      "address": "0x6f466df359053acd6186676c69a10b13b360d35b78b5982c64506921946973",
+      "class_hash": "0x73879898a4c5404c8a7d31d395edf750e00f0733c8aeec2bfa4bf33c5a08789",
       "init_calldata": [],
       "tag": "caps-actions",
       "selector": "0x482dc9f44e8c68f3ef3ab58497e0d8e446ad2581a5544512fbaebef3af3ccbc",
@@ -50,8 +50,8 @@
       ]
     },
     {
-      "address": "0x1f98f27a8472a2a9d018ba96b57c4752f47679a693a96fc9164b58e876f804a",
-      "class_hash": "0xaba5f0487964469f3fac37f7604db4a4d9e74fad1738e2e7de7ae25d929e40",
+      "address": "0x628f94bf4027aa93e9a10813d789f0b11aab821ee65369b4cf09a14d25248cb",
+      "class_hash": "0x4acc9289197d4c392304314f836cc817432b9be7a520468dee62b98e84cf1a6",
       "init_calldata": [],
       "tag": "caps-set_zero",
       "selector": "0x35ce53c0ff5c6ffb239bb347c5287062ae627c62c39204363d9153ba72a9377",
@@ -62,6 +62,28 @@
   ],
   "libraries": [],
   "models": [
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "next_id",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "entries",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>",
+          "key": false
+        }
+      ],
+      "class_hash": "0x32210b9cb50cd0d27b8fb293159199861cf5d3bfa8b102badf829392c56ea5a",
+      "tag": "caps-AbilityStack",
+      "selector": "0x545130903a4bae49a858e1a80f7b3f5affd37286da10decab0bff5b3bf509fc"
+    },
     {
       "members": [
         {
@@ -445,28 +467,32 @@
       "name": "caps::models::effect::Condition",
       "variants": [
         {
-          "name": "None",
-          "type": "()"
-        },
-        {
-          "name": "MinAlliesOnBoard",
+          "name": "AlliesOnBoard",
           "type": "core::integer::u8"
         },
         {
-          "name": "HasAdjacentAlly",
-          "type": "()"
-        },
-        {
-          "name": "EnemyInRange",
+          "name": "AllyWithin",
           "type": "core::integer::u8"
         },
         {
-          "name": "HealthBelow",
+          "name": "EnemyWithin",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "HealthBelowPercent",
           "type": "core::integer::u8"
         },
         {
           "name": "OnEnemyHalf",
           "type": "()"
+        },
+        {
+          "name": "PieceInRow",
+          "type": "caps::models::effect::Relation"
+        },
+        {
+          "name": "PieceInColumn",
+          "type": "caps::models::effect::Relation"
         }
       ]
     },
@@ -599,90 +625,86 @@
       "name": "caps::models::effect::Passive",
       "members": [
         {
-          "name": "passive_type",
-          "type": "caps::models::effect::PassiveType"
+          "name": "kind",
+          "type": "caps::models::effect::PassiveKind"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "target",
+          "type": "caps::models::effect::PassiveTarget"
+        },
+        {
+          "name": "conditions",
+          "type": "core::array::Span::<caps::models::effect::Condition>"
         }
       ]
     },
     {
       "type": "enum",
-      "name": "caps::models::effect::PassiveType",
+      "name": "caps::models::effect::PassiveKind",
       "variants": [
         {
-          "name": "None",
+          "name": "AttackBonus",
           "type": "()"
         },
         {
-          "name": "Aura",
-          "type": "caps::models::effect::SetPassiveAura"
-        },
-        {
           "name": "DamageReduction",
-          "type": "caps::models::effect::SetPassiveDamageReduction"
+          "type": "()"
         },
         {
-          "name": "ConditionalAttack",
-          "type": "caps::models::effect::SetPassiveConditionalAttack"
-        },
-        {
-          "name": "Regeneration",
-          "type": "caps::models::effect::SetPassiveRegeneration"
-        },
-        {
-          "name": "FreeFirstAttack",
+          "name": "AbilityRangeBonus",
           "type": "()"
         },
         {
           "name": "EnergyGeneration",
+          "type": "()"
+        },
+        {
+          "name": "Regeneration",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "caps::models::effect::PassiveTarget",
+      "variants": [
+        {
+          "name": "SelfCap",
+          "type": "()"
+        },
+        {
+          "name": "AlliesWithin",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "EnemiesWithin",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "AllWithin",
           "type": "core::integer::u8"
         }
       ]
     },
     {
-      "type": "struct",
-      "name": "caps::models::effect::SetPassiveAura",
-      "members": [
+      "type": "enum",
+      "name": "caps::models::effect::Relation",
+      "variants": [
         {
-          "name": "effect",
-          "type": "caps::models::effect::EffectType"
+          "name": "Ally",
+          "type": "()"
         },
         {
-          "name": "radius",
-          "type": "core::integer::u8"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "caps::models::effect::SetPassiveConditionalAttack",
-      "members": [
-        {
-          "name": "amount",
-          "type": "core::integer::u16"
+          "name": "Enemy",
+          "type": "()"
         },
         {
-          "name": "condition",
-          "type": "caps::models::effect::Condition"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "caps::models::effect::SetPassiveDamageReduction",
-      "members": [
-        {
-          "name": "amount",
-          "type": "core::integer::u16"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "caps::models::effect::SetPassiveRegeneration",
-      "members": [
-        {
-          "name": "amount",
-          "type": "core::integer::u16"
+          "name": "Any",
+          "type": "()"
         }
       ]
     },
@@ -1095,6 +1117,10 @@
         {
           "name": "effects",
           "type": "core::array::Span::<caps::models::set_data::EffectSnapshot>"
+        },
+        {
+          "name": "stack",
+          "type": "core::array::Span::<caps::models::stack::StackEntry>"
         }
       ]
     },
@@ -1220,11 +1246,11 @@
         },
         {
           "name": "ability_range",
-          "type": "core::array::Array::<caps::models::game::Vec2>"
+          "type": "core::integer::u8"
         },
         {
-          "name": "passive",
-          "type": "caps::models::effect::Passive"
+          "name": "passives",
+          "type": "core::array::Array::<caps::models::effect::Passive>"
         }
       ]
     },
@@ -1405,6 +1431,14 @@
         {
           "name": "ExtraActions",
           "type": "core::integer::u8"
+        },
+        {
+          "name": "Schedule",
+          "type": "caps::models::stack::Schedule"
+        },
+        {
+          "name": "CounterPending",
+          "type": "core::integer::u64"
         }
       ]
     },
@@ -1607,6 +1641,164 @@
       ]
     },
     {
+      "type": "struct",
+      "name": "caps::models::stack::AbilityStack",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "next_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "entries",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::stack::AbilityStackValue",
+      "members": [
+        {
+          "name": "next_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "entries",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::stack::DelayedImpact",
+      "members": [
+        {
+          "name": "kind",
+          "type": "caps::models::stack::ImpactKind"
+        },
+        {
+          "name": "selection",
+          "type": "caps::models::stack::Selection"
+        },
+        {
+          "name": "relation",
+          "type": "caps::models::effect::Relation"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u16"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "caps::models::stack::ImpactKind",
+      "variants": [
+        {
+          "name": "Damage",
+          "type": "()"
+        },
+        {
+          "name": "Heal",
+          "type": "()"
+        },
+        {
+          "name": "Shield",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::stack::Schedule",
+      "members": [
+        {
+          "name": "delay",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "impact",
+          "type": "caps::models::stack::DelayedImpact"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "caps::models::stack::Selection",
+      "variants": [
+        {
+          "name": "Piece",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "Row",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "Column",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "Within",
+          "type": "caps::models::stack::Zone"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::stack::StackEntry",
+      "members": [
+        {
+          "name": "id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "source_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "player_slot",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "announced_turn",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "ready_turn",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "impact",
+          "type": "caps::models::stack::DelayedImpact"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::stack::Zone",
+      "members": [
+        {
+          "name": "center",
+          "type": "caps::models::game::Vec2"
+        },
+        {
+          "name": "radius",
+          "type": "core::integer::u8"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "caps::models::stack::m_AbilityStack::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
       "type": "event",
       "name": "caps::sets::set_zero::set_zero::Event",
       "kind": "enum",
@@ -1645,6 +1837,22 @@
           "outputs": [
             {
               "type": "core::integer::u64"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_stack",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "caps::models::stack::AbilityStack"
             }
           ],
           "state_mutability": "view"
@@ -1878,6 +2086,16 @@
     },
     {
       "type": "struct",
+      "name": "core::array::Span::<caps::models::effect::Condition>",
+      "members": [
+        {
+          "name": "snapshot",
+          "type": "@core::array::Array::<caps::models::effect::Condition>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "core::array::Span::<caps::models::set_data::CapInfo>",
       "members": [
         {
@@ -1913,6 +2131,16 @@
         {
           "name": "snapshot",
           "type": "@core::array::Array::<caps::models::set_data::SetOp>"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "core::array::Span::<caps::models::stack::StackEntry>",
+      "members": [
+        {
+          "name": "snapshot",
+          "type": "@core::array::Array::<caps::models::stack::StackEntry>"
         }
       ]
     },

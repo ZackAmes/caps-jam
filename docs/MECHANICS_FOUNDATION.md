@@ -1,7 +1,7 @@
 # Mechanics foundation (rules v3)
 
-Implemented on `mechanics-foundation`; not deployed. The live Sepolia world, client
-manifest, and background bot remain on v2 until a coordinated deployment.
+Deployed with rules v4 to a fresh Sepolia world on September 8, 2026. The client
+manifest and background bot use this deployment.
 
 The branch now also includes [delayed abilities and the stack](DELAYED_ABILITIES.md),
 which advance the protocol to v4. The passive/path semantics below remain applicable.
