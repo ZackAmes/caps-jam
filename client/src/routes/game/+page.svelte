@@ -255,8 +255,9 @@
 
     // Tap resolution
     function onTapCell(x: number, y: number) {
-        if (!canAct() || !activeLayout.isWalkable(x, y)) return;
+        if (!activeLayout.isWalkable(x, y)) return;
         const occ = capAt(x, y);
+        if (!canAct()) { selectedCapId = occ?.id ?? null; abilityTargetMode = false; return; }
 
         // ability targeting
         if (abilityTargetMode && selectedCapId != null) {
@@ -287,8 +288,8 @@
             }
         }
 
-        // nothing matched — deselect
-        selectedCapId = null;
+        // Inspect an enemy when no legal action was selected.
+        selectedCapId = occ?.id ?? null;
     }
 
     function onTapBench(capId: number) {
@@ -345,7 +346,7 @@
         drag.label = null;
         if (!over || !canAct()) return;
         if (drag.fromBench) {
-            drag.valid = !capAt(over.x, over.y) && isDeploySpot(over.x, over.y);
+            drag.valid = (preview?.actions ?? 0) > 0 && !capAt(over.x, over.y) && isDeploySpot(over.x, over.y);
         } else {
             const cap = capById(drag.capId);
             if (!cap) return;
@@ -372,12 +373,12 @@
     }
 
     function onPointerDown(e: PointerEvent) {
-        if (!canAct()) return;
+        if (!game || committing || busy !== null) return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         const px = e.clientX, py = e.clientY;
 
         const benchId = benchCapFromPoint(px, py);
-        if (benchId !== null) {
+        if (benchId !== null && canAct()) {
             downInfo = { px, py, capId: benchId, fromBench: true };
             (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
             return;
@@ -385,7 +386,7 @@
         const cell = cellFromPoint(px, py);
         if (cell) {
             const occ = capAt(cell.x, cell.y);
-            if (occ && isMyCap(occ)) {
+            if (occ && isMyCap(occ) && canAct()) {
                 downInfo = { px, py, capId: occ.id, fromBench: false, cell };
             } else {
                 downInfo = { px, py, cell };
@@ -485,7 +486,7 @@
     async function loadGame(id: number, stillCurrent: () => boolean = () => true) {
         errorMsg = null;
         try {
-            if (Number.isNaN(id) || id <= 0) throw new Error('Enter a valid game id');
+            if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Enter a valid game id');
             const nextGame = await getGame(id);
             if (!nextGame) throw new Error(`Game ${id} not found`);
             const slot = nextGame.turnCount % 2;
@@ -675,7 +676,7 @@
             {#if game.over}
                 <div class="gameover">
                     {isSolo ? `Player ${game.winnerSlot + 1}` : game.winnerSlot === mySlot ? 'You' : 'Your opponent'} reached the goal!
-                    <button onclick={() => createAndLoad(isSolo ? undefined : game!.player1 === account ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button>
+                    <button onclick={() => createAndLoad(isSolo ? undefined : mySlot === 0 ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button>
                 </div>
             {/if}
 
@@ -882,6 +883,11 @@
                                 class="bench-piece"
                                 disabled={!canAct() || (preview?.actions ?? 0) === 0}
                                 title={capDefFor(c)?.abilityDescription}
+                                onpointerdown={onPointerDown}
+                                onpointermove={onPointerMove}
+                                onpointerup={onPointerUp}
+                                onpointercancel={onPointerCancel}
+                                onclick={(event) => { if (event.detail === 0) onTapBench(c.id); }}
                                 data-bench={c.id}
                             >{capDefFor(c)?.name ?? c.capType} · {c.health}hp</button>
                         {/each}
