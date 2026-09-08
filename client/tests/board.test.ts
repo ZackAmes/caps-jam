@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LAYOUTS, isValidStep } from '../src/lib/dojo/board';
+import { LAYOUTS, isValidStep } from '@caps/game-core/board';
 
 test('every track rejects off-board and fractional coordinates', () => {
   for (const layout of Object.values(LAYOUTS)) {

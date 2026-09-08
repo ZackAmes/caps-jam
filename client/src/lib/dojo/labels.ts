@@ -1,4 +1,4 @@
-import type { CapTypeDef } from './types';
+import type { CapTypeDef } from '@caps/game-core/types';
 
 /** Passive type labels for display. */
 export const PASSIVE_LABELS: Record<number, string> = {

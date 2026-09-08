@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeCapType, decodeGame, decodeHand } from '../src/lib/dojo/decode';
+import { decodeCapType, decodeGame, decodeHand } from '@caps/game-core/decode';
 const felt = (n: number | string) => String(n);
 function text(value:string):string[] {
  const bytes = new TextEncoder().encode(value);

@@ -29,12 +29,19 @@ pub fn is_walkable(layout: u8, pos: Vec2) -> bool {
         pos.x == 0 || pos.x == 4 || pos.y == 0 || pos.y == 4 || pos.x == 2 || pos.y == 2
     } else if layout == LAYOUT_DIAGONAL_X_5X5 {
         // Perimeter + diagonal X connecting opposite corners through center (2,2)
-        pos.x == 0 || pos.x == 4 || pos.y == 0 || pos.y == 4 || pos.x == pos.y || (pos.x + pos.y == 4)
+        pos.x == 0
+            || pos.x == 4
+            || pos.y == 0
+            || pos.y == 4
+            || pos.x == pos.y
+            || (pos.x + pos.y == 4)
     } else if layout == LAYOUT_DIAMOND_5X5 {
         // Perimeter + inner diamond track: (2,1), (3,2), (2,3), (1,2)
         let is_perimeter = pos.x == 0 || pos.x == 4 || pos.y == 0 || pos.y == 4;
-        let is_diamond = (pos.x == 2 && pos.y == 1) || (pos.x == 3 && pos.y == 2) ||
-                         (pos.x == 2 && pos.y == 3) || (pos.x == 1 && pos.y == 2);
+        let is_diamond = (pos.x == 2 && pos.y == 1)
+            || (pos.x == 3 && pos.y == 2)
+            || (pos.x == 2 && pos.y == 3)
+            || (pos.x == 1 && pos.y == 2);
         is_perimeter || is_diamond
     } else {
         pos.x == 0 || pos.x == 4 || pos.y == 0 || pos.y == 4
@@ -61,8 +68,16 @@ pub fn is_valid_step(layout: u8, from: Vec2, to: Vec2) -> bool {
         return false;
     }
 
-    let dx = if from.x > to.x { from.x - to.x } else { to.x - from.x };
-    let dy = if from.y > to.y { from.y - to.y } else { to.y - from.y };
+    let dx = if from.x > to.x {
+        from.x - to.x
+    } else {
+        to.x - from.x
+    };
+    let dy = if from.y > to.y {
+        from.y - to.y
+    } else {
+        to.y - from.y
+    };
 
     // Chebyshev distance == 1 means adjacent (orthogonal or diagonal)
     dx <= 1 && dy <= 1
@@ -92,9 +107,9 @@ pub fn get_walkable_neighbors(layout: u8, pos: Vec2) -> Array<Vec2> {
                 }
             }
             dy_i += 1;
-        };
+        }
         dx_i += 1;
-    };
+    }
 
     neighbors
 }

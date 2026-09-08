@@ -34,11 +34,12 @@
   "contracts": [
     {
       "address": "0x3b974a6f0c981535d8b16d062b704ccaaf2fa1a0a15a7099f464c78b15ca3af",
-      "class_hash": "0x57b9ae28d997b7951e73ccf4ea9b585bfc4f17f75ea345ce968f341ca4337dd",
+      "class_hash": "0x4b6bcac9f6cbead67c9c5942b03b5902b73f3e161c1465800abbea2cd307e0c",
       "init_calldata": [],
       "tag": "caps-actions",
       "selector": "0x482dc9f44e8c68f3ef3ab58497e0d8e446ad2581a5544512fbaebef3af3ccbc",
       "systems": [
+        "take_turn_if_current",
         "register_set",
         "create_game",
         "create_game_with_layout",
@@ -1636,6 +1637,37 @@
             }
           ],
           "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_game_count",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u64"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "take_turn_if_current",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "expected_turn",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "turn",
+              "type": "core::array::Array::<caps::models::game::Action>"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
         },
         {
           "type": "function",

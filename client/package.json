@@ -1,34 +1,35 @@
 {
-	"name": "client",
-	"private": true,
-	"version": "0.0.1",
-	"type": "module",
-	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"test": "bun test tests",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"start": "node build"
-	},
-	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/adapter-vercel": "^6.3.4",
-		"@sveltejs/kit": "^2.47.1",
-		"@sveltejs/vite-plugin-svelte": "^6.2.1",
-		"svelte": "^5.41.0",
-		"svelte-check": "^4.3.3",
-		"typescript": "^5.9.3",
-		"vite": "^7.1.10"
-	},
-	"dependencies": {
-		"@cartridge/controller": "0.14.0",
-		"@cartridge/presets": "0.5.4",
-		"@threlte/core": "^8.3.0",
-		"@threlte/extras": "^9.7.0",
-		"starknet": "10.0.2",
-		"three": "^0.181.1"
-	}
+  "name": "client",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "bun test tests",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "start": "node build"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "7.0.1",
+    "@sveltejs/adapter-vercel": "6.3.4",
+    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/vite-plugin-svelte": "6.2.4",
+    "svelte": "5.56.10",
+    "svelte-check": "4.7.6",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  },
+  "dependencies": {
+    "@cartridge/controller": "0.14.0",
+    "@cartridge/presets": "0.5.4",
+    "@threlte/core": "8.6.0",
+    "@threlte/extras": "9.21.1",
+    "starknet": "10.0.2",
+    "three": "0.181.2",
+    "@caps/game-core": "workspace:*"
+  }
 }

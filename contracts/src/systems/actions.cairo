@@ -9,6 +9,8 @@ use starknet::ContractAddress;
 #[starknet::interface]
 pub trait IActions<T> {
     fn rules_version(self: @T) -> u8;
+    fn get_game_count(self: @T) -> u64;
+    fn take_turn_if_current(ref self: T, game_id: u64, expected_turn: u64, turn: Array<Action>);
     /// Register a set contract (governance in production).
     fn register_set(
         ref self: T,
@@ -126,6 +128,21 @@ pub mod actions {
     impl ActionsImpl of IActions<ContractState> {
         fn rules_version(self: @ContractState) -> u8 {
             2
+        }
+
+        fn get_game_count(self: @ContractState) -> u64 {
+            let world = self.world_default();
+            let global: Global = world.read_model(0);
+            global.games_counter
+        }
+
+        fn take_turn_if_current(
+            ref self: ContractState, game_id: u64, expected_turn: u64, turn: Array<Action>,
+        ) {
+            let world = self.world_default();
+            let game: Game = world.read_model(game_id);
+            assert!(game.turn_count == expected_turn, "Turn changed");
+            self.take_turn(game_id, turn);
         }
 
         fn create_game(ref self: ContractState, p2: ContractAddress) -> u64 {

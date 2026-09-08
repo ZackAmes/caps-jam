@@ -305,3 +305,27 @@ fn winning_attack_takes_the_goal_square() {
     let game: Game = world.read_model(id);
     assert!(game.over && game.winner_slot == 0, "arrival wins");
 }
+
+#[test]
+fn game_count_tracks_created_games() {
+    let (_, api, _) = setup();
+    assert!(api.get_game_count() == 1, "initial count");
+    api.create_solo_game();
+    assert!(api.get_game_count() == 2, "new game count");
+}
+
+#[test]
+#[should_panic(expected: ("Turn changed", 'ENTRYPOINT_FAILED'))]
+fn guarded_turn_rejects_stale_submission() {
+    let (_, api, id) = setup();
+    api.take_turn_if_current(id, 0, array![]);
+    api.take_turn_if_current(id, 0, array![]);
+}
+
+#[test]
+fn guarded_turn_accepts_current_turn() {
+    let (_, api, id) = setup();
+    api.take_turn_if_current(id, 0, array![act(3, ActionType::Play(Vec2 { x: 2, y: 0 }))]);
+    let (game, _) = api.get_game(id).unwrap();
+    assert!(game.turn_count == 1, "guarded action applied");
+}

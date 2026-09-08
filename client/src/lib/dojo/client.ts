@@ -1,9 +1,10 @@
+import { encodeActions } from '@caps/game-core/encode';
 import { CallData, type Call } from 'starknet';
-import { decodeGame, decodeHand, decodeCapType } from './decode';
+import { decodeGame, decodeHand, decodeCapType } from '@caps/game-core/decode';
 import { provider, ACTIONS } from './transport';
 import { getAccount } from './account';
-import { LAYOUT_PERIMETER_5X5 } from './board';
-import type { ChainGame, ChainHand, CapTypeDef, TurnAction } from './types';
+import { LAYOUT_PERIMETER_5X5 } from '@caps/game-core/board';
+import type { ChainGame, ChainHand, CapTypeDef, TurnAction } from '@caps/game-core/types';
 
 /** Fetch a player's hand (public — both hands visible). */
 export async function getHand(
@@ -81,22 +82,27 @@ export async function createSoloGame(layout: number = LAYOUT_PERIMETER_5X5): Pro
   });
 }
 
-const ACTION_VARIANT: Record<TurnAction["kind"], number> = {
-  Play: 0,
-  Move: 1,
-  Ability: 2,
-};
-
-export async function takeTurn(gameId: number, actions: TurnAction[]): Promise<void> {
-  const flat: (string | number)[] = [gameId, actions.length];
-  for (const a of actions) {
-    flat.push(a.capId, ACTION_VARIANT[a.kind], a.x, a.y);
-  }
+export async function takeTurn(gameId: number, expectedTurn: number, actions: TurnAction[]): Promise<void> {
   await executeAndWait({
     contractAddress: ACTIONS,
-    entrypoint: "take_turn",
-    calldata: CallData.compile(flat),
+    entrypoint: 'take_turn_if_current',
+    calldata: CallData.compile([gameId, expectedTurn, ...encodeActions(actions)]),
   });
+}
+
+export async function getGameCount(): Promise<number> {
+  const response = await provider.callContract({ contractAddress: ACTIONS, entrypoint: 'get_game_count', calldata: [] });
+  return Number(response[0]);
+}
+
+export async function findLatestGameForPlayer(address: string): Promise<number | null> {
+  for (let end = await getGameCount(); end > 0; end -= 20) {
+    const ids = Array.from({ length: Math.min(20, end) }, (_, i) => end - i);
+    const games = await Promise.all(ids.map(id => getGame(id)));
+    const found = games.find(game => game && [game.player1, game.player2].some(p => BigInt(p) === BigInt(address)));
+    if (found) return found.id;
+  }
+  return null;
 }
 
 /** In-memory cache of cap type definitions per game (gameId -> typeId -> def). */

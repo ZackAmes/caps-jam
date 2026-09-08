@@ -1,5 +1,5 @@
 use caps::models::game::Vec2;
-use caps::models::set_data::{CapType, AbilityContext, SetOutput};
+use caps::models::set_data::{AbilityContext, CapType, SetOutput};
 use starknet::ContractAddress;
 
 /// The extensibility boundary between the core game and piece sets.

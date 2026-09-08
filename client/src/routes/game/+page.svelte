@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { previewTurn } from '$lib/dojo/preview';
-    import { createGame, createSoloGame, takeTurn, getGame, getHand, getCapTypeCached } from '$lib/dojo/client';
+    import botAccount from '../../../../bot/account.public.json';
+    import { previewTurn } from '@caps/game-core/preview';
+    import { createGame, createSoloGame, takeTurn, getGame, getHand, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
-    import { getLayout, isValidStep, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '$lib/dojo/board';
+    import { getLayout, isValidStep, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
     import { passiveLabel } from '$lib/dojo/labels';
-    import type { ChainGame, ChainCap, TurnAction, ChainHand, CapTypeDef } from '$lib/dojo/types';
+    import type { ChainGame, ChainCap, TurnAction, ChainHand, CapTypeDef } from '@caps/game-core/types';
 
     let account = $state<string | null>(null);
     let status = $state<string>('Disconnected');
@@ -434,23 +435,6 @@
         }
     }
 
-    async function discoverMyGame(): Promise<number | null> {
-        const PROBE = 40;
-        const results = await Promise.allSettled(
-            Array.from({ length: PROBE }, (_, i) => getGame(i + 1))
-        );
-        let best: number | null = null;
-        results.forEach((r) => {
-            if (r.status === 'fulfilled' && r.value) {
-                const g = r.value;
-                if (account && (BigInt(g.player1) === BigInt(account) || BigInt(g.player2) === BigInt(account))) {
-                    if (best === null || g.id > best) best = g.id;
-                }
-            }
-        });
-        return best;
-    }
-
     async function handleCreateSolo() { await createAndLoad(); }
     async function handleCreate() {
         const opponentAddress = opponent.trim();
@@ -466,7 +450,7 @@
             if (opponentAddress) await createGame(opponentAddress, selectedLayout);
             else await createSoloGame(selectedLayout);
             busy = 'Finding your game…';
-            const id = await discoverMyGame();
+            const id = await findLatestGameForPlayer(account);
             if (id === null) {
                 status = 'Game created — enter its id manually to load';
                 return;
@@ -482,9 +466,12 @@
     }
 
     async function handleLoad() {
+        await loadGame(Number(gameIdInput));
+    }
+
+    async function loadGame(id: number, stillCurrent: () => boolean = () => true) {
         errorMsg = null;
         try {
-            const id = Number(gameIdInput);
             if (Number.isNaN(id) || id <= 0) throw new Error('Enter a valid game id');
             const nextGame = await getGame(id);
             if (!nextGame) throw new Error(`Game ${id} not found`);
@@ -495,6 +482,7 @@
             const newMap = new Map<number, CapTypeDef>();
             for (const def of definitions) if (def) newMap.set(def.id, def);
             if (newMap.size !== uniqueTypes.length) throw new Error('Unable to load all piece definitions');
+            if (!stillCurrent()) return;
             // Install a complete snapshot together; do not replay the previous queue on a new turn.
             queuedActions = [];
             selectedCapId = null;
@@ -511,13 +499,33 @@
         }
     }
 
+    // Watch the opponent without clearing a locally planned turn or reopening a closed game.
+    $effect(() => {
+        const id = game?.id;
+        const turn = game?.turnCount;
+        if (!id || turn === undefined || game?.over || isMyTurn()) return;
+        let cancelled = false;
+        let loading = false;
+        const current = () => !cancelled && game?.id === id && game.turnCount === turn;
+        const timer = setInterval(async () => {
+            if (loading || !current()) return;
+            loading = true;
+            try {
+                const next = await getGame(id);
+                if (current() && next && (next.turnCount !== turn || next.over)) await loadGame(id, current);
+            } catch { /* Transient RPC failure: retry on the next poll. */ }
+            finally { loading = false; }
+        }, 5000);
+        return () => { cancelled = true; clearInterval(timer); };
+    });
+
     async function commitTurn() {
         if (!game || game.over || !isMyTurn()) return;
         errorMsg = null;
         committing = true;
         log(`Submitting ${queuedActions.length} action(s)…`);
         try {
-            await takeTurn(game.id, queuedActions);
+            await takeTurn(game.id, game.turnCount, queuedActions);
             queuedActions = [];
             status = 'Turn submitted';
             log('Turn tx confirmed');
@@ -588,7 +596,12 @@
                     <div class="busy"><span class="spinner"></span>{busy}</div>
                 {/if}
 
-                <button class="primary big" onclick={handleCreateSolo} disabled={busy !== null}>
+                <button class="primary big" onclick={() => createAndLoad(botAccount.address)} disabled={busy !== null}>
+                    Play against Bot
+                </button>
+                <p class="hint">A basic AI opponent. It checks for turns about every 15 seconds.</p>
+
+                <button class="big" onclick={handleCreateSolo} disabled={busy !== null}>
                     🎮 Play Solo (Both Sides)
                 </button>
 
