@@ -26,5 +26,5 @@
 </div>
 
 <style>
-    .viewport { width: 100%; aspect-ratio: 1; min-height: 300px; overflow: hidden; border-radius: 12px; background: radial-gradient(ellipse at top, #20304a, #0b1220); }
+    .viewport { width: 100%; aspect-ratio: 1; min-height: 0; touch-action: pan-y pinch-zoom; overflow: hidden; border-radius: 12px; background: radial-gradient(ellipse at top, #20304a, #0b1220); }
 </style>

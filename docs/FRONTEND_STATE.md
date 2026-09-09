@@ -55,8 +55,11 @@ loads separately so a history failure does not prevent board play.
 ## Responsive layout
 
 Desktop places a sticky board beside stack, piece information, hand, turn controls and
-history. At 850 px and below it uses one column, with the submit control fixed above the
-safe area. A compact stack summary links to the detailed list. Inputs and buttons have
+history. At 850 px and below it uses one column with the hand first beneath the board,
+and the submit control fixed above the safe area. The page scrolls vertically, including
+swipes beginning on either board renderer. Touch uses taps for selection and movement;
+mouse users can still drag pieces in 2D. Opponent history and rules sit beside/below
+the board instead of pushing it farther down the page. A compact stack summary links to the detailed list. Inputs and buttons have
 at least 44 px height. Hand pieces have an explicit Info control for touch devices.
 Both board renderers share selected targets, effect highlights and A1–E5 coordinates.
 The 2D renderer remains available if WebGL fails.

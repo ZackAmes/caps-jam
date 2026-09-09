@@ -473,6 +473,8 @@
 
     function onPointerMove(e: PointerEvent) {
         if (!downInfo) return;
+        // Touch uses tap-to-select; let swipes scroll the page. Mouse keeps drag-and-drop.
+        if (e.pointerType === 'touch') return;
         const dist = Math.hypot(e.clientX - downInfo.px, e.clientY - downInfo.py);
         if (!drag && dist > 8 && downInfo.capId !== undefined) {
             beginDragIfCap(e.clientX, e.clientY);
@@ -665,7 +667,6 @@
 <svelte:head>
     <title>CAPS — Onchain Strategy Game</title>
     <meta name="description" content="Play CAPS, a tactical onchain board game on Starknet." />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
 </svelte:head>
 
@@ -788,19 +789,6 @@
 
             {#if !isMyTurn() && !game.over}<p class="hint" role="status">Waiting for your opponent. The board refreshes automatically.</p>{/if}
             <div class="match-layout"><main class="arena">
-            {#if latestOpponent}
-                <section class="opponent-last" aria-label="Opponent’s last turn">
-                    <strong>{isSolo ? `P${latestOpponent.playerSlot + 1}` : 'Opponent'} · turn {latestOpponent.turn + 1}</strong>
-                    {#if !latestOpponent.actions.length}<p>Passed without taking an action.</p>{/if}
-                    {#each latestOpponent.actions as action}<p>{actionLabel(action, latestOpponent.before, capDefMap)}</p>{/each}
-                    <a href="#turn-history">View results and full history ↓</a>
-                </section>
-            {/if}
-            <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
-            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
-            <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
-            <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
-            </details>
             {#if preview?.winnerSlot !== null && preview?.winnerSlot !== undefined && !game.over}
                 <p class="gameover">Goal reached in preview — submit to confirm.</p>
             {/if}
@@ -943,6 +931,19 @@
             <StackPanel stack={preview?.stack ?? pendingStack} confirmedId={pendingStack.nextId} turn={game.turnCount} viewer={mySlot}
                 caps={simCaps} definitions={capDefMap} layout={activeLayout} actor={selectedActor} targeting={stackTargetMode}
                 canActivate={canActivateSelected} focusedId={focusedEffectId} onfocus={(id) => { focusedEffectId = id; }} ontarget={targetPending} oncancel={() => { stackTargetMode = false; }} />
+            {#if latestOpponent}
+                <section class="opponent-last" aria-label="Opponent’s last turn">
+                    <strong>{isSolo ? `P${latestOpponent.playerSlot + 1}` : 'Opponent'} · turn {latestOpponent.turn + 1}</strong>
+                    {#if !latestOpponent.actions.length}<p>Passed without taking an action.</p>{/if}
+                    {#each latestOpponent.actions as action}<p>{actionLabel(action, latestOpponent.before, capDefMap)}</p>{/each}
+                    <a href="#turn-history">View results and full history ↓</a>
+                </section>
+            {/if}
+            <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
+            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
+            <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
+            <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
+            </details>
             <!-- Hints -->
             {#if drag}
                 <p class="hint">
@@ -996,6 +997,7 @@
                     {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name ?? `Piece ${c.capType}` : ''; }).join(' · ') || 'Empty'}
                 </div>
             {/if}
+            <section class="hand-area" aria-label="Your pieces">
             <!-- Bench -->
             {#if lockedBenchCount() > 0}
                 <div class="locked-note">
@@ -1027,6 +1029,8 @@
             {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}
                 <p class="hint">{capDefFor(c)?.name ?? c.capType}: capture cooldown — {Math.ceil((c.availableTurn - (game.turnCount + (game.turnCount % 2 === c.playerSlot ? 0 : 1))) / 2)} owner turns remaining</p>
             {/each}
+
+            </section>
 
             <!-- Queued Actions -->
             {#if queuedActions.length > 0}
@@ -1071,7 +1075,8 @@
         background: #0f172a;
         color: #f1f5f9;
         font-family: system-ui, -apple-system, sans-serif;
-        overscroll-behavior: none;
+        overflow-x: clip;
+        touch-action: pan-y pinch-zoom;
         -webkit-tap-highlight-color: transparent;
     }
     .wrap {
@@ -1098,6 +1103,7 @@
     @media(max-width:850px) {
         .match-layout { grid-template-columns:1fr; gap:14px; }
         .arena { position:static; }
+        .hand-area { order:-1; }
         .wrap { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
         .game-sidebar .commit { position:fixed; bottom:calc(10px + env(safe-area-inset-bottom)); left:12px; right:12px; width:calc(100% - 24px); z-index:30; box-shadow:0 -10px 25px #0b1220; }
     }
@@ -1240,7 +1246,7 @@
         border-radius: 10px;
         aspect-ratio: var(--w) / var(--h);
         max-width: 100%;
-        touch-action: none;
+        touch-action: pan-y pinch-zoom;
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
@@ -1471,6 +1477,7 @@
     }
 
     /* Bench */
+    .hand-area { min-width:0; }
     .bench { display: flex; flex-direction: column; gap: 0.3rem; }
     .bench-label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
     .bench-pieces { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
