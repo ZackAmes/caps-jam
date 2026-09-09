@@ -52,14 +52,26 @@ turn changed, the mixed snapshot is discarded and re-read. Opponent updates and 
 from another tab are checked every five seconds, and on returning to the tab. History
 loads separately so a history failure does not prevent board play.
 
-## Responsive layout
+## Viewport game screen
 
-Desktop places a sticky board beside stack, piece information, hand, turn controls and
-history. At 850 px and below it uses one column with the hand first beneath the board,
-and the submit control fixed above the safe area. The page scrolls vertically, including
-swipes beginning on either board renderer. Touch uses taps for selection and movement;
-mouse users can still drag pieces in 2D. Opponent history and rules sit beside/below
-the board instead of pushing it farther down the page. A compact stack summary links to the detailed list. Inputs and buttons have
-at least 44 px height. Hand pieces have an explicit Info control for touch devices.
-Both board renderers share selected targets, effect highlights and A1–E5 coordinates.
-The 2D renderer remains available if WebGL fails.
+The match fills the dynamic viewport with a Three.js board, compact status controls,
+four hand slots, undo and end-turn controls. It does not scroll the page. The lobby
+still scrolls normally. Safe areas and a separate short landscape layout keep controls
+within the viewport. The board uses the smaller available stage dimension so it stays
+fully framed as selected-piece details open above the hand.
+
+Tap a hand piece to inspect it, then Deploy or tap the highlighted base. Tap a board
+piece to select it, then a highlighted destination to move. Ability descriptions and
+passive conditions appear only for hovered/selected pieces. Hover cards float without
+resizing the board. Piece symbols match the hand, and health remains visible. Three.js
+movement interpolates over 180 ms and respects reduced-motion preferences.
+
+Stack, history and menu information live in native modal dialogs with close buttons and
+Escape support. Long optional details can scroll within those dialogs. The stack button
+shows its count; a pending-effect chip shows the next resolution timing. Activating a
+Negator opens stack targeting; selecting an effect for inspection closes the dialog and
+highlights its footprint. Full recorded actions remain available in history. The menu
+contains refresh, sharing, opponent hand, cooldowns, queued actions and the 2D fallback.
+
+Validation: type checks, production build and the shared client/bot suite pass. Browser
+visual/touch verification is unavailable in the current environment and remains needed.

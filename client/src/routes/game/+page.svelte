@@ -5,7 +5,7 @@
     import { actionLabel, square } from '$lib/game/history';
     import { onMount } from 'svelte';
     import { dojoConfig } from '$lib/dojo/config';
-    import { viewerSlot, pathEdges, effectTiming, impactFootprint } from '$lib/game/presentation';
+    import { viewerSlot, pathEdges, effectTiming, impactFootprint, pieceSymbol } from '$lib/game/presentation';
     import botAccount from '../../../../bot/account.public.json';
     import { previewTurn } from '@caps/game-core/preview';
     import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer, getGameSnapshot, getTurnRecord, transactionState } from '$lib/dojo/client';
@@ -93,6 +93,11 @@
     let capDefMap = $state<Map<number, CapTypeDef>>(new Map());
     let abilityTargetMode = $state(false);
     let selectedCapId = $state<number | null>(null);
+    let overlay = $state<'stack' | 'history' | 'menu' | null>(null);
+    let sheet = $state<HTMLDialogElement>();
+    $effect(() => { if (!sheet) return; if (overlay && !sheet.open) sheet.showModal(); else if (!overlay && sheet.open) sheet.close(); });
+    function closeOverlay() { overlay = null; stackTargetMode = false; }
+    let hoveredCapId = $state<number | null>(null);
     let queuedActions: TurnAction[] = $state([]);
     let pendingStack = $state<AbilityStack>({gameId:0,nextId:0,entries:[]});
     let committing = $state(false);
@@ -110,6 +115,7 @@
     let historyCursor = $state(0);
     let pendingForGame = $derived(pendingSubmission?.gameId === game?.id ? pendingSubmission : null);
     let selectedActor = $derived(selectedCapId === null ? undefined : capById(selectedCapId));
+    let inspectedActor = $derived(selectedActor ?? (hoveredCapId === null ? undefined : capById(hoveredCapId)));
 
     async function deadline<T>(promise: Promise<T>, ms = 25000): Promise<T> {
         let timer: ReturnType<typeof setTimeout>;
@@ -138,7 +144,7 @@
         try {
             const next = [...queuedActions, action];
             previewTurn(game!, hand, capDefMap, activeLayout, next, pendingStack);
-            queuedActions = next; stackTargetMode = false; focusedEffectId = null;
+            queuedActions = next; stackTargetMode = false; focusedEffectId = null; overlay = null;
             status = `Planned negation of effect #${id}`; errorMsg = null;
         } catch (error) { errorMsg = error instanceof Error ? error.message : String(error); }
     }
@@ -158,6 +164,7 @@
     let sceneTargets = $derived.by(() => {
         const cap = selectedCapId === null ? undefined : capById(selectedCapId);
         if (!cap || !canAct()) return new Map<string, string>();
+        if (cap.x === null && (preview?.actions ?? 0) > 0 && isMyCap(cap)) { const [x,y] = deploySpot(); return capAt(x,y) ? new Map<string,string>() : new Map([[`${x},${y}`, 'move']]); }
         return abilityTargetMode
             ? new Map([...abilityTargets(cap).keys()].map(key => [key, 'ability']))
             : new Map([...moveTargets(cap)].map(([key, target]) => [key, target.type]));
@@ -214,7 +221,7 @@
         if (!cap) return;
         const def = capDefFor(cap);
         if (!def || def.abilityTarget === 0 || !canActivateSelected) return;
-        if (def.abilityTarget >= 6) { stackTargetMode = true; abilityTargetMode = false; document.getElementById('ability-stack')?.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+        if (def.abilityTarget >= 6) { stackTargetMode = true; abilityTargetMode = false; overlay = 'stack'; return; }
         if (def.abilityTarget === 1) {
             if (queueAction(cap.id, 'Ability', cap.x ?? 0, cap.y ?? 0)) {
                 status = `Queued ability: ${def.abilityDescription}`;
@@ -330,6 +337,7 @@
 
     // Tap resolution
     function onTapCell(x: number, y: number) {
+        hoveredCapId = null;
         if (!activeLayout.isWalkable(x, y)) return;
         stackTargetMode = false;
         const occ = capAt(x, y);
@@ -356,6 +364,7 @@
             return;
         }
 
+        if (selectedCapId != null && selectedActor?.x === null && isDeploySpot(x,y)) { if (tryDeploy(selectedCapId)) selectedCapId = null; return; }
         if (selectedCapId != null) {
             if (tryMove(selectedCapId, x, y)) {
                 // keep selection? deselect for clarity
@@ -574,7 +583,7 @@
                 syncStage = pendingForGame.confirmed ? 'syncing' : 'confirming';
                 return false;
             }
-            queuedActions = []; selectedCapId = null; abilityTargetMode = false; stackTargetMode = false;
+            queuedActions = []; selectedCapId = null; hoveredCapId = null; abilityTargetMode = false; stackTargetMode = false;
             capDefMap = snapshot.definitions; pendingStack = snapshot.stack;
             hand = snapshot.hand; opponentHand = snapshot.otherHand; game = nextGame;
             if (submissionHasLanded(pendingForGame, game.turnCount)) {
@@ -670,8 +679,8 @@
     <meta name="theme-color" content="#0f172a" />
 </svelte:head>
 
-<div class="wrap">
-    <header class="topbar">
+<div class="wrap" class:playing={!!game}>
+    {#if !game}<header class="topbar">
         <h1>CAPS</h1>
         {#if account}
             {#if devMode}<span class="dev-badge">SEPOLIA TEST</span>{/if}
@@ -680,7 +689,7 @@
                 <span class="copy-icon">{addrCopied ? '' : '⧉'}</span>
             </button>
         {/if}
-    </header>
+    </header>{/if}
 
     {#if !game}
         <!-- Lobby -->
@@ -750,68 +759,22 @@
             {/if}
         </section>
     {:else}
-        <!-- Game View -->
-        <section class="gameview">
-            <div class="sync-status" role="status" aria-live="polite">
-                <span>{syncStage === 'submitting' ? 'Sending your turn… your plan stays visible.' : syncStage === 'confirming' ? 'Transaction sent. Waiting for confirmation…' : syncStage === 'syncing' ? 'Confirmed. Waiting for the updated board…' : queuedActions.length ? 'Previewing your plan — not submitted yet.' : isMyTurn() ? 'Your turn.' : 'Waiting for opponent. Checking every 5 seconds.'}
-                {#if lastSynced}<small>Last checked {lastSynced}</small>{/if}</span>
-                <button onclick={handleLoad} disabled={committing || busy !== null}>Refresh</button>
-            </div>
-            {#if syncError}<p class="sync-warning" role="status">{syncError} Your pending transaction will not be sent again automatically.</p>{/if}
-            <div class="meta">
-                <button class="back" disabled={committing || !!pendingForGame} onclick={() => { game = null; queuedActions = []; selectedCapId = null; hand = null; }}>← Lobby</button>
-                <span class="badge">#{game.id} · Turn {game.turnCount + 1}</span>
-                <button onclick={copyGameLink}>{linkCopied ? 'Copied' : 'Copy link'}</button>
-                <span class="turn-badge {game.turnCount % 2 === 0 ? 'p1' : 'p2'}">
-                    {isSolo ? `P${game.turnCount % 2 + 1}` : isMyTurn() ? 'Your turn' : 'Opponent’s turn'}
-                </span>
-                <span class="energy-badge" title="P1 energy">P1 ⚡ {!game.over && game.turnCount % 2 === 0 ? remainingEnergy : game.p1Energy}/5</span>
-                <span class="energy-badge" title="P2 energy">P2 ⚡ {!game.over && game.turnCount % 2 === 1 ? remainingEnergy : game.p2Energy}/5</span>
-                <span>{preview?.actions ?? 1} action · {preview?.moves ?? 0} bonus moves</span>
-            </div>
-
-            {#if game.over}
-                <div class="gameover">
-                    {isSolo ? `Player ${game.winnerSlot + 1}` : game.winnerSlot === mySlot ? 'You' : 'Your opponent'} reached the goal!
-                    <button onclick={() => createAndLoad(isSolo ? undefined : mySlot === 0 ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button>
-                </div>
-            {/if}
-
-            {#if isSolo && isMyTurn()}
-                <div class="solo-note">
-                    Playing both sides — currently controlling <b>{game.turnCount % 2 === 0 ? 'P1 (Blue)' : 'P2 (Red)'}</b>
-                </div>
-            {/if}
-
-            {#if errorMsg}
-                <div class="error" role="alert">{errorMsg}</div>
-            {/if}
-
-            {#if !isMyTurn() && !game.over}<p class="hint" role="status">Waiting for your opponent. The board refreshes automatically.</p>{/if}
-            <div class="match-layout"><main class="arena">
-            {#if preview?.winnerSlot !== null && preview?.winnerSlot !== undefined && !game.over}
-                <p class="gameover">Goal reached in preview — submit to confirm.</p>
-            {/if}
-            {#if preview?.stack.entries.length}
-                <a class="stack-summary" href="#ability-stack">{preview.stack.entries.length} pending effect(s) · {effectTiming(preview.stack.entries.at(-1)!, preview.stack, game.turnCount, mySlot)}</a>
-            {/if}
-            <div class="board-toolbar">
-                <span>Board view</span>
-                <button aria-pressed={boardMode === '3d'} onclick={() => setBoardMode('3d')}>3D</button>
-                <button aria-pressed={boardMode === '2d'} onclick={() => setBoardMode('2d')}>2D</button>
-            </div>
-            {#if boardNotice}<p class="hint" role="status">{boardNotice}</p>{/if}
-            {#if boardMode === '3d'}
-                <svelte:boundary onerror={fallbackBoard}>
-                    {#if ThreeBoard}
-                        <ThreeBoard layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId}
-                            targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onfailure={fallbackBoard} />
-                        <p class="hint">Tap a piece to inspect or select it, then tap a highlighted square. Use the hand below to deploy.</p>
-                    {:else}
-                        <p class="hint" role="status">Loading 3D board…</p>
-                    {/if}
-                </svelte:boundary>
-            {:else}
+        <section class="play-screen" aria-label="CAPS game">
+            <header class="play-hud">
+                <button aria-label="Game menu" onclick={() => overlay = 'menu'}>☰</button>
+                <span class="turn-indicator" class:your-turn={isMyTurn()}>{isSolo ? `P${game.turnCount % 2 + 1}` : isMyTurn() ? 'Your turn' : 'Opponent'} <small>· {game.turnCount + 1}</small></span>
+                <span class="hud-energy" title="Your energy">⚡ {isMyTurn() ? remainingEnergy : mySlot === 0 ? game.p1Energy : game.p2Energy}</span>
+                <button class:has-effects={!!preview?.stack.entries.length} aria-label={`Ability stack: ${preview?.stack.entries.length ?? 0} effects`} onclick={() => overlay = 'stack'}>◷ {preview?.stack.entries.length ?? 0}</button>
+                <button aria-label="Opponent moves and turn history" onclick={() => overlay = 'history'}>↶</button>
+            </header>
+            <div class="play-stage">
+                {#if boardMode === '3d'}
+                    <svelte:boundary onerror={fallbackBoard}>
+                        {#if ThreeBoard}
+                            <ThreeBoard layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId} targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onhover={(id) => hoveredCapId = id} onfailure={fallbackBoard} />
+                        {:else}<p class="stage-notice" role="status">Loading board…</p>{/if}
+                    </svelte:boundary>
+                {:else}
             <!-- Board: static tiles + gliding pieces layer -->
             <div
                 class="board"
@@ -906,153 +869,89 @@
                 </div>
             </div>
 
-            {/if}
-
-            <!-- Drag ghost (follows finger) -->
-            {#if drag}
-                {@const dc = capById(drag.capId)}
-                {#if dc}
-                    <div
-                        class="drag-ghost p{dc.playerSlot + 1}"
-                        style="left:{drag.px}px;top:{drag.py}px"
-                    >
-                        <div class="piece-body">
-                            <div class="type">{dc.capType}</div>
-                            <div class="hp">{dc.health}</div>
-                        </div>
-                        {#if drag.label}
-                            <div class="drag-label">{drag.label}</div>
-                        {/if}
-                    </div>
                 {/if}
-            {/if}
+                {#if preview?.stack.entries.length}
+                    <button class="stack-chip" onclick={() => overlay = 'stack'}>◷ {effectTiming(preview.stack.entries.at(-1)!, preview.stack, game.turnCount, mySlot)}</button>
+                {/if}
+                {#if abilityTargetMode}<button class="target-prompt" onclick={() => abilityTargetMode = false}>Choose a glowing target · Cancel ✕</button>{/if}
+                {#if focusedEffectId !== null}<button class="target-prompt" onclick={() => focusedEffectId = null}>Effect #{focusedEffectId} highlighted · Clear ✕</button>{/if}
+                {#if game.over}
+                    <div class="end-card"><h2>{isSolo ? `P${game.winnerSlot + 1} wins` : game.winnerSlot === mySlot ? 'You win' : 'Opponent wins'}</h2><button onclick={() => createAndLoad(isSolo ? undefined : mySlot === 0 ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button></div>
+                {/if}
 
-            </main><aside class="game-sidebar">
-            <StackPanel stack={preview?.stack ?? pendingStack} confirmedId={pendingStack.nextId} turn={game.turnCount} viewer={mySlot}
-                caps={simCaps} definitions={capDefMap} layout={activeLayout} actor={selectedActor} targeting={stackTargetMode}
-                canActivate={canActivateSelected} focusedId={focusedEffectId} onfocus={(id) => { focusedEffectId = id; }} ontarget={targetPending} oncancel={() => { stackTargetMode = false; }} />
+            </div>
+            <footer class="play-dock">
+                {#if inspectedActor && !abilityTargetMode && !overlay}
+                    {@const selectedActor = inspectedActor}
+                    {@const def = capDefFor(selectedActor)}
+                    {#if def}
+                    <section class="selection-card" class:hover-only={selectedCapId === null} aria-label="Selected piece">
+                        <div class="selection-title"><strong>{pieceSymbol(selectedActor.capType)} {def.name}</strong><span>♥ {selectedActor.health} · ⚔ {def.attack + passiveBonus('AttackBonus', selectedActor, simCaps, capDefMap, activeLayout)}{selectedActor.shield ? ` · ⛨ ${selectedActor.shield}` : ''}</span><button aria-label="Deselect piece" onclick={() => { selectedCapId = null; hoveredCapId = null; abilityTargetMode = false; }}>✕</button></div>
+                        {#if def.abilityTarget}<p>{def.abilityDescription}</p>{/if}
+                        {#each def.passives as passive}<p class="passive-description">{passiveLabel(passive)} · {passiveActive(passive, selectedActor, def.maxHealth, simCaps, activeLayout) ? 'Active' : 'Inactive'}</p>{/each}
+                        {#if selectedActor.stunnedTurns}<p>Stunned · {selectedActor.stunnedTurns}</p>{/if}
+                        {#if selectedActor.x === null && isMyCap(selectedActor)}
+                            <button class="selection-action" disabled={!canAct() || (preview?.actions ?? 0) === 0 || !myBenchCaps().some(c => c.id === selectedCapId)} onclick={() => { if (tryDeploy(selectedActor!.id)) selectedCapId = null; }}>Deploy</button>
+                        {:else if def.abilityTarget && isMyCap(selectedActor)}
+                            <button class="selection-action" disabled={!canActivateSelected} onclick={abilityTargetModeStart}>Activate · ⚡ {def.abilityCost}</button>
+                        {/if}
+                    </section>
+                    {/if}
+                {/if}
+                <div class="hand-strip" aria-label="Your hand">
+                    {#each myBenchCaps() as c (c.id)}
+                        <button class:selected={selectedCapId === c.id} aria-pressed={selectedCapId === c.id} onpointerenter={(event) => { if (event.pointerType === 'mouse') hoveredCapId = c.id; }} onpointerleave={() => hoveredCapId = null} aria-label={`Select ${capDefFor(c)?.name ?? 'piece'}, ${c.health} health`} onclick={() => { selectedCapId = selectedCapId === c.id ? null : c.id; abilityTargetMode = false; }}><b>{pieceSymbol(c.capType)}</b><span>{capDefFor(c)?.name ?? c.capType}</span></button>
+                    {/each}
+                    {#if !myBenchCaps().length}<span class="empty-hand">No pieces in hand</span>{/if}
+                </div>
+                <div class="turn-controls">
+                    <button aria-label="Undo last planned action" disabled={!canAct() || !queuedActions.length} onclick={() => removeQueuedAction(queuedActions.length - 1)}>↶</button>
+                    <span class="action-dots" aria-label={`${preview?.actions ?? 1} normal actions and ${preview?.moves ?? 0} bonus moves remaining`}>{(preview?.actions ?? 1) ? '●' : '○'}{(preview?.moves ?? 0) > 0 ? ` +${preview?.moves}` : ''}</span>
+                    <button class="submit-turn" onclick={commitTurn} disabled={!canAct()}>{syncStage === 'submitting' ? 'Sending…' : syncStage === 'confirming' ? 'Confirming…' : syncStage === 'syncing' ? 'Updating…' : game.over ? 'Game over' : !isMyTurn() ? 'Opponent’s turn' : queuedActions.length ? 'End turn →' : 'Pass →'}</button>
+                </div>
+                <div class="connection-line" role="status" aria-live="polite">{errorMsg ?? syncError ?? (busy || (syncStage === 'idle' ? queuedActions.length ? 'Plan ready' : ' ' : 'Waiting for the network…'))}</div>
+            </footer>
+            <dialog class="game-sheet" bind:this={sheet} onclose={closeOverlay} oncancel={closeOverlay}>
+                <header><strong>{overlay === 'stack' ? 'Pending abilities' : overlay === 'history' ? 'Last moves' : `Game #${game.id}`}</strong><button aria-label="Close panel" onclick={closeOverlay}>✕</button></header>
+                <div class="sheet-body">
+                    {#if overlay === 'stack'}
+                        <StackPanel stack={preview?.stack ?? pendingStack} confirmedId={pendingStack.nextId} turn={game.turnCount} viewer={mySlot} caps={simCaps} definitions={capDefMap} layout={activeLayout} actor={selectedActor} targeting={stackTargetMode} canActivate={canActivateSelected} focusedId={focusedEffectId} onfocus={(id) => { focusedEffectId = id; closeOverlay(); }} ontarget={targetPending} oncancel={closeOverlay} />
+                    {:else if overlay === 'history'}
             {#if latestOpponent}
                 <section class="opponent-last" aria-label="Opponent’s last turn">
                     <strong>{isSolo ? `P${latestOpponent.playerSlot + 1}` : 'Opponent'} · turn {latestOpponent.turn + 1}</strong>
                     {#if !latestOpponent.actions.length}<p>Passed without taking an action.</p>{/if}
                     {#each latestOpponent.actions as action}<p>{actionLabel(action, latestOpponent.before, capDefMap)}</p>{/each}
-                    <a href="#turn-history">View results and full history ↓</a>
+
                 </section>
             {/if}
+
+
+                        <TurnHistory records={historyRecords} definitions={capDefMap} viewer={mySlot} loading={historyLoading} error={historyError} hasOlder={historyCursor > 0} onolder={() => { void loadHistory(game?.id, game?.turnCount, true); }} />
+                    {:else if overlay === 'menu'}
             <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
             <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
             <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
             <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
             </details>
-            <!-- Hints -->
-            {#if drag}
-                <p class="hint">
-                    {#if drag.fromBench}Drop on the ⬇ deploy spot to deploy
-                    {:else if drag.valid}Release to {drag.label ? 'attack' : 'move'}
-                    {:else}Release on a highlighted tile
+                        {#if errorMsg || syncError}<p role="alert">{errorMsg ?? syncError}</p>{/if}
+                        <button onclick={handleLoad} disabled={committing || busy !== null}>Refresh state</button>
+                        <button onclick={copyGameLink}>{linkCopied ? 'Copied' : 'Copy game link'}</button>
+                        <button onclick={() => setBoardMode(boardMode === '3d' ? '2d' : '3d')}>Switch to {boardMode === '3d' ? '2D' : '3D'}</button>
+                        {#if boardNotice}<p>{boardNotice}</p>{/if}
+                        <p>P1 ⚡ {game.p1Energy} · P2 ⚡ {game.p2Energy}</p>
+                        {#if otherHand}<p>Opponent’s hand: {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name : ''; }).join(', ')}</p>{/if}
+                        <p>{lockedBenchCount()} pieces in queue or cooling down.</p>
+                        {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}<p>{capDefFor(c)?.name}: available turn {c.availableTurn + 1}</p>{/each}
+                        {#each queuedActions as action}<p>{actionLabel(action, simCaps, capDefMap)}</p>{/each}
+                        <button disabled={committing || !!pendingForGame} onclick={() => { closeOverlay(); game = null; queuedActions = []; selectedCapId = null; hand = null; }}>Return to lobby</button>
                     {/if}
-                </p>
-            {:else if selectedCapId != null}
-                <p class="hint">{stackTargetMode ? 'Choose an effect in the stack panel.' : abilityTargetMode ? 'Choose a purple target for the ability.' : selectedActor?.x === null ? 'Inspecting a hand piece. Deploy it from your hand to use it.' : 'Choose a highlighted square to move or attack.'}</p>
-                {@const selDef = capDefFor(capById(selectedCapId)!)}
-                {#if selDef && selDef.abilityTarget !== 0}
-                    <button
-                        class="ability-btn"
-                        onclick={abilityTargetModeStart}
-                        disabled={!canAct() || !isMyCap(capById(selectedCapId)!) || !!capById(selectedCapId)?.stunnedTurns || remainingEnergy < selDef.abilityCost || preview?.usedAbilities.has(selectedCapId) || capById(selectedCapId)?.x === null}
-                    >
-                        ✨ Ability (⚡{selDef.abilityCost})
-                    </button>
-                {/if}
-            {/if}
-
-            <!-- Selected piece info panel -->
-            {#if selectedCapId != null}
-                {@const selDef = capDefFor(capById(selectedCapId)!)}
-                {#if selDef}
-                    {@const selected = capById(selectedCapId)!}
-                    <div class="piece-info">
-<div class="pi-name">{selDef.name} #{selected.id} · P{selected.playerSlot + 1}</div>
-                        <div class="pi-stats">❤ {selected.health}/{selDef.maxHealth} · ⚔ {Math.min(65535, selDef.attack + passiveBonus('AttackBonus', selected, simCaps, capDefMap, activeLayout))} · 🛡 {selected.shield} shield / {passiveBonus('DamageReduction', selected, simCaps, capDefMap, activeLayout)} reduction</div>
-                        {#if selDef.abilityDescription !== 'None' && selDef.abilityTarget !== 0}
-                            <div class="pi-ability">
-                                <span class="pi-cost">⚡{selDef.abilityCost}</span>
-                                {selDef.abilityDescription}
-                            </div>
-                        {/if}
-                        {#if selDef.abilityTarget >= 6}<p class="pi-passive">Targets a pending effect; no board distance limit.</p>
-                        {:else if selDef.abilityTarget > 1}<p class="pi-passive">Ability range: {Math.min(65535,selDef.abilityRange + passiveBonus('AbilityRangeBonus', selected, simCaps, capDefMap, activeLayout))} path steps.</p>{/if}
-                        {#if preview?.usedAbilities.has(selected.id)}<p class="pi-passive">Ability already used in this plan.</p>{/if}
-                        {#if selected.stunnedTurns}<p class="pi-passive">Stunned: {selected.stunnedTurns} remaining.</p>{/if}
-                        {#each selDef.passives as passive}
-                            {@const source = capById(selectedCapId)}
-                            <div class="pi-passive">✦ {passiveLabel(passive)} — {source && passiveActive(passive, source, selDef.maxHealth, simCaps, activeLayout) ? 'Active' : 'Inactive'}</div>
-                        {/each}
-                    </div>
-                {/if}
-            {/if}
-
-            {#if otherHand}
-                <div class="locked-note">P{otherHand.playerSlot + 1} public hand:
-                    {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name ?? `Piece ${c.capType}` : ''; }).join(' · ') || 'Empty'}
                 </div>
-            {/if}
-            <section class="hand-area" aria-label="Your pieces">
-            <!-- Bench -->
-            {#if lockedBenchCount() > 0}
-                <div class="locked-note">
-                    🔒 {lockedBenchCount()} piece{lockedBenchCount() === 1 ? '' : 's'} waiting in the draw queue or cooling down.
-                </div>
-            {/if}
-            {#if myBenchCaps().length > 0}
-                <div class="bench">
-                    <span class="bench-label">Your hand (P{(mySlot ?? 0) + 1})</span>
-                    <div class="bench-pieces">
-                        {#each myBenchCaps() as c (c.id)}
-                            <div class="bench-card"><button
-                                class="bench-piece"
-                                disabled={!canAct() || (preview?.actions ?? 0) === 0}
-                                title={capDefFor(c)?.abilityDescription}
-                                onpointerdown={boardMode === '2d' ? onPointerDown : undefined}
-                                onpointermove={boardMode === '2d' ? onPointerMove : undefined}
-                                onpointerup={boardMode === '2d' ? onPointerUp : undefined}
-                                onpointercancel={boardMode === '2d' ? onPointerCancel : undefined}
-                                onclick={(event) => { if (boardMode === '3d' || event.detail === 0) onTapBench(c.id); }}
-                                data-bench={c.id}
-                            >{capDefFor(c)?.name ?? c.capType} · {c.health}hp</button>
-                            <button class="bench-inspect" aria-label={`Inspect ${capDefFor(c)?.name ?? 'piece'}`} onclick={() => { selectedCapId = c.id; stackTargetMode = false; abilityTargetMode = false; }}>Info</button></div>
-                        {/each}
-                    </div>
-                </div>
-            {/if}
-
-            {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}
-                <p class="hint">{capDefFor(c)?.name ?? c.capType}: capture cooldown — {Math.ceil((c.availableTurn - (game.turnCount + (game.turnCount % 2 === c.playerSlot ? 0 : 1))) / 2)} owner turns remaining</p>
-            {/each}
-
-            </section>
-
-            <!-- Queued Actions -->
-            {#if queuedActions.length > 0}
-                <p class="hint">Planned actions — the board previews immediate changes. Dashed rows mark delayed damage. Tap an action to undo it and any later actions.</p>
-                <div class="queued">
-                    {#each queuedActions as qa, i}
-                        <button class="queued-action" disabled={!canAct()} onclick={() => removeQueuedAction(i)}>
-                            {actionLabel(qa, simCaps, capDefMap)} ✕
-                        </button>
-                    {/each}
-                </div>
-            {/if}
-
-            <!-- Commit -->
-            <button class="commit" onclick={commitTurn} disabled={!canAct()}>
-                {syncStage !== 'idle' ? syncStage === 'submitting' ? 'Sending turn…' : syncStage === 'confirming' ? 'Confirming transaction…' : 'Updating board…' : busy ?? (queuedActions.length ? `Submit Turn (${queuedActions.length})` : 'Pass turn')}
-            </button>
-            <TurnHistory records={historyRecords} definitions={capDefMap} viewer={mySlot} loading={historyLoading} error={historyError} hasOlder={historyCursor > 0} onolder={() => { void loadHistory(game?.id, game?.turnCount, true); }} />
-            </aside></div>
+            </dialog>
         </section>
     {/if}
 
+    {#if !game}
     <!-- On-screen debug log (for mobile, where devtools aren't available) -->
     <details class="debug-log" bind:open={logOpen}>
         <summary>Debug log ({logLines.length})</summary>
@@ -1066,6 +965,7 @@
         </div>
         <button class="clear-log" onclick={() => { logLines = []; }}>Clear</button>
     </details>
+    {/if}
 </div>
 
 <style>
@@ -1092,10 +992,10 @@
     .arena { min-width:0; position:sticky; top:12px; }
     .game-sidebar { min-width:0; display:flex; flex-direction:column; gap:12px; }
     .sync-status { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px; border:1px solid #334155; border-radius:10px; margin-bottom:12px; font-size:0.85rem; background:#132037; }
-    .sync-status small { display:block; color:#94a3b8; font-size:0.7rem; margin-top:4px; }
+
     .sync-warning { color:#fcd34d; font-size:0.85rem; line-height:1.5; }
     .opponent-last { padding:12px; background:#17263b; border-left:3px solid #fb7185; border-radius:8px; margin-bottom:12px; font-size:0.83rem; max-height:180px; overflow:auto; }
-    .opponent-last p { margin:6px 0; line-height:1.5; } .opponent-last a { color:#93c5fd; }
+    .opponent-last p { margin:6px 0; line-height:1.5; }
     .tile.effect-focus { outline:3px solid #c4b5fd; outline-offset:-3px; }
     .rules-help { margin-bottom:12px; color:#aebed3; font-size:0.85rem; }
     .rules-help summary { cursor:pointer; min-height:40px; display:flex; align-items:center; }
@@ -1105,7 +1005,7 @@
         .arena { position:static; }
         .hand-area { order:-1; }
         .wrap { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
-        .game-sidebar .commit { position:fixed; bottom:calc(10px + env(safe-area-inset-bottom)); left:12px; right:12px; width:calc(100% - 24px); z-index:30; box-shadow:0 -10px 25px #0b1220; }
+
     }
     :global(button), :global(input), :global(select) { min-height:44px; }
     :global(*), :global(*::before), :global(*::after) { box-sizing:border-box; }
@@ -1232,8 +1132,8 @@
     .paths { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); pointer-events: none; z-index: 2; }
     .paths line { stroke: #94a3b8; stroke-width: 0.55; stroke-linecap: round; opacity: 0.6; }
     .board-toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-    .board-toolbar span { margin-right: auto; color: #94a3b8; font-size: 0.85rem; }
-    .board-toolbar button[aria-pressed="true"] { border-color: #60a5fa; color: #bfdbfe; background: #1e3a5f; }
+
+
     /* Board */
     .board {
         position: relative;
@@ -1481,7 +1381,7 @@
     .bench { display: flex; flex-direction: column; gap: 0.3rem; }
     .bench-label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
     .bench-pieces { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-    .bench-card { display:flex; min-width:0; } .bench-card .bench-piece { flex:1; min-width:0; white-space:normal; }
+    .bench-card { display:flex; min-width:0; }
     .bench-inspect { padding:6px; background:#24364f; color:#cbd5e1; border:1px solid #475569; border-radius:6px; font-size:0.75rem; }
     .coordinate { position:absolute; top:3px; left:4px; font-size:9px; color:#aabbd3; pointer-events:none; }
 
@@ -1610,4 +1510,35 @@
             transition-duration: 0.01ms !important;
         }
     }
+
+    .wrap.playing { position:fixed; inset:0; width:100%; max-width:none; height:100dvh; min-height:0; padding:0; overflow:hidden; }
+    .play-screen { height:100%; display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background:radial-gradient(ellipse at center,#1c3049,#080f1d); }
+    .play-hud { display:flex; align-items:center; gap:8px; padding:6px 10px; z-index:12; }
+    .play-hud button,.turn-controls button { min-width:44px; border-radius:14px; }
+    .turn-indicator { flex:1; font-size:13px; color:#c1ccdb; } .turn-indicator small { opacity:0.6; } .your-turn { color:#7dd3fc; } .hud-energy { color:#fde68a; font-size:14px; }
+    .has-effects { color:#fbbf24; border-color:#b58b46; }
+    .play-stage { position:relative; min-width:0; min-height:0; display:grid; place-items:center; container-type:size; }
+    .play-stage .board { width:min(96cqw,96cqh); height:min(96cqw,96cqh); }
+    .stack-chip,.target-prompt { position:absolute; top:4px; left:50%; transform:translateX(-50%); max-width:90%; width:max-content; font-size:11px; z-index:12; background:#18243ae8; border-radius:20px; padding:6px 14px; color:#fcd34d; }
+    .target-prompt { top:52px; color:#c4b5fd; }
+    .play-dock { position:relative; width:100%; max-width:620px; justify-self:center; padding:4px 12px 0; z-index:15; }
+    .hand-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; height:62px; }
+    .hand-strip button { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; border-radius:12px; background:#17273be8; }
+    .hand-strip b { font-size:24px; line-height:28px; color:#8ac5ff; } .hand-strip span { font-size:10px; } .hand-strip button.selected { border-color:#7dd3fc; background:#244b69; transform:translateY(-3px); }
+    .empty-hand { grid-column:1/-1; align-self:center; text-align:center; color:#758ba5; }
+    .turn-controls { display:flex; align-items:center; gap:10px; padding-top:6px; } .action-dots { color:#7dd3fc; font-size:18px; } .turn-controls .submit-turn { flex:1; background:#166654; border-color:#3aab89; }
+    .connection-line { height:22px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; font-size:11px; color:#e9ba70; padding:3px; }
+    .selection-card { position:relative; margin-bottom:6px; width:100%; max-height:min(25dvh,170px); overflow:auto; padding:10px 12px; border:1px solid #58748e; border-radius:16px; background:#101e30f5; box-shadow:0 8px 24px #0006; }
+    .selection-card.hover-only { position:absolute; bottom:100%; left:12px; width:calc(100% - 24px); max-height:200px; }
+    .selection-title { display:flex; align-items:center; gap:8px; font-size:13px; } .selection-title span { margin-left:auto; font-size:11px; color:#adc2d7; } .selection-title button { padding:4px; min-width:44px; }
+    .selection-card p { font-size:12px; line-height:1.4; margin:6px 0; color:#c8d9e9; } .selection-card .passive-description { color:#c4b5fd; } .selection-action { width:100%; background:#49317a; }
+    .end-card { position:absolute; z-index:16; text-align:center; padding:24px; border-radius:18px; background:#101e30ed; }
+    .game-sheet { color:#e2e8f0; background:#101e30; border:1px solid #4a627c; border-radius:20px; width:min(94vw,480px); max-height:80dvh; padding:0; }
+    .game-sheet::backdrop { background:#020817aa; backdrop-filter:blur(4px); }
+    .game-sheet > header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; background:#101e30; padding:10px 14px; z-index:1; }
+    .sheet-body { display:flex; flex-direction:column; gap:10px; padding:0 14px 18px; } .sheet-body p { font-size:13px; line-height:1.5; } .stage-notice { color:#91abc5; }
+
+    @media(max-height:500px) and (orientation:landscape) { .play-screen { grid-template-columns:minmax(0,1fr) 190px; grid-template-rows:50px minmax(0,1fr); } .play-hud { grid-column:1/-1; } .play-dock { align-self:end; padding:8px; } .hand-strip { grid-template-columns:repeat(2,minmax(0,1fr)); height:130px; } .selection-card { max-height:130px; } }
+    @media(prefers-reduced-motion:reduce) { .piece { transition:none; } .tile { animation:none; } }
+
 </style>

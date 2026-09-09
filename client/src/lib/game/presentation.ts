@@ -48,3 +48,5 @@ export function resolutionBoundary(entry: StackEntry, stack: AbilityStack, turn:
     const index = stack.entries.findIndex(e => e.id === entry.id);
     return Math.max(turn + 1, entry.readyTurn, ...stack.entries.slice(Math.max(0,index)).map(e=>e.readyTurn));
 }
+
+export const pieceSymbol = (type: number) => ['⚡','◆','⬟','✚','✹','➤','⊘'][type] ?? '●';
