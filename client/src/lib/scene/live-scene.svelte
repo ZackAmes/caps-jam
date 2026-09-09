@@ -5,9 +5,9 @@
     import { pathDistance, type LayoutConfig } from '@caps/game-core/board';
     import type { AbilityStack, ChainCap, CapTypeDef } from '@caps/game-core/types';
 
-    let { layout, caps, definitions, selectedId, targets, stack, oncell }: {
+    let { layout, caps, definitions, selectedId, targets, focusedCells, stack, oncell }: {
         layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
-        selectedId: number | null; targets: Map<string, string>; stack: AbilityStack;
+        selectedId: number | null; targets: Map<string, string>; focusedCells: Set<string>; stack: AbilityStack;
         oncell: (x: number, y: number) => void;
     } = $props();
     interactivity();
@@ -45,7 +45,7 @@
     <T.Mesh position={[wx(tile.x), walkable ? 0 : -0.09, wz(tile.y)]}
         onclick={(event: EventMap['onclick']) => { event.stopPropagation(); if (walkable) oncell(tile.x, tile.y); }}>
         <T.BoxGeometry args={[0.91, walkable ? 0.16 : 0.025, 0.91]} />
-        <T.MeshStandardMaterial color={target ? colors[target] : goal ? tile.y === 0 ? '#244b83' : '#783446' : energy ? '#78612c' : walkable ? '#33455f' : '#172338'}
+        <T.MeshStandardMaterial color={target ? colors[target] : focusedCells.has(`${tile.x},${tile.y}`) ? '#7651ae' : goal ? tile.y === 0 ? '#244b83' : '#783446' : energy ? '#78612c' : walkable ? '#33455f' : '#172338'}
             emissive={threatened ? '#e98a19' : target ? colors[target] : '#000000'} emissiveIntensity={threatened ? 0.35 : 0.12} roughness={0.7} />
     </T.Mesh>
     {#if walkable && (goal || energy)}
@@ -61,6 +61,12 @@
     {/if}
 {/each}
 
+{#each Array.from({length:layout.width}, (_,i)=>i) as x}
+    <HTML position={[wx(x),0.12,-layout.height / 2 - 0.13]} center pointerEvents="none" zIndexRange={[8,1]}><span class="axis-label">{String.fromCharCode(65+x)}</span></HTML>
+{/each}
+{#each Array.from({length:layout.height}, (_,i)=>i) as y}
+    <HTML position={[-layout.width / 2 - 0.13,0.12,wz(y)]} center pointerEvents="none" zIndexRange={[8,1]}><span class="axis-label">{y+1}</span></HTML>
+{/each}
 {#each pathEdges(layout) as edge}
     <T.Mesh position={[wx((edge.x1 + edge.x2) / 2), 0.1, wz((edge.y1 + edge.y2) / 2)]}
         rotation={[0, Math.atan2(edge.x2 - edge.x1, edge.y2 - edge.y1), 0]}>
@@ -92,8 +98,9 @@
 {/each}
 
 <style>
+    .axis-label { color:#d1dcec; font:700 11px system-ui; }
     .tile-label { color: #dde8f9; font: 700 8px system-ui; white-space: nowrap; text-shadow: 0 1px 3px #000; }
-    .piece-label { display: flex; flex-direction: column; align-items: center; color: #f8fafc; background: #0b1220e8; border: 1px solid #536885; border-radius: 5px; padding: 3px 5px; font: 10px system-ui; white-space: nowrap; }
+    .piece-label { display: flex; flex-direction: column; align-items: center; color: #f8fafc; background: #0b1220e8; border: 1px solid #536885; border-radius: 5px; padding: 3px 5px; font: clamp(10px, 1vw, 13px) system-ui; white-space: nowrap; }
     .piece-label.selected { border-color: white; }
     .piece-label span { color: #cedbee; font-size: 9px; }
 </style>

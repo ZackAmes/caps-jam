@@ -84,6 +84,15 @@ fn newer_delayed_shield_blocks_then_resolves_before_older_damage() {
         a.health == 5 && b.health == 10 && a.shield == 0 && b.shield == 0, "shield resolved first",
     );
     assert!(api.get_stack(id).entries.is_empty(), "drained ready stack");
+    let record = api.get_turn(id, 2).unwrap();
+    assert!(
+        record.actions.is_empty() && record.resolved.len() == 2,
+        "pass records automatic resolution",
+    );
+    assert!(
+        *record.resolved.at(0).id == 2 && *record.resolved.at(1).id == 1,
+        "journal preserves resolution order",
+    );
 }
 
 #[test]
@@ -173,6 +182,12 @@ pub mod response_test_set {
         fn get_cap_type(self: @ContractState, id: u16) -> Option<CapType> {
             caps::sets::set_zero::cap_type_of(id)
         }
+        fn activate_stack_ability(
+            self: @ContractState, ctx: AbilityContext, target_id: u64,
+        ) -> SetOutput {
+            caps::sets::set_zero::use_stack_ability(ctx, target_id)
+        }
+
         fn activate_ability(self: @ContractState, ctx: AbilityContext, target: Vec2) -> SetOutput {
             if ctx.actor.cap_type == 2 {
                 SetOutput {
@@ -242,4 +257,90 @@ fn delayed_heal_clamps_without_overflow() {
     let definitions = array![caps::sets::set_zero::cap_type_of(1).unwrap()];
     caps::logic::stack::resolve(entry, ref caps, @definitions, 0);
     assert!(*caps.at(0).health == 6, "clamped to actual max health");
+}
+
+#[test]
+fn stack_target_negates_selected_effect_and_records_turn() {
+    let (mut world, api, id) = caps::tests::rules_test::setup();
+    caps::tests::rules_test::put(ref world, 13, 0, 0);
+    let mut game: caps::models::game::Game = world.read_model(id);
+    game.energy = 5;
+    game.p1_energy = 5;
+    world.write_model_test(@game);
+    let mut pending = AbilityStack { game_id: id, next_id: 0, entries: array![] };
+    schedule(
+        ref pending,
+        10,
+        1,
+        0,
+        0,
+        Schedule {
+            delay: 1,
+            impact: DelayedImpact {
+                kind: ImpactKind::Damage,
+                selection: Selection::Row(0),
+                relation: Relation::Any,
+                amount: 4,
+            },
+        },
+    );
+    schedule(
+        ref pending,
+        10,
+        1,
+        0,
+        0,
+        Schedule {
+            delay: 1,
+            impact: DelayedImpact {
+                kind: ImpactKind::Damage,
+                selection: Selection::Row(4),
+                relation: Relation::Any,
+                amount: 4,
+            },
+        },
+    );
+    world.write_model_test(@pending);
+    api
+        .take_turn(
+            id,
+            array![
+                caps::models::game::Action {
+                    cap_id: 13, action_type: caps::models::game::ActionType::StackAbility(1),
+                },
+            ],
+        );
+    let stack = api.get_stack(id);
+    assert!(
+        stack.entries.len() == 1 && *stack.entries.at(0).id == 2, "selected older entry removed",
+    );
+    let record = api.get_turn(id, 0).unwrap();
+    assert!(
+        record.actions.len() == 1
+            && record.stack_before.len() == 2
+            && record.stack_after.len() == 1,
+        "exact action journal",
+    );
+    assert!(record.energy_before == 5 && record.energy_after == 3, "ability paid once");
+    assert!(record.before.len() == 14 && record.after.len() == 14, "before and after board");
+    assert!(api.get_turn(id, 1).is_none(), "no fabricated future history");
+}
+
+#[test]
+#[should_panic(expected: ("Pending effect missing", 'ENTRYPOINT_FAILED'))]
+fn stale_stack_target_reverts() {
+    let (mut world, api, id) = caps::tests::rules_test::setup();
+    caps::tests::rules_test::put(ref world, 13, 0, 0);
+    let mut game: caps::models::game::Game = world.read_model(id);
+    game.energy = 5;
+    world.write_model_test(@game);
+    api
+        .take_turn(
+            id,
+            array![
+                caps::models::game::Action {
+                    cap_id: 13, action_type: caps::models::game::ActionType::StackAbility(99),
+                },
+            ],
+        );
 }

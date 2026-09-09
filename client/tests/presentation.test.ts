@@ -30,3 +30,12 @@ test('effect timing describes the response turn and blocked ready effects', () =
     assert.equal(effectTiming(first, stack, 1, 1), 'Ready · waiting for newer effects above it');
     assert.equal(effectTiming(second, stack, 2, 0), 'Resolves when this turn ends');
 });
+
+test('stack boundary accounts for a newer long delay and footprint follows graph distance', async () => {
+    const { resolutionBoundary, impactFootprint } = await import('../src/lib/game/presentation');
+    const first = {id:1,readyTurn:2,impact:{kind:'Damage',selection:{kind:'Within',x:1,y:0,radius:1},relation:'Any',amount:4}} as StackEntry;
+    const second = {id:2,readyTurn:5} as StackEntry;
+    assert.equal(resolutionBoundary(first,{gameId:1,nextId:2,entries:[first,second]},1),5);
+    const cells = impactFootprint(first,[],getLayout(0));
+    assert.equal(cells.has('0,0'),true);assert.equal(cells.has('0,1'),false);
+});

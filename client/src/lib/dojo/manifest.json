@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x6f466df359053acd6186676c69a10b13b360d35b78b5982c64506921946973",
-      "class_hash": "0x73879898a4c5404c8a7d31d395edf750e00f0733c8aeec2bfa4bf33c5a08789",
+      "class_hash": "0x75203b4afc8a0f3b56434a029fe89bb83e858f36613a982e2ee22ca25f73efd",
       "init_calldata": [],
       "tag": "caps-actions",
       "selector": "0x482dc9f44e8c68f3ef3ab58497e0d8e446ad2581a5544512fbaebef3af3ccbc",
@@ -51,7 +51,7 @@
     },
     {
       "address": "0x628f94bf4027aa93e9a10813d789f0b11aab821ee65369b4cf09a14d25248cb",
-      "class_hash": "0x4acc9289197d4c392304314f836cc817432b9be7a520468dee62b98e84cf1a6",
+      "class_hash": "0x41220dfaeb33904554afc1c60e68970dc69f16854bb361c6b1fb85e50027266",
       "init_calldata": [],
       "tag": "caps-set_zero",
       "selector": "0x35ce53c0ff5c6ffb239bb347c5287062ae627c62c39204363d9153ba72a9377",
@@ -345,6 +345,73 @@
       "class_hash": "0x6778f81bdd0027d751bd00e13fad8db46f21e80efd9932b8b7b7edf581ba2e8",
       "tag": "caps-Set",
       "selector": "0x5040dc1ca1ab78c673c858a24c5ea02dd0ed6ba32750672e582b101b3399235"
+    },
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "turn",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "recorded",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "player_slot",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "actions",
+          "type": "core::array::Array::<caps::models::game::Action>",
+          "key": false
+        },
+        {
+          "name": "before",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>",
+          "key": false
+        },
+        {
+          "name": "after",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>",
+          "key": false
+        },
+        {
+          "name": "stack_before",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>",
+          "key": false
+        },
+        {
+          "name": "stack_after",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>",
+          "key": false
+        },
+        {
+          "name": "resolved",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>",
+          "key": false
+        },
+        {
+          "name": "energy_before",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "energy_after",
+          "type": "core::integer::u8",
+          "key": false
+        }
+      ],
+      "class_hash": "0x6b9f336daa388d40ad4598b65232f03509f2f52e7e248a01dcf82ba72b28739",
+      "tag": "caps-TurnRecord",
+      "selector": "0x5b1094a1b78af3afe75fb3b37ccf996a3e3d3dc3cc6c3fb9c15067daa5d3a8e"
     }
   ],
   "events": [],
@@ -743,6 +810,10 @@
         {
           "name": "Ability",
           "type": "caps::models::game::Vec2"
+        },
+        {
+          "name": "StackAbility",
+          "type": "core::integer::u64"
         }
       ]
     },
@@ -1021,6 +1092,26 @@
             {
               "name": "target",
               "type": "caps::models::game::Vec2"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "caps::models::set_data::SetOutput"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "activate_stack_ability",
+          "inputs": [
+            {
+              "name": "ctx",
+              "type": "caps::models::set_data::AbilityContext"
+            },
+            {
+              "name": "target_id",
+              "type": "core::integer::u64"
             }
           ],
           "outputs": [
@@ -1637,6 +1728,18 @@
         {
           "name": "AnySquare",
           "type": "()"
+        },
+        {
+          "name": "AnyPending",
+          "type": "()"
+        },
+        {
+          "name": "EnemyPending",
+          "type": "()"
+        },
+        {
+          "name": "AllyPending",
+          "type": "()"
         }
       ]
     },
@@ -1799,6 +1902,150 @@
       "variants": []
     },
     {
+      "type": "struct",
+      "name": "caps::models::turn_record::PieceSnapshot",
+      "members": [
+        {
+          "name": "id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "player_slot",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "cap_type",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "location",
+          "type": "caps::models::cap::Location"
+        },
+        {
+          "name": "health",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "shield",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "stunned_turns",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "available_turn",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::turn_record::TurnRecord",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "turn",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "recorded",
+          "type": "core::bool"
+        },
+        {
+          "name": "player_slot",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "actions",
+          "type": "core::array::Array::<caps::models::game::Action>"
+        },
+        {
+          "name": "before",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>"
+        },
+        {
+          "name": "after",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>"
+        },
+        {
+          "name": "stack_before",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "stack_after",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "resolved",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "energy_before",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "energy_after",
+          "type": "core::integer::u8"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::turn_record::TurnRecordValue",
+      "members": [
+        {
+          "name": "recorded",
+          "type": "core::bool"
+        },
+        {
+          "name": "player_slot",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "actions",
+          "type": "core::array::Array::<caps::models::game::Action>"
+        },
+        {
+          "name": "before",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>"
+        },
+        {
+          "name": "after",
+          "type": "core::array::Array::<caps::models::turn_record::PieceSnapshot>"
+        },
+        {
+          "name": "stack_before",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "stack_after",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "resolved",
+          "type": "core::array::Array::<caps::models::stack::StackEntry>"
+        },
+        {
+          "name": "energy_before",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "energy_after",
+          "type": "core::integer::u8"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "caps::models::turn_record::m_TurnRecord::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
       "type": "event",
       "name": "caps::sets::set_zero::set_zero::Event",
       "kind": "enum",
@@ -1826,6 +2073,26 @@
           "outputs": [
             {
               "type": "core::integer::u8"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_turn",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "turn",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::option::Option::<caps::models::turn_record::TurnRecord>"
             }
           ],
           "state_mutability": "view"
@@ -2301,6 +2568,20 @@
         {
           "name": "Some",
           "type": "caps::models::set_data::CapType"
+        },
+        {
+          "name": "None",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "core::option::Option::<caps::models::turn_record::TurnRecord>",
+      "variants": [
+        {
+          "name": "Some",
+          "type": "caps::models::turn_record::TurnRecord"
         },
         {
           "name": "None",
@@ -3967,7 +4248,7 @@
       "inputs": [
         {
           "name": "model",
-          "type": "caps::models::set::Set"
+          "type": "caps::models::turn_record::TurnRecord"
         }
       ],
       "outputs": [],
@@ -3986,7 +4267,7 @@
       "inputs": [
         {
           "name": "value",
-          "type": "caps::models::set::SetValue"
+          "type": "caps::models::turn_record::TurnRecordValue"
         }
       ],
       "outputs": [],

@@ -51,6 +51,10 @@ pub enum TargetType {
     AnyCap,
     /// Any tile within ability_range, even empty.
     AnySquare,
+    /// Pending effects are not spatial targets; no board range check applies.
+    AnyPending,
+    EnemyPending,
+    AllyPending,
 }
 
 /// The acting piece + a snapshot of everything an ability may read.

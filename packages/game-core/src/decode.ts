@@ -1,4 +1,4 @@
-import type { ChainGame, ChainHand, CapTypeDef, Passive, PassiveKind, PassiveCondition, Relation, AbilityStack, StackEntry, ImpactKind, ImpactSelection } from './types';
+import type { ChainGame, ChainHand, CapTypeDef, Passive, PassiveKind, PassiveCondition, Relation, AbilityStack, StackEntry, ImpactKind, ImpactSelection, TurnRecord, TurnAction, PieceSnapshot } from './types';
 const num = (s: string): number => Number(BigInt(s));
 
 export function decodeHand(f: string[]): ChainHand | null {
@@ -179,7 +179,12 @@ export function decodeStack(f: string[]): AbilityStack {
     if (i >= f.length) throw new Error('Truncated ability stack');
     return num(f[i++]);
   };
-  const gameId = read(), nextId = read(), count = read();
+  const gameId = read(), nextId = read(), entries = readStackEntries(read);
+  if (i !== f.length) throw new Error('Unexpected ability stack fields');
+  return { gameId, nextId, entries };
+}
+function readStackEntries(read: () => number): StackEntry[] {
+  const count = read();
   if (count > 32) throw new Error('Invalid ability stack size');
   const entries: StackEntry[] = [];
   for (let n = 0; n < count; n++) {
@@ -196,6 +201,34 @@ export function decodeStack(f: string[]): AbilityStack {
     if (!kind || !relation || playerSlot > 1) throw new Error('Invalid delayed impact');
     entries.push({ id, sourceId, playerSlot, announcedTurn, readyTurn, impact: {kind,selection,relation,amount} });
   }
-  if (i !== f.length) throw new Error('Unexpected ability stack fields');
-  return { gameId, nextId, entries };
+  return entries;
+}
+
+export function decodeTurnRecord(f: string[]): TurnRecord | null {
+  let i = 0;
+  const read = () => { if (i >= f.length) throw new Error('Truncated turn record'); return num(f[i++]); };
+  if (read() !== 0) return null;
+  const gameId = read(), turn = read(), recorded = read(), playerSlot = read();
+  if (recorded !== 1 || playerSlot > 1) throw new Error('Invalid turn record');
+  const actions: TurnAction[] = [];
+  const count = read(); if (count > 32) throw new Error('Invalid action count');
+  for (let k = 0; k < count; k++) {
+    const capId = read(), variant = read();
+    if (variant === 3) actions.push({capId, kind:'StackAbility', targetId:read()});
+    else { const kind = (['Play','Move','Ability'] as const)[variant]; if (!kind) throw new Error('Unknown action'); actions.push({capId,kind,x:read(),y:read()}); }
+  }
+  const pieces = (): PieceSnapshot[] => {
+    const n = read(); if (n > 256) throw new Error('Invalid piece count');
+    return Array.from({length:n}, () => {
+      const id = read(), playerSlot = read(), capType = read(), location = read();
+      if (location > 2) throw new Error('Invalid location');
+      const x = location === 1 ? read() : null, y = location === 1 ? read() : null;
+      return {id,playerSlot,capType,x,y,dead:location===2,health:read(),shield:read(),stunnedTurns:read(),availableTurn:read()};
+    });
+  };
+  const before = pieces(), after = pieces();
+  const stackBefore = readStackEntries(read), stackAfter = readStackEntries(read), resolved = readStackEntries(read);
+  const energyBefore = read(), energyAfter = read();
+  if (i !== f.length) throw new Error('Unexpected turn record fields');
+  return {gameId,turn,playerSlot,actions,before,after,stackBefore,stackAfter,resolved,energyBefore,energyAfter};
 }

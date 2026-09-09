@@ -1,5 +1,5 @@
 import { pathDistance, type LayoutConfig } from './board';
-import { schedule, copyStack } from './stack';
+import { schedule, copyStack, counterPending, canTargetPending } from './stack';
 import type { AbilityStack } from './types';
 import { passiveBonus } from './passives';
 import type { ChainCap, ChainGame, ChainHand, CapTypeDef, TurnAction } from './types';
@@ -39,6 +39,16 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
     const def = c && defs.get(c.capType);
     if (!c || !def || c.dead || c.playerSlot !== game.turnCount % 2) throw new Error('Piece unavailable');
     if (c.stunnedTurns) throw new Error('Piece is stunned');
+    if (a.kind === 'StackAbility') {
+      if (c.x === null || c.y === null) throw new Error('Ability requires a board piece');
+      if (usedAbilities.has(c.id)) throw new Error('Each piece can activate once per turn');
+      if (energy < def.abilityCost) throw new Error('Not enough energy');
+      const entry = stack.entries.find(e => e.id === a.targetId);
+      if (!entry || !canTargetPending(def.abilityTarget, c.playerSlot, entry)) throw new Error('Invalid pending effect target');
+      if (c.capType !== 6) throw new Error('Unsupported stack ability for this reference set');
+      energy -= def.abilityCost; usedAbilities.add(c.id); counterPending(stack, a.targetId);
+      continue;
+    }
     const target = caps.find(c => !c.dead && c.x === a.x && c.y === a.y);
     if (a.kind !== 'Ability') {
       if (a.kind === 'Move' && moves > 0) moves--;
@@ -58,6 +68,7 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
         if (target.dead) { c.x = a.x; c.y = a.y; }
       } else { c.x = a.x; c.y = a.y; }
     } else {
+      if (def.abilityTarget >= 6) throw new Error('Choose a pending effect on the stack');
       if (c.x === null || c.y === null || !def.abilityTarget) throw new Error('Ability requires a board piece');
       if (usedAbilities.has(c.id)) throw new Error('Each piece can activate once per turn');
       if (energy < def.abilityCost) throw new Error(`Not enough energy (need ${def.abilityCost}, have ${energy})`);
@@ -89,5 +100,6 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
     }
 
   }
+  if (winnerSlot !== null) stack.entries = [];
   return { caps, energy, actions, moves, usedAbilities, winnerSlot, stack, hand: handIds(roster, caps, game.turnCount, hand?.handSize) };
 }

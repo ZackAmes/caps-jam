@@ -1,6 +1,7 @@
+import { consistentSnapshot } from '../game/sync';
 import { encodeActions } from '@caps/game-core/encode';
 import { CallData, type Call } from 'starknet';
-import { decodeGame, decodeHand, decodeCapType, decodeStack } from '@caps/game-core/decode';
+import { decodeGame, decodeHand, decodeCapType, decodeStack, decodeTurnRecord } from '@caps/game-core/decode';
 import { provider, ACTIONS } from './transport';
 import { getAccount } from './account';
 import { LAYOUT_PERIMETER_5X5 } from '@caps/game-core/board';
@@ -34,7 +35,8 @@ export async function getCapType(
 
 /** Executes a call and waits for the transaction. Session txs are gasless
  *  once policies are approved; manual fallback opens the keychain modal. */
-async function executeAndWait(call: Call): Promise<string> {
+export type TransactionProgress = (stage: 'confirming' | 'syncing', hash: string) => void;
+async function executeAndWait(call: Call, progress?: TransactionProgress): Promise<string> {
   const acc = getAccount();
   const res: any = await acc.execute(call);
   // With propagateSessionErrors=false, failures surface as thrown errors or
@@ -46,7 +48,10 @@ async function executeAndWait(call: Call): Promise<string> {
   if (!res || !res.transaction_hash) {
     throw new Error("No transaction hash returned from Controller");
   }
-  await provider.waitForTransaction(res.transaction_hash);
+  progress?.('confirming', res.transaction_hash);
+  const receipt = await provider.waitForTransaction(res.transaction_hash);
+  if (!receipt.isSuccess()) throw new Error('Transaction reverted');
+  progress?.('syncing', res.transaction_hash);
   return res.transaction_hash;
 }
 
@@ -56,7 +61,7 @@ async function requireCurrentRules(): Promise<void> {
   rulesVerification ??= provider.callContract({
     contractAddress: ACTIONS, entrypoint: 'rules_version', calldata: [],
   }).then(version => {
-    if (Number(version[0]) !== 4) throw new Error('This deployment uses an unsupported CAPS rules version.');
+    if (Number(version[0]) !== 5) throw new Error('This deployment uses an unsupported CAPS rules version.');
   }).catch((error: unknown) => {
     rulesVerification = null;
     throw error;
@@ -82,12 +87,12 @@ export async function createSoloGame(layout: number = LAYOUT_PERIMETER_5X5): Pro
   });
 }
 
-export async function takeTurn(gameId: number, expectedTurn: number, actions: TurnAction[]): Promise<void> {
+export async function takeTurn(gameId: number, expectedTurn: number, actions: TurnAction[], progress?: TransactionProgress): Promise<void> {
   await executeAndWait({
     contractAddress: ACTIONS,
     entrypoint: 'take_turn_if_current',
     calldata: CallData.compile([gameId, expectedTurn, ...encodeActions(actions)]),
-  });
+  }, progress);
 }
 
 export async function getGameCount(): Promise<number> {
@@ -136,4 +141,31 @@ export async function getGame(gameId: number): Promise<ChainGame | null> {
 export async function getStack(gameId: number) {
   await requireCurrentRules();
   return decodeStack(await provider.callContract({ contractAddress: ACTIONS, entrypoint: 'get_stack', calldata: CallData.compile([gameId]) }));
+}
+
+export async function getTurnRecord(gameId: number, turn: number) {
+  return decodeTurnRecord(await provider.callContract({contractAddress:ACTIONS,entrypoint:'get_turn',calldata:CallData.compile([gameId,turn])}));
+}
+export async function transactionState(hash: string): Promise<'pending'|'confirmed'|'reverted'> {
+  try {
+    const receipt = await provider.getTransactionReceipt(hash);
+    if (receipt.isReverted()) return 'reverted';
+    return receipt.isSuccess() && ['ACCEPTED_ON_L2','ACCEPTED_ON_L1'].includes(receipt.finality_status) ? 'confirmed' : 'pending';
+  } catch (error) {
+    if (typeof error === 'object' && error && 'code' in error && error.code === 29) return 'pending';
+    throw error;
+  }
+}
+/** Reject mixed snapshots if a turn advances between independent RPC reads. */
+export async function getGameSnapshot(id: number, minimumTurn = 0) {
+  const {game,details} = await consistentSnapshot(() => getGame(id), async game => {
+    const slot = game.turnCount % 2;
+    const [hand, otherHand, stack, definitions] = await Promise.all([
+      getHand(id,slot), getHand(id,1-slot), getStack(id),
+      Promise.all([...new Set(game.caps.map(c=>c.capType))].map(type=>getCapTypeCached(id,type))),
+    ]);
+    if (!hand || !otherHand || definitions.some(d=>!d)) throw new Error('Incomplete game snapshot; retrying is safe.');
+    return {hand,otherHand,stack,definitions:new Map(definitions.map(d=>[d!.id,d!]))};
+  }, minimumTurn);
+  return {game,...details};
 }

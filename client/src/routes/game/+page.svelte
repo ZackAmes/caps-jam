@@ -1,14 +1,18 @@
 <script lang="ts">
+    import { submissionHasLanded } from '$lib/game/sync';
+    import StackPanel from '$lib/game/StackPanel.svelte';
+    import TurnHistory from '$lib/game/TurnHistory.svelte';
+    import { actionLabel, square } from '$lib/game/history';
     import { onMount } from 'svelte';
     import { dojoConfig } from '$lib/dojo/config';
-    import { viewerSlot, pathEdges, effectTiming } from '$lib/game/presentation';
+    import { viewerSlot, pathEdges, effectTiming, impactFootprint } from '$lib/game/presentation';
     import botAccount from '../../../../bot/account.public.json';
     import { previewTurn } from '@caps/game-core/preview';
-    import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer } from '$lib/dojo/client';
+    import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer, getGameSnapshot, getTurnRecord, transactionState } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
     import { getLayout, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
     import { describeImpact } from '@caps/game-core/stack';
-    import type { AbilityStack } from '@caps/game-core/types';
+    import type { AbilityStack, TurnRecord } from '@caps/game-core/types';
     import { passiveActive, passiveBonus } from '@caps/game-core/passives';
     import { passiveLabel } from '$lib/dojo/labels';
     import type { ChainGame, ChainCap, TurnAction, ChainHand, CapTypeDef } from '@caps/game-core/types';
@@ -92,6 +96,52 @@
     let queuedActions: TurnAction[] = $state([]);
     let pendingStack = $state<AbilityStack>({gameId:0,nextId:0,entries:[]});
     let committing = $state(false);
+    let stackTargetMode = $state(false);
+    let focusedEffectId = $state<number | null>(null);
+    let pendingSubmission = $state<{gameId:number; turn:number; hash:string; confirmed:boolean} | null>(null);
+    let syncStage = $state<'idle'|'submitting'|'confirming'|'syncing'>('idle');
+    let syncError = $state<string | null>(null);
+    let lastSynced = $state<string>('');
+    let loadEpoch = 0, submissionEpoch = 0, historyEpoch = 0;
+    let historyRecords = $state<TurnRecord[]>([]);
+    let historyLoading = $state(false);
+    let historyError = $state<string | null>(null);
+    let historyGame = 0;
+    let historyCursor = $state(0);
+    let pendingForGame = $derived(pendingSubmission?.gameId === game?.id ? pendingSubmission : null);
+    let selectedActor = $derived(selectedCapId === null ? undefined : capById(selectedCapId));
+
+    async function deadline<T>(promise: Promise<T>, ms = 25000): Promise<T> {
+        let timer: ReturnType<typeof setTimeout>;
+        try { return await Promise.race([promise, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error('The network is taking longer than expected. We will keep checking.')), ms); })]); }
+        finally { clearTimeout(timer!); }
+    }
+    async function loadHistory(id = game?.id, end = game?.turnCount, older = false) {
+        if (!id || end === undefined) return;
+        const epoch = ++historyEpoch;
+        if (historyGame !== id) { historyGame = id; historyRecords = []; historyCursor = end; }
+        const stop = older ? historyCursor : end, start = Math.max(0, stop - 4);
+        historyLoading = true; historyError = null;
+        try {
+            const records = await deadline(Promise.all(Array.from({length:stop-start}, (_, i) => getTurnRecord(id, stop-i-1))));
+            if (epoch !== historyEpoch || game?.id !== id) return;
+            const merged = new Map(historyRecords.map(r => [r.turn, r]));
+            for (const record of records) if (record) merged.set(record.turn, record);
+            historyRecords = [...merged.values()].sort((a,b) => b.turn-a.turn);
+            historyCursor = Math.min(historyCursor, start);
+        } catch { if (epoch === historyEpoch) historyError = 'History is temporarily unavailable. Refresh to retry.'; }
+        finally { if (epoch === historyEpoch) historyLoading = false; }
+    }
+    function targetPending(id: number) {
+        if (!selectedActor || !canActivateSelected) return;
+        const action: TurnAction = {capId:selectedActor.id,kind:'StackAbility',targetId:id};
+        try {
+            const next = [...queuedActions, action];
+            previewTurn(game!, hand, capDefMap, activeLayout, next, pendingStack);
+            queuedActions = next; stackTargetMode = false; focusedEffectId = null;
+            status = `Planned negation of effect #${id}`; errorMsg = null;
+        } catch (error) { errorMsg = error instanceof Error ? error.message : String(error); }
+    }
 
     let mySlot = $derived(game ? viewerSlot(game, account) : null);
     let otherHand = $derived(game && mySlot === game.turnCount % 2 ? opponentHand : hand);
@@ -101,6 +151,10 @@
     let preview = $derived(game ? previewTurn(game, hand, capDefMap, activeLayout, queuedActions, pendingStack) : null);
     let remainingEnergy = $derived(preview?.energy ?? 0);
     let simCaps = $derived(preview?.caps ?? []);
+    let canActivateSelected = $derived(!!selectedActor && canAct() && isMyCap(selectedActor) && selectedActor.x !== null && !selectedActor.stunnedTurns && !preview?.usedAbilities.has(selectedActor.id) && remainingEnergy >= (capDefFor(selectedActor)?.abilityCost ?? Infinity));
+
+    let focusedCells = $derived(impactFootprint(preview?.stack.entries.find(e => e.id === focusedEffectId), simCaps, activeLayout));
+    let latestOpponent = $derived(historyRecords.find(r => isSolo || r.playerSlot !== mySlot));
     let sceneTargets = $derived.by(() => {
         const cap = selectedCapId === null ? undefined : capById(selectedCapId);
         if (!cap || !canAct()) return new Map<string, string>();
@@ -159,7 +213,8 @@
         const cap = capById(selectedCapId);
         if (!cap) return;
         const def = capDefFor(cap);
-        if (!def || def.abilityTarget === 0) return;
+        if (!def || def.abilityTarget === 0 || !canActivateSelected) return;
+        if (def.abilityTarget >= 6) { stackTargetMode = true; abilityTargetMode = false; document.getElementById('ability-stack')?.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
         if (def.abilityTarget === 1) {
             if (queueAction(cap.id, 'Ability', cap.x ?? 0, cap.y ?? 0)) {
                 status = `Queued ability: ${def.abilityDescription}`;
@@ -194,7 +249,7 @@
     }
 
     function canAct(): boolean {
-        return !!game && !game.over && isMyTurn() && !committing && busy === null;
+        return !!game && !game.over && isMyTurn() && !committing && !pendingForGame && busy === null;
     }
 
     function benchCaps(): ChainCap[] {
@@ -238,7 +293,7 @@
         return out;
     }
 
-    function queueAction(capId: number, kind: TurnAction['kind'], x: number, y: number): boolean {
+    function queueAction(capId: number, kind: Exclude<TurnAction['kind'], 'StackAbility'>, x: number, y: number): boolean {
         if (!game || !canAct()) return false;
         const next = [...queuedActions, { capId, kind, x, y }];
         try {
@@ -276,6 +331,7 @@
     // Tap resolution
     function onTapCell(x: number, y: number) {
         if (!activeLayout.isWalkable(x, y)) return;
+        stackTargetMode = false;
         const occ = capAt(x, y);
         if (!canAct()) { selectedCapId = occ?.id ?? null; abilityTargetMode = false; return; }
 
@@ -490,7 +546,7 @@
                 return;
             }
             gameIdInput = String(id);
-            await handleLoad();
+            await loadGame(id);
         } catch (e: unknown) {
             errorMsg = e instanceof Error ? e.message : String(e);
             log(`Create failed: ${errorMsg}`, 'error');
@@ -500,86 +556,99 @@
     }
 
     async function handleLoad() {
-        await loadGame(Number(gameIdInput));
+        if (busy || committing) return;
+        busy = 'Refreshing game…';
+        try { await loadGame(Number(gameIdInput)); } finally { busy = null; }
     }
 
-    async function loadGame(id: number, stillCurrent: () => boolean = () => true) {
-        errorMsg = null;
+    async function loadGame(id: number, stillCurrent: () => boolean = () => true, minimumTurn = 0) {
+        const epoch = ++loadEpoch;
         try {
             if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Enter a valid game id');
-            const nextGame = await getGame(id);
-            if (!nextGame) throw new Error(`Game ${id} not found`);
-            const slot = nextGame.turnCount % 2;
-            const [nextHand, nextOpponentHand, nextStack] = await Promise.all([getHand(id, slot), getHand(id, 1 - slot), getStack(id)]);
-            const uniqueTypes = [...new Set(nextGame.caps.map(c => c.capType))];
-            const definitions = await Promise.all(uniqueTypes.map(ct => getCapTypeCached(id, ct)));
-            const newMap = new Map<number, CapTypeDef>();
-            for (const def of definitions) if (def) newMap.set(def.id, def);
-            if (newMap.size !== uniqueTypes.length) throw new Error('Unable to load all piece definitions');
-            if (!stillCurrent()) return;
-            // Install a complete snapshot together; do not replay the previous queue on a new turn.
-            queuedActions = [];
-            selectedCapId = null;
-            abilityTargetMode = false;
-            capDefMap = newMap;
-            pendingStack = nextStack;
-            hand = nextHand;
-            opponentHand = nextOpponentHand;
-            game = nextGame;
-            selectedLayout = game.layout;
-            resumeId = id;
-            gameIdInput = String(id);
-            linkCopied = false;
+            const snapshot = await deadline(getGameSnapshot(id, minimumTurn));
+            if (epoch !== loadEpoch || !stillCurrent()) return false;
+            const nextGame = snapshot.game;
+            if (game?.id === id && pendingForGame && nextGame.turnCount <= pendingForGame.turn) {
+                syncStage = pendingForGame.confirmed ? 'syncing' : 'confirming';
+                return false;
+            }
+            queuedActions = []; selectedCapId = null; abilityTargetMode = false; stackTargetMode = false;
+            capDefMap = snapshot.definitions; pendingStack = snapshot.stack;
+            hand = snapshot.hand; opponentHand = snapshot.otherHand; game = nextGame;
+            if (submissionHasLanded(pendingForGame, game.turnCount)) {
+                pendingSubmission = null; syncStage = 'idle'; submissionEpoch++;
+            }
+            selectedLayout = game.layout; resumeId = id; gameIdInput = String(id); linkCopied = false;
+            lastSynced = new Date().toLocaleTimeString(); syncError = null; errorMsg = null;
+            if (!pendingStack.entries.some(e => e.id === focusedEffectId)) focusedEffectId = null;
             try {
                 localStorage.setItem(savedGameKey, String(id));
                 const url = new URL(location.href); url.searchParams.set('game', String(id));
                 history.replaceState(history.state, '', url);
-            } catch { /* Loading still works without browser storage. */ }
+            } catch { /* Browser storage is optional. */ }
             status = `Loaded game #${id}`;
-            log(`Loaded game #${id} (turn ${game.turnCount}, layout ${game.layout})`);
-        } catch (e: any) {
-            errorMsg = e?.message ?? String(e);
-            log(`Load failed: ${errorMsg}`, 'error');
+            void loadHistory(id, game.turnCount);
+            return true;
+        } catch (error) {
+            if (epoch !== loadEpoch || !stillCurrent()) return false;
+            syncError = error instanceof Error ? error.message : String(error);
+            if (!game) errorMsg = syncError;
+            log(`Load: ${syncError}`, 'error');
+            return false;
         }
     }
 
-    // Watch the opponent without clearing a locally planned turn or reopening a closed game.
+    // Keep checking both sides: another tab may submit, and receipts can precede RPC state.
     $effect(() => {
         const id = game?.id;
-        const turn = game?.turnCount;
-        if (!id || turn === undefined || game?.over || isMyTurn()) return;
-        let cancelled = false;
-        let loading = false;
-        const current = () => !cancelled && game?.id === id && game.turnCount === turn;
-        const timer = setInterval(async () => {
-            if (loading || !current()) return;
-            loading = true;
+        if (!id) return;
+        let cancelled = false, checking = false;
+        const current = () => !cancelled && game?.id === id;
+        async function check() {
+            if (checking || !current() || committing || busy) return;
+            checking = true;
             try {
-                const next = await getGame(id);
-                if (current() && next && (next.turnCount !== turn || next.over)) await loadGame(id, current);
-            } catch { /* Transient RPC failure: retry on the next poll. */ }
-            finally { loading = false; }
-        }, 5000);
-        return () => { cancelled = true; clearInterval(timer); };
+                const pending = pendingSubmission?.gameId === id ? pendingSubmission : null;
+                if (pending) {
+                    const receipt = await deadline(transactionState(pending.hash));
+                    if (!current()) return;
+                    if (receipt === 'reverted') {
+                        pendingSubmission = null; syncStage = 'idle'; submissionEpoch++;
+                        errorMsg = 'The transaction reverted. Your plan is still here; refresh before trying again.';
+                    } else if (receipt === 'confirmed') {
+                        pendingSubmission = {...pending, confirmed:true}; syncStage = 'syncing';
+                        await loadGame(id!, current, pending.turn + 1);
+                    }
+                } else {
+                    const next = await deadline(getGame(id!));
+                    if (!current()) return;
+                    if (next && (next.turnCount !== game?.turnCount || next.over !== game?.over)) await loadGame(id!, current);
+                    else { lastSynced = new Date().toLocaleTimeString(); syncError = null; }
+                }
+            } catch (error) { if (current()) syncError = error instanceof Error ? error.message : String(error); }
+            finally { checking = false; }
+        }
+        const timer = setInterval(check, 5000);
+        const visible = () => { if (document.visibilityState === 'visible') void check(); };
+        document.addEventListener('visibilitychange', visible);
+        return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
     });
 
     async function commitTurn() {
-        if (!game || game.over || !isMyTurn()) return;
-        errorMsg = null;
-        committing = true;
-        log(`Submitting ${queuedActions.length} action(s)…`);
+        if (!game || !canAct()) return;
+        const id = game.id, turn = game.turnCount, attempt = ++submissionEpoch;
+        errorMsg = null; syncError = null; committing = true; syncStage = 'submitting';
         try {
-            await takeTurn(game.id, game.turnCount, queuedActions);
-            queuedActions = [];
-            status = 'Turn submitted';
-            log('Turn tx confirmed');
-            await handleLoad();
-        } catch (e: any) {
-            errorMsg = e?.message ?? String(e);
-            log(`Turn failed: ${errorMsg}`, 'error');
-        } finally {
-            committing = false;
-        }
+            await deadline(takeTurn(id, turn, queuedActions, (stage, hash) => {
+                if (attempt !== submissionEpoch) return;
+                pendingSubmission = {gameId:id,turn,hash,confirmed:stage === 'syncing'};
+                syncStage = stage;
+            }), 45000);
+            await loadGame(id, () => game?.id === id, turn + 1);
+        } catch (error) {
+            syncError = error instanceof Error ? error.message : String(error);
+            if (!pendingSubmission) { errorMsg = syncError; syncStage = 'idle'; }
+        } finally { committing = false; }
     }
 
     function removeQueuedAction(index: number) {
@@ -682,14 +751,21 @@
     {:else}
         <!-- Game View -->
         <section class="gameview">
+            <div class="sync-status" role="status" aria-live="polite">
+                <span>{syncStage === 'submitting' ? 'Sending your turn… your plan stays visible.' : syncStage === 'confirming' ? 'Transaction sent. Waiting for confirmation…' : syncStage === 'syncing' ? 'Confirmed. Waiting for the updated board…' : queuedActions.length ? 'Previewing your plan — not submitted yet.' : isMyTurn() ? 'Your turn.' : 'Waiting for opponent. Checking every 5 seconds.'}
+                {#if lastSynced}<small>Last checked {lastSynced}</small>{/if}</span>
+                <button onclick={handleLoad} disabled={committing || busy !== null}>Refresh</button>
+            </div>
+            {#if syncError}<p class="sync-warning" role="status">{syncError} Your pending transaction will not be sent again automatically.</p>{/if}
             <div class="meta">
-                <button class="back" onclick={() => { game = null; queuedActions = []; selectedCapId = null; hand = null; }}>← Lobby</button>
+                <button class="back" disabled={committing || !!pendingForGame} onclick={() => { game = null; queuedActions = []; selectedCapId = null; hand = null; }}>← Lobby</button>
                 <span class="badge">#{game.id} · Turn {game.turnCount + 1}</span>
                 <button onclick={copyGameLink}>{linkCopied ? 'Copied' : 'Copy link'}</button>
                 <span class="turn-badge {game.turnCount % 2 === 0 ? 'p1' : 'p2'}">
                     {isSolo ? `P${game.turnCount % 2 + 1}` : isMyTurn() ? 'Your turn' : 'Opponent’s turn'}
                 </span>
-                <span class="energy-badge" title="Energy remaining this turn">⚡ {remainingEnergy}/5</span>
+                <span class="energy-badge" title="P1 energy">P1 ⚡ {!game.over && game.turnCount % 2 === 0 ? remainingEnergy : game.p1Energy}/5</span>
+                <span class="energy-badge" title="P2 energy">P2 ⚡ {!game.over && game.turnCount % 2 === 1 ? remainingEnergy : game.p2Energy}/5</span>
                 <span>{preview?.actions ?? 1} action · {preview?.moves ?? 0} bonus moves</span>
             </div>
 
@@ -711,23 +787,25 @@
             {/if}
 
             {#if !isMyTurn() && !game.over}<p class="hint" role="status">Waiting for your opponent. The board refreshes automatically.</p>{/if}
+            <div class="match-layout"><main class="arena">
+            {#if latestOpponent}
+                <section class="opponent-last" aria-label="Opponent’s last turn">
+                    <strong>{isSolo ? `P${latestOpponent.playerSlot + 1}` : 'Opponent'} · turn {latestOpponent.turn + 1}</strong>
+                    {#if !latestOpponent.actions.length}<p>Passed without taking an action.</p>{/if}
+                    {#each latestOpponent.actions as action}<p>{actionLabel(action, latestOpponent.before, capDefMap)}</p>{/each}
+                    <a href="#turn-history">View results and full history ↓</a>
+                </section>
+            {/if}
+            <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
             <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
             <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
             <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
+            </details>
             {#if preview?.winnerSlot !== null && preview?.winnerSlot !== undefined && !game.over}
                 <p class="gameover">Goal reached in preview — submit to confirm.</p>
             {/if}
-            {#if preview && preview.stack.entries.length > 0}
-                <section class="pending-stack" aria-label="Pending ability stack" aria-live="polite">
-                    <strong>Pending abilities · newest resolves first</strong>
-                    <p class="hint">Respond during your turn. An older effect waits for every effect above it.</p>
-                    {#each [...preview.stack.entries].reverse() as entry (entry.id)}
-                        <div class="pending-entry">
-                            <strong>#{entry.id} · P{entry.playerSlot + 1}</strong> {describeImpact(entry)}
-                            <small>{entry.id > pendingStack.nextId ? 'Planned · announce by submitting this turn. ' : ''}{effectTiming(entry, preview.stack, game.turnCount, mySlot)}</small>
-                        </div>
-                    {/each}
-                </section>
+            {#if preview?.stack.entries.length}
+                <a class="stack-summary" href="#ability-stack">{preview.stack.entries.length} pending effect(s) · {effectTiming(preview.stack.entries.at(-1)!, preview.stack, game.turnCount, mySlot)}</a>
             {/if}
             <div class="board-toolbar">
                 <span>Board view</span>
@@ -739,7 +817,7 @@
                 <svelte:boundary onerror={fallbackBoard}>
                     {#if ThreeBoard}
                         <ThreeBoard layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId}
-                            targets={sceneTargets} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onfailure={fallbackBoard} />
+                            targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onfailure={fallbackBoard} />
                         <p class="hint">Tap a piece to inspect or select it, then tap a highlighted square. Use the hand below to deploy.</p>
                     {:else}
                         <p class="hint" role="status">Loading 3D board…</p>
@@ -780,6 +858,7 @@
                         class:goal-tile={x === 2 && (y === 0 || y === 4)}
                         class:energy-tile={y === 2 && (x === 0 || x === 4)}
                         class:deploy-tile={isDeploy && !occ}
+                        class:effect-focus={focusedCells.has(`${x},${y}`)}
                         class:pending-danger={walkable && !!preview?.stack.entries.some(e => e.impact.kind === 'Damage' && e.impact.selection.kind === 'Row' && e.impact.selection.index === y)}
                         class:target-move={!!targetInfo && targetInfo.type === 'move'}
                         class:target-fight={!!targetInfo && targetInfo.type === 'fight'}
@@ -787,8 +866,10 @@
                         class:drag-over={dragOver}
                         class:drag-ok={dragOver && drag?.valid}
                         class:drag-bad={dragOver && drag != null && !drag.valid}
+                        title={square(x,y)}
                         data-cell="{x},{y}"
                     >
+                        {#if walkable}<span class="coordinate">{square(x,y)}</span>{/if}
                         {#if x === 2 && (y === 0 || y === 4)}
                             <div class="goal-marker">{y === 0 ? 'P1' : 'P2'} base</div>
                         {:else if y === 2 && (x === 0 || x === 4)}
@@ -858,6 +939,10 @@
                 {/if}
             {/if}
 
+            </main><aside class="game-sidebar">
+            <StackPanel stack={preview?.stack ?? pendingStack} confirmedId={pendingStack.nextId} turn={game.turnCount} viewer={mySlot}
+                caps={simCaps} definitions={capDefMap} layout={activeLayout} actor={selectedActor} targeting={stackTargetMode}
+                canActivate={canActivateSelected} focusedId={focusedEffectId} onfocus={(id) => { focusedEffectId = id; }} ontarget={targetPending} oncancel={() => { stackTargetMode = false; }} />
             <!-- Hints -->
             {#if drag}
                 <p class="hint">
@@ -867,7 +952,7 @@
                     {/if}
                 </p>
             {:else if selectedCapId != null}
-                <p class="hint">{abilityTargetMode ? 'Choose a purple target for the ability.' : 'Choose a highlighted square to move or attack.'}</p>
+                <p class="hint">{stackTargetMode ? 'Choose an effect in the stack panel.' : abilityTargetMode ? 'Choose a purple target for the ability.' : selectedActor?.x === null ? 'Inspecting a hand piece. Deploy it from your hand to use it.' : 'Choose a highlighted square to move or attack.'}</p>
                 {@const selDef = capDefFor(capById(selectedCapId)!)}
                 {#if selDef && selDef.abilityTarget !== 0}
                     <button
@@ -886,7 +971,7 @@
                 {#if selDef}
                     {@const selected = capById(selectedCapId)!}
                     <div class="piece-info">
-                        <div class="pi-name">{selDef.name}</div>
+<div class="pi-name">{selDef.name} #{selected.id} · P{selected.playerSlot + 1}</div>
                         <div class="pi-stats">❤ {selected.health}/{selDef.maxHealth} · ⚔ {Math.min(65535, selDef.attack + passiveBonus('AttackBonus', selected, simCaps, capDefMap, activeLayout))} · 🛡 {selected.shield} shield / {passiveBonus('DamageReduction', selected, simCaps, capDefMap, activeLayout)} reduction</div>
                         {#if selDef.abilityDescription !== 'None' && selDef.abilityTarget !== 0}
                             <div class="pi-ability">
@@ -894,6 +979,10 @@
                                 {selDef.abilityDescription}
                             </div>
                         {/if}
+                        {#if selDef.abilityTarget >= 6}<p class="pi-passive">Targets a pending effect; no board distance limit.</p>
+                        {:else if selDef.abilityTarget > 1}<p class="pi-passive">Ability range: {Math.min(65535,selDef.abilityRange + passiveBonus('AbilityRangeBonus', selected, simCaps, capDefMap, activeLayout))} path steps.</p>{/if}
+                        {#if preview?.usedAbilities.has(selected.id)}<p class="pi-passive">Ability already used in this plan.</p>{/if}
+                        {#if selected.stunnedTurns}<p class="pi-passive">Stunned: {selected.stunnedTurns} remaining.</p>{/if}
                         {#each selDef.passives as passive}
                             {@const source = capById(selectedCapId)}
                             <div class="pi-passive">✦ {passiveLabel(passive)} — {source && passiveActive(passive, source, selDef.maxHealth, simCaps, activeLayout) ? 'Active' : 'Inactive'}</div>
@@ -918,7 +1007,7 @@
                     <span class="bench-label">Your hand (P{(mySlot ?? 0) + 1})</span>
                     <div class="bench-pieces">
                         {#each myBenchCaps() as c (c.id)}
-                            <button
+                            <div class="bench-card"><button
                                 class="bench-piece"
                                 disabled={!canAct() || (preview?.actions ?? 0) === 0}
                                 title={capDefFor(c)?.abilityDescription}
@@ -929,6 +1018,7 @@
                                 onclick={(event) => { if (boardMode === '3d' || event.detail === 0) onTapBench(c.id); }}
                                 data-bench={c.id}
                             >{capDefFor(c)?.name ?? c.capType} · {c.health}hp</button>
+                            <button class="bench-inspect" aria-label={`Inspect ${capDefFor(c)?.name ?? 'piece'}`} onclick={() => { selectedCapId = c.id; stackTargetMode = false; abilityTargetMode = false; }}>Info</button></div>
                         {/each}
                     </div>
                 </div>
@@ -943,17 +1033,19 @@
                 <p class="hint">Planned actions — the board previews immediate changes. Dashed rows mark delayed damage. Tap an action to undo it and any later actions.</p>
                 <div class="queued">
                     {#each queuedActions as qa, i}
-                        <button class="queued-action" disabled={committing || busy !== null} onclick={() => removeQueuedAction(i)}>
-                            {capDefFor(capById(qa.capId)!)?.name ?? 'Piece'}: {qa.kind === 'Ability' ? 'ability' : qa.kind === 'Play' ? 'deploy' : 'move / attack'} · row {qa.y + 1}, col {qa.x + 1} ✕
+                        <button class="queued-action" disabled={!canAct()} onclick={() => removeQueuedAction(i)}>
+                            {actionLabel(qa, simCaps, capDefMap)} ✕
                         </button>
                     {/each}
                 </div>
             {/if}
 
             <!-- Commit -->
-            <button class="commit" onclick={commitTurn} disabled={game.over || !isMyTurn() || committing || busy !== null}>
-                {committing || busy ? (committing ? 'Submitting…' : busy) : (queuedActions.length ? `Submit Turn (${queuedActions.length})` : 'Pass turn')}
+            <button class="commit" onclick={commitTurn} disabled={!canAct()}>
+                {syncStage !== 'idle' ? syncStage === 'submitting' ? 'Sending turn…' : syncStage === 'confirming' ? 'Confirming transaction…' : 'Updating board…' : busy ?? (queuedActions.length ? `Submit Turn (${queuedActions.length})` : 'Pass turn')}
             </button>
+            <TurnHistory records={historyRecords} definitions={capDefMap} viewer={mySlot} loading={historyLoading} error={historyError} hasOlder={historyCursor > 0} onolder={() => { void loadHistory(game?.id, game?.turnCount, true); }} />
+            </aside></div>
         </section>
     {/if}
 
@@ -983,13 +1075,34 @@
         -webkit-tap-highlight-color: transparent;
     }
     .wrap {
-        max-width: 480px;
+        max-width: 1320px;
         margin: 0 auto;
         padding: 0.75rem;
         min-height: 100dvh;
         display: flex;
         flex-direction: column;
     }
+    .lobby { max-width:480px; width:100%; margin:0 auto; }
+    .match-layout { display:grid; grid-template-columns:minmax(0, 1fr) 370px; gap:20px; align-items:start; }
+    .arena { min-width:0; position:sticky; top:12px; }
+    .game-sidebar { min-width:0; display:flex; flex-direction:column; gap:12px; }
+    .sync-status { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px; border:1px solid #334155; border-radius:10px; margin-bottom:12px; font-size:0.85rem; background:#132037; }
+    .sync-status small { display:block; color:#94a3b8; font-size:0.7rem; margin-top:4px; }
+    .sync-warning { color:#fcd34d; font-size:0.85rem; line-height:1.5; }
+    .opponent-last { padding:12px; background:#17263b; border-left:3px solid #fb7185; border-radius:8px; margin-bottom:12px; font-size:0.83rem; max-height:180px; overflow:auto; }
+    .opponent-last p { margin:6px 0; line-height:1.5; } .opponent-last a { color:#93c5fd; }
+    .tile.effect-focus { outline:3px solid #c4b5fd; outline-offset:-3px; }
+    .rules-help { margin-bottom:12px; color:#aebed3; font-size:0.85rem; }
+    .rules-help summary { cursor:pointer; min-height:40px; display:flex; align-items:center; }
+    .stack-summary { display:block; padding:10px 12px; margin:8px 0; color:#fcd34d; border:1px solid #99713c; border-radius:8px; font-size:0.82rem; text-decoration:none; }
+    @media(max-width:850px) {
+        .match-layout { grid-template-columns:1fr; gap:14px; }
+        .arena { position:static; }
+        .wrap { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
+        .game-sidebar .commit { position:fixed; bottom:calc(10px + env(safe-area-inset-bottom)); left:12px; right:12px; width:calc(100% - 24px); z-index:30; box-shadow:0 -10px 25px #0b1220; }
+    }
+    :global(button), :global(input), :global(select) { min-height:44px; }
+    :global(*), :global(*::before), :global(*::after) { box-sizing:border-box; }
     .topbar {
         display: flex;
         justify-content: space-between;
@@ -1109,9 +1222,6 @@
         color: #fecaca;
     }
 
-    .pending-stack { border: 1px solid #b45309; border-radius: 8px; padding: 0.65rem; background: #271d13; }
-    .pending-entry { padding: 0.45rem 0; border-top: 1px solid #64452b; font-size: 0.85rem; }
-    .pending-entry small { display: block; color: #fbbf24; }
     .tile.pending-danger::after { content: ''; position: absolute; inset: 4px; border: 1px dashed #f59e0b; border-radius: 3px; pointer-events: none; }
     .paths { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); pointer-events: none; z-index: 2; }
     .paths line { stroke: #94a3b8; stroke-width: 0.55; stroke-linecap: round; opacity: 0.6; }
@@ -1363,7 +1473,11 @@
     /* Bench */
     .bench { display: flex; flex-direction: column; gap: 0.3rem; }
     .bench-label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
-    .bench-pieces { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .bench-pieces { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .bench-card { display:flex; min-width:0; } .bench-card .bench-piece { flex:1; min-width:0; white-space:normal; }
+    .bench-inspect { padding:6px; background:#24364f; color:#cbd5e1; border:1px solid #475569; border-radius:6px; font-size:0.75rem; }
+    .coordinate { position:absolute; top:3px; left:4px; font-size:9px; color:#aabbd3; pointer-events:none; }
+
     .bench-piece {
         background: #4c1d95;
         border: 1px solid #7c3aed;

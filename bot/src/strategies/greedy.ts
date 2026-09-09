@@ -1,15 +1,15 @@
-import { resolveReadyStack, resolveImpact } from '@caps/game-core/stack';
+import { resolveReadyStack, resolveImpact, canTargetPending } from '@caps/game-core/stack';
 import { pathDistances, pathDistance } from '@caps/game-core/board';
 import { passiveBonus } from '@caps/game-core/passives';
 import { previewTurn } from '@caps/game-core/preview';
 import type { ChainCap, TurnAction } from '@caps/game-core/types';
-import type { PositionV4 } from '../game/v4';
+import type { PositionV5 } from '../game/v5';
 import type { Strategy } from '../ports';
 
 type Preview = ReturnType<typeof previewTurn>;
 
 /** Small deterministic beam search. No RPC, signing, account keys, or worker state. */
-export const greedyStrategy: Strategy<PositionV4, TurnAction> = {
+export const greedyStrategy: Strategy<PositionV5, TurnAction> = {
   name: 'greedy-v1',
   chooseTurn(position) {
     const simulate = (queue: TurnAction[]) => previewTurn(position.game, position.hand, position.definitions, position.layout, queue, position.stack);
@@ -40,7 +40,7 @@ export const greedyStrategy: Strategy<PositionV4, TurnAction> = {
   },
 };
 
-function candidates(p: PositionV4, state: Preview, slot: number): TurnAction[] {
+function candidates(p: PositionV5, state: Preview, slot: number): TurnAction[] {
   const actions: TurnAction[] = [];
   const deploy = slot === 0 ? p.layout.p1Deploy : p.layout.p2Deploy;
   if (state.actions > 0) for (const id of state.hand) actions.push({ capId: id, kind: 'Play', x: deploy[0], y: deploy[1] });
@@ -51,7 +51,9 @@ function candidates(p: PositionV4, state: Preview, slot: number): TurnAction[] {
     }
     const def = p.definitions.get(cap.capType);
     if (!def?.abilityTarget || state.usedAbilities.has(cap.id) || def.abilityCost > state.energy) continue;
-    if (def.abilityTarget === 1) actions.push({ capId: cap.id, kind: 'Ability', x: cap.x, y: cap.y });
+    if (def.abilityTarget >= 6) {
+      for (const entry of state.stack.entries) if (canTargetPending(def.abilityTarget, slot, entry)) actions.push({capId:cap.id,kind:'StackAbility',targetId:entry.id});
+    } else if (def.abilityTarget === 1) actions.push({ capId: cap.id, kind: 'Ability', x: cap.x, y: cap.y });
     else for (let x = 0; x < p.layout.width; x++) for (let y = 0; y < p.layout.height; y++) {
       if (p.layout.isWalkable(x, y)) actions.push({ capId: cap.id, kind: 'Ability', x, y });
     }
@@ -59,12 +61,12 @@ function candidates(p: PositionV4, state: Preview, slot: number): TurnAction[] {
   return actions;
 }
 
-function goalDistances(p: PositionV4, slot: number): Map<string, number> {
+function goalDistances(p: PositionV5, slot: number): Map<string, number> {
   const goal = slot === 0 ? p.layout.p2Deploy : p.layout.p1Deploy;
   return pathDistances(p.layout, goal);
 }
 
-function score(p: PositionV4, state: Preview, slot: number, distances: Map<string, number>): number {
+function score(p: PositionV5, state: Preview, slot: number, distances: Map<string, number>): number {
   if (state.winnerSlot !== null) return state.winnerSlot === slot ? 1_000_000 : -1_000_000;
   // Response moves are scored after effects due at this turn boundary.
   const before = state;

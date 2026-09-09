@@ -119,3 +119,7 @@ checkpoint. Do not reuse a checkpoint from a different world.
 
 Tests cover turn windows, LIFO blocking, shielding responses, counters, source death, live
 row selection, goal precedence, saturation, area mitigation, serialization, and AI escape.
+
+## v5 client targeting and history
+
+The current v5 upgrade adds explicit stable-ID stack targets, a playable Negator in new games, and per-turn history without Torii. Existing delayed-effect timing is unchanged. See [Frontend state](FRONTEND_STATE.md).

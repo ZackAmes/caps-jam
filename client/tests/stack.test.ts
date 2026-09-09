@@ -105,3 +105,22 @@ test('reactive delayed impacts can be copied, scheduled and resolved without mut
  assert.equal(resolved.stack.entries.length, 0);
  assert.equal(JSON.stringify(pending), before);
 });
+
+test('stack-target abilities encode stable IDs and preserve the normal action',()=>{
+ const negator=piece(13,0,0,0);negator.capType=6;
+ const definitions=new Map(defs);definitions.set(6,{...def(6),abilityTarget:7,abilityCost:2});
+ const game={id:1,caps:[negator],energy:5,over:false,turnCount:0} as unknown as ChainGame;
+ const pending=empty();schedule(pending,2,1,0,1,impact(),layout);schedule(pending,3,1,0,1,impact(),layout);
+ const result=previewTurn(game,null,definitions,layout,[{capId:13,kind:'StackAbility',targetId:1}],reactive(pending));
+ assert.deepEqual(result.stack.entries.map(e=>e.id),[2]);assert.equal(result.energy,3);assert.equal(result.actions,1);
+ assert.equal(pending.entries.length,2);
+ assert.throws(()=>previewTurn(game,null,definitions,layout,[{capId:13,kind:'StackAbility',targetId:99}],pending),/Invalid pending/);
+ assert.throws(()=>previewTurn(game,null,definitions,layout,[{capId:13,kind:'StackAbility',targetId:1},{capId:13,kind:'StackAbility',targetId:2}],pending),/once per turn/);
+});
+
+test('a winning preview clears pending effects without changing confirmed state',()=>{
+ const pending=empty();schedule(pending,2,1,0,1,impact(),layout);
+ const game={id:1,caps:[piece(1,0,1,4)],energy:1,over:false,turnCount:0} as unknown as ChainGame;
+ const result=previewTurn(game,null,defs,layout,[{capId:1,kind:'Move',x:2,y:4}],pending);
+ assert.equal(result.winnerSlot,0);assert.equal(result.stack.entries.length,0);assert.equal(pending.entries.length,1);
+});

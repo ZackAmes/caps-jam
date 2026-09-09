@@ -49,13 +49,13 @@ pub struct Game {
     pub last_action_timestamp: u64,
 }
 
-#[derive(Drop, Serde, Copy, Introspect)]
+#[derive(Drop, Serde, Copy, Introspect, DojoStore, Debug)]
 pub struct Action {
     pub cap_id: u64,
     pub action_type: ActionType,
 }
 
-#[derive(Drop, Serde, Copy, Introspect)]
+#[derive(Drop, Serde, Copy, Introspect, DojoStore, Debug)]
 pub enum ActionType {
     /// Deploy a bench cap at a position (must be the player's deploy spot).
     /// The cap must be in the player's current hand window.
@@ -66,10 +66,18 @@ pub enum ActionType {
     /// Activate the acting cap's ability at `Vec2` (validated by the core,
     /// executed by the set contract, ops applied by the core).
     Ability: Vec2,
+    /// Activate an ability targeting a stable pending-effect ID.
+    StackAbility: u64,
 }
 
 #[derive(Copy, Drop, Serde, PartialEq, DojoStore, Debug, Introspect)]
 pub struct Vec2 {
     pub x: u8,
     pub y: u8,
+}
+
+impl ActionTypeDefault of Default<ActionType> {
+    fn default() -> ActionType {
+        ActionType::Play(Vec2 { x: 0, y: 0 })
+    }
 }

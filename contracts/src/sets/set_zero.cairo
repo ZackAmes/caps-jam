@@ -138,6 +138,25 @@ pub fn cap_type_of(id: u16) -> Option<CapType> {
                 passives: array![],
             },
         )
+    } else if id == 6 {
+        Option::Some(
+            CapType {
+                id: 6,
+                name: "Negator",
+                description: "Cancels an opponent's pending ability during your turn.",
+                max_health: 6,
+                attack: 1,
+                move_range: 1,
+                attack_range: 1,
+                play_cost: 0,
+                move_cost: 0,
+                ability_cost: 2,
+                ability_description: "Negate one enemy effect on the stack. No range limit.",
+                ability_target: TargetType::EnemyPending,
+                ability_range: 0,
+                passives: array![],
+            },
+        )
     } else {
         Option::None
     }
@@ -199,6 +218,11 @@ pub fn use_ability(ctx: AbilityContext, target: Vec2) -> SetOutput {
     SetOutput { ops: ops.span(), events: array![].span() }
 }
 
+pub fn use_stack_ability(ctx: AbilityContext, target_id: u64) -> SetOutput {
+    assert!(ctx.actor.cap_type == 6, "No stack ability");
+    SetOutput { ops: array![SetOp::CounterPending(target_id)].span(), events: array![].span() }
+}
+
 fn cap_at(caps: Span<CapInfo>, target: Vec2) -> Option<u64> {
     let mut i: usize = 0;
     while i < caps.len() {
@@ -224,6 +248,12 @@ pub mod set_zero {
     impl SetZeroImpl of ISetInterface<ContractState> {
         fn get_cap_type(self: @ContractState, id: u16) -> Option<CapType> {
             cap_type_of(id)
+        }
+
+        fn activate_stack_ability(
+            self: @ContractState, ctx: AbilityContext, target_id: u64,
+        ) -> SetOutput {
+            caps::sets::set_zero::use_stack_ability(ctx, target_id)
         }
 
         fn activate_ability(self: @ContractState, ctx: AbilityContext, target: Vec2) -> SetOutput {

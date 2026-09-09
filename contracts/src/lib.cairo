@@ -9,6 +9,7 @@ pub mod models {
     pub mod set;
     pub mod set_data;
     pub mod stack;
+    pub mod turn_record;
 }
 
 pub mod sets {

@@ -23,6 +23,7 @@ pub trait ISetInterface<T> {
     /// by the core against the CapType's ability_target/ability_range).
     /// Returns the ops to apply + client events.
     fn activate_ability(self: @T, ctx: AbilityContext, target: Vec2) -> SetOutput;
+    fn activate_stack_ability(self: @T, ctx: AbilityContext, target_id: u64) -> SetOutput;
 }
 
 /// Registered set contract reference. `games` reference a set by id.

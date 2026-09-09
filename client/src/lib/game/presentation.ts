@@ -1,5 +1,5 @@
-import type { LayoutConfig } from '@caps/game-core/board';
-import type { AbilityStack, ChainGame, StackEntry } from '@caps/game-core/types';
+import { pathDistance, type LayoutConfig } from '@caps/game-core/board';
+import type { AbilityStack, ChainGame, StackEntry, ChainCap } from '@caps/game-core/types';
 
 export function viewerSlot(game: ChainGame, account: string | null): number | null {
     if (!account) return null;
@@ -28,4 +28,23 @@ export function effectTiming(entry: StackEntry, stack: AbilityStack, turn: numbe
     const whose = slot === null ? `P${endingTurn % 2 + 1}’s` : endingTurn % 2 === slot ? 'your' : 'your opponent’s';
     const label = `Ready after ${whose} ${endingTurn === turn + 1 ? 'next turn' : `turn ${endingTurn + 1}`}`;
     return blocked ? `${label} · newer effects resolve first` : label;
+}
+
+/** Target geometry independent of current occupancy, useful for previewing an effect. */
+export function impactFootprint(entry: StackEntry | undefined, caps: ChainCap[], layout: LayoutConfig): Set<string> {
+    const cells = new Set<string>();
+    if (!entry) return cells;
+    const s = entry.impact.selection;
+    for (let y = 0; y < layout.height; y++) for (let x = 0; x < layout.width; x++) {
+        if (!layout.isWalkable(x,y)) continue;
+        const selected = s.kind === 'Row' ? s.index === y : s.kind === 'Column' ? s.index === x : s.kind === 'Within' ? pathDistance(layout,[s.x,s.y],[x,y]) <= s.radius : caps.some(c=>c.id === s.id && c.x === x && c.y === y && !c.dead);
+        if (selected) cells.add(`${x},${y}`);
+    }
+    return cells;
+}
+
+/** Earliest boundary allowed by this entry and every newer entry above it. */
+export function resolutionBoundary(entry: StackEntry, stack: AbilityStack, turn: number): number {
+    const index = stack.entries.findIndex(e => e.id === entry.id);
+    return Math.max(turn + 1, entry.readyTurn, ...stack.entries.slice(Math.max(0,index)).map(e=>e.readyTurn));
 }

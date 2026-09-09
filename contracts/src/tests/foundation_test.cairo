@@ -148,6 +148,12 @@ pub mod passive_test_set {
             }
             Option::Some(def)
         }
+        fn activate_stack_ability(
+            self: @ContractState, ctx: AbilityContext, target_id: u64,
+        ) -> SetOutput {
+            caps::sets::set_zero::use_stack_ability(ctx, target_id)
+        }
+
         fn activate_ability(self: @ContractState, ctx: AbilityContext, target: Vec2) -> SetOutput {
             caps::sets::set_zero::use_ability(ctx, target)
         }

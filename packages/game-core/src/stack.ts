@@ -68,3 +68,8 @@ export function resolveReadyStack(pending: AbilityStack, board: ChainCap[], defi
   }
   return {stack, caps, resolved};
 }
+
+/** Stack targets use side identity, never board distance or source-piece location. */
+export function canTargetPending(abilityTarget: number, slot: number, entry: StackEntry): boolean {
+  return abilityTarget === 6 || abilityTarget === 7 && entry.playerSlot !== slot || abilityTarget === 8 && entry.playerSlot === slot;
+}

@@ -1,4 +1,4 @@
-# CAPS — implemented rules (v4)
+# CAPS — implemented rules (v5)
 
 See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive/path semantics and [DELAYED_ABILITIES.md](DELAYED_ABILITIES.md) for the ability stack. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
 
@@ -33,7 +33,7 @@ Captured pieces return to their owner's bench at full health, without shields, s
 
 ## Public deterministic hand
 
-Each side starts with a six-piece roster. The first four eligible bench pieces in queue order form the hand. There is no randomness or hidden information; both hands are publicly readable and displayed.
+New games start with a seven-piece roster per side, including the Negator; existing games retain their six-piece roster. The first four eligible bench pieces in queue order form the hand. There is no randomness or hidden information; both hands are publicly readable and displayed.
 
 Playing a chosen piece moves it to the back of the queue. The hand refills immediately from eligible bench pieces while preserving the other choices. Board pieces, dead pieces and pieces on capture cooldown are skipped. They never occupy or block hand slots. Captured pieces rejoin at the back and must finish their cooldown before being eligible to draw. Eligibility does not guarantee immediate inclusion if four earlier pieces fill the hand.
 
@@ -59,6 +59,7 @@ Control means current occupation at turn start; control is not retained after le
 | 3 | Medic | 7 | 1 | Heal an ally 3, capped at its real maximum HP | 2 |
 | 4 | Blaster | 5 | 1 | After one opponent turn, deal 4 damage to all pieces in a chosen row | 3 |
 | 5 | Runner | 6 | 2 | Gain one extra move this turn | 2 |
+| 6 | Negator | 6 | 1 | Negate one enemy pending effect, regardless of distance | 2 |
 
 Ability ranges are shortest-path step counts, identical for both sides and independent of grid distance or intervening pieces. Self-targeted abilities require the acting piece's own square.
 
@@ -66,8 +67,10 @@ Ability ranges are shortest-path step counts, identical for both sides and indep
 
 The hardcoded Sepolia test account remains intentional while Controller is unavailable. Solo games use that account for both sides, but every piece has an explicit player slot; ownership checks, targeting, colors, income, cooldowns and victory use the slot correctly.
 
-The v4 foundation changes the set ABI, board connections, and adds stored pending abilities. Use a fresh v4 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 4; the client and bot reject incompatible deployments.
+The v4 foundation changes the set ABI, board connections, and adds stored pending abilities. Use a fresh v4 world and games, deploy actions and Set Zero together, register set 0, and sync the manifest before switching the client and bot. `rules_version()` returns 5; the client and bot reject incompatible deployments.
 
 The client manifest and bot target the September 8, 2026 **v4** Sepolia world (`0x64b3825d2b0343b2b33778a2426dcfb54d8968e5078e6ecc140eed10889af99`). Set Zero is registered as set 0. Old v2 games remain in the previous world and are not migrated.
 
 The client previews the reference set's actions and abilities. The onchain contract is authoritative; arbitrary future sets will need corresponding preview support.
+
+Rules v5 adds stack-target abilities and an RPC-readable turn journal in the same world. New games have seven pieces per side; existing rosters are preserved. See [Frontend state and history](FRONTEND_STATE.md).

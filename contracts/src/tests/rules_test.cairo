@@ -16,6 +16,7 @@ pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
         namespace: "caps",
         resources: [
             TestResource::Model(m_Game::TEST_CLASS_HASH),
+            TestResource::Model(caps::models::turn_record::m_TurnRecord::TEST_CLASS_HASH),
             TestResource::Model(caps::models::stack::m_AbilityStack::TEST_CLASS_HASH),
             TestResource::Model(m_Hand::TEST_CLASS_HASH),
             TestResource::Model(m_Global::TEST_CLASS_HASH),
@@ -41,7 +42,7 @@ pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
     let (address, _) = world.dns(@"actions").unwrap();
     let (set_address, _) = world.dns(@"set_zero").unwrap();
     let api = IActionsDispatcher { contract_address: address };
-    api.register_set(set_address, 12, 6, 16);
+    api.register_set(set_address, 14, 7, 16);
     // The caller of dispatched calls is the test contract itself.
     let caller: ContractAddress = 0x123.try_into().unwrap();
     testing::set_contract_address(caller);
@@ -63,7 +64,7 @@ fn act(id: u64, kind: ActionType) -> Action {
 fn initial_hand_and_free_deployment() {
     let (world, api, id) = setup();
     let (game, caps) = api.get_game(id).unwrap();
-    assert!(game.energy == 1 && !game.over && caps.len() == 12, "initial state");
+    assert!(game.energy == 1 && !game.over && caps.len() == 14, "initial state");
     assert!(*caps.at(0).player_slot == 0 && *caps.at(1).player_slot == 1, "solo identities");
     let (_, before) = api.get_hand(id, 0).unwrap();
     assert!(before == array![1, 3, 5, 7].span(), "initial deterministic hand");
@@ -144,7 +145,7 @@ fn capture_is_automatic_and_blocks_two_owner_turns() {
     let game: Game = world.read_model(id);
     assert!(c.available_turn == game.turn_count, "eligible third owner turn");
     let hand: Hand = world.read_model((id, 1_u8));
-    assert!(*hand.roster.at(5) == 4, "capture goes to back of queue");
+    assert!(*hand.roster.at(hand.roster.len() - 1) == 4, "capture goes to back of queue");
 }
 
 #[test]
@@ -215,7 +216,7 @@ fn hand_skips_dead_and_board_slots_without_stalling() {
         world.write_model_test(@c);
     }
     let (_, hand) = api.get_hand(id, 0).unwrap();
-    assert!(hand == array![9, 11].span(), "remaining bench pieces accessible");
+    assert!(hand == array![9, 11, 13].span(), "remaining bench pieces accessible");
 }
 
 #[test]

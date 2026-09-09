@@ -58,11 +58,15 @@ export interface CapTypeDef {
   passives: Passive[];
 }
 
-export interface TurnAction {
-  capId: number;
-  kind: "Play" | "Move" | "Ability";
-  x: number;
-  y: number;
+export type TurnAction =
+  | { capId: number; kind: 'Play' | 'Move' | 'Ability'; x: number; y: number }
+  | { capId: number; kind: 'StackAbility'; targetId: number };
+export type PieceSnapshot = Pick<ChainCap, 'id' | 'playerSlot' | 'capType' | 'x' | 'y' | 'health' | 'shield' | 'stunnedTurns' | 'availableTurn' | 'dead'>;
+export interface TurnRecord {
+  gameId: number; turn: number; playerSlot: number; actions: TurnAction[];
+  before: PieceSnapshot[]; after: PieceSnapshot[];
+  stackBefore: StackEntry[]; stackAfter: StackEntry[]; resolved: StackEntry[];
+  energyBefore: number; energyAfter: number;
 }
 
 

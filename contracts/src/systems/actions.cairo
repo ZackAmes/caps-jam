@@ -5,11 +5,13 @@ use caps::models::cap::{Cap, Location};
 use caps::models::game::{Action, Game, Hand, Vec2};
 use caps::models::set_data::CapType;
 use caps::models::stack::AbilityStack;
+use caps::models::turn_record::TurnRecord;
 use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IActions<T> {
     fn rules_version(self: @T) -> u8;
+    fn get_turn(self: @T, game_id: u64, turn: u64) -> Option<TurnRecord>;
     fn get_game_count(self: @T) -> u64;
     fn get_stack(self: @T, game_id: u64) -> AbilityStack;
     fn take_turn_if_current(ref self: T, game_id: u64, expected_turn: u64, turn: Array<Action>);
@@ -107,6 +109,7 @@ pub mod actions {
         AbilityContext, ActorInfo, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, TargetType,
     };
     use caps::models::stack::AbilityStack;
+    use caps::models::turn_record::{TurnRecord, snapshot};
     use core::num::traits::{SaturatingAdd, Zero};
     use dojo::model::ModelStorage;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
@@ -115,7 +118,7 @@ pub mod actions {
         has_cap_at, index_at, index_of_id, is_surrounded, is_valid_step, is_walkable,
     };
 
-    pub const TEAM_SIZE: u8 = 6;
+    pub const TEAM_SIZE: u8 = 7;
 
     /// Re-reads every cap referenced by the game from the world.
     fn alive_caps(world: @dojo::world::WorldStorage, game: @Game) -> Array<Cap> {
@@ -132,7 +135,17 @@ pub mod actions {
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         fn rules_version(self: @ContractState) -> u8 {
-            4
+            5
+        }
+
+        fn get_turn(self: @ContractState, game_id: u64, turn: u64) -> Option<TurnRecord> {
+            let world = self.world_default();
+            let record: TurnRecord = world.read_model((game_id, turn));
+            if record.recorded {
+                Option::Some(record)
+            } else {
+                Option::None
+            }
         }
 
         fn get_stack(self: @ContractState, game_id: u64) -> AbilityStack {
@@ -196,6 +209,13 @@ pub mod actions {
             );
             let mut stack: AbilityStack = world.read_model(game_id);
             stack.game_id = game_id;
+            let energy_before = game.energy;
+            let before = snapshot(@alive_caps(@world, @game));
+            let mut stack_before = array![];
+            for entry in stack.entries.span() {
+                stack_before.append(*entry);
+            }
+            let mut resolved = array![];
             let mut energy = game.energy;
             let mut actions: u8 = 1;
             let mut moves: u8 = 0;
@@ -216,7 +236,17 @@ pub mod actions {
                 assert!(cap.location != Location::Dead, "Cap is dead");
                 assert!(cap.stunned_turns == 0, "Cap is stunned");
                 let def = dispatcher.get_cap_type(cap.cap_type).expect('Unknown cap type');
-                match *action.action_type {
+                let pending_target = match *action.action_type {
+                    ActionType::StackAbility(id) => Option::Some(id),
+                    _ => Option::None,
+                };
+                let action_type = match *action.action_type {
+                    ActionType::StackAbility(_) => ActionType::Ability(
+                        get_position(@cap).expect('Not on board'),
+                    ),
+                    other => other,
+                };
+                match action_type {
                     ActionType::Play(pos) => {
                         spend_action(ref actions, ref moves, false);
                         assert!(cap.location == Location::Bench, "Not on bench");
@@ -307,9 +337,35 @@ pub mod actions {
                         }
                         assert!(def.ability_target != TargetType::None, "No ability");
                         assert!(energy >= def.ability_cost, "Not enough energy");
-                        if def.ability_target == TargetType::SelfCap {
+                        if let Option::Some(target_id) = pending_target {
+                            assert!(
+                                def.ability_target == TargetType::AnyPending
+                                    || def.ability_target == TargetType::EnemyPending
+                                    || def.ability_target == TargetType::AllyPending,
+                                "Not a stack ability",
+                            );
+                            let mut found = false;
+                            for entry in stack.entries.span() {
+                                if *entry.id == target_id {
+                                    found = true;
+                                    if def.ability_target == TargetType::EnemyPending {
+                                        assert!(*entry.player_slot != slot, "Not enemy effect");
+                                    }
+                                    if def.ability_target == TargetType::AllyPending {
+                                        assert!(*entry.player_slot == slot, "Not friendly effect");
+                                    }
+                                }
+                            }
+                            assert!(found, "Pending effect missing");
+                        } else if def.ability_target == TargetType::SelfCap {
                             assert!(pos == from, "Must target self");
                         } else {
+                            assert!(
+                                def.ability_target != TargetType::AnyPending
+                                    && def.ability_target != TargetType::EnemyPending
+                                    && def.ability_target != TargetType::AllyPending,
+                                "Choose a stack effect",
+                            );
                             assert!(is_walkable(game.layout, pos), "Invalid target tile");
                             let range: u16 = def.ability_range.into();
                             let range = range
@@ -376,7 +432,10 @@ pub mod actions {
                             effects: _effect_snapshots(@effects),
                             stack: stack.entries.span(),
                         };
-                        let output = dispatcher.activate_ability(ctx, pos);
+                        let output = match pending_target {
+                            Option::Some(id) => dispatcher.activate_stack_ability(ctx, id),
+                            Option::None => dispatcher.activate_ability(ctx, pos),
+                        };
                         assert!(
                             output.ops.len() <= set.max_ops_per_ability.into(),
                             "Ability op budget exceeded",
@@ -466,6 +525,7 @@ pub mod actions {
                             world.write_model(c);
                         };
                     },
+                    ActionType::StackAbility(_) => panic!("Unreachable stack action"),
                 }
                 self._resolve_board(ref game, ref effects);
             }
@@ -486,6 +546,7 @@ pub mod actions {
                         Option::Some(entry) => entry,
                         Option::None => { break; },
                     };
+                    resolved.append(entry);
                     let mut caps = alive_caps(@world, @game);
                     let current_definitions = self._definitions(game.set_id, @caps);
                     resolve(entry, ref caps, @current_definitions, game.layout);
@@ -501,7 +562,12 @@ pub mod actions {
             if game.over {
                 stack.entries = array![];
             }
+            let mut stack_after = array![];
+            for entry in stack.entries.span() {
+                stack_after.append(*entry);
+            }
             world.write_model(@stack);
+            let completed_turn = game.turn_count;
             game.turn_count += 1;
             if !game.over {
                 self._begin_turn(ref game, ref effects);
@@ -509,6 +575,23 @@ pub mod actions {
             self._save_effects(ref game, effects);
             game.last_action_timestamp = get_block_timestamp();
             world.write_model(@game);
+            world
+                .write_model(
+                    @TurnRecord {
+                        game_id,
+                        turn: completed_turn,
+                        recorded: true,
+                        player_slot: slot,
+                        actions: turn,
+                        before,
+                        after: snapshot(@alive_caps(@world, @game)),
+                        stack_before,
+                        stack_after,
+                        resolved,
+                        energy_before,
+                        energy_after: energy,
+                    },
+                );
         }
 
         fn get_game(self: @ContractState, game_id: u64) -> Option<(Game, Span<Cap>)> {

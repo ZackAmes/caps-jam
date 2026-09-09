@@ -1,4 +1,4 @@
-# Playtesting rules v4
+# Playtesting rules v5
 
 The client and independent bot use the same September 8, 2026 Sepolia deployment.
 Old-world game IDs are separate and cannot be resumed in this client.
@@ -55,7 +55,7 @@ The tests cover passive conditions, graph distances, stack timing/order, preview
 hand rotation, capture cooldown, goal wins, and bot discovery/retry behavior.
 
 For a stuck bot on this host, inspect `journalctl --user -u caps-bot.service -n 30`.
-The active checkpoint is `bot/state/checkpoint-v4.json`; do not replace it with a checkpoint
+The active checkpoint is `bot/state/checkpoint-v5.json`; do not replace it with a checkpoint
 from the old world. Account keys and bot state remain local and ignored by Git.
 
 ## 3D board
@@ -66,3 +66,20 @@ ability targets, hand, and transaction submission; switching views keeps the cur
 The camera stays fixed to preserve row orientation and make touch selection predictable.
 WebGL initialization failure or context loss switches back to the 2D board automatically.
 The view preference is stored locally. The 3D bundle loads separately from the core client.
+
+## Stack responses and history
+
+New games include a Negator at the end of the seven-piece roster. Cycle three pieces out
+of the hand to make it available. Deploy it, choose Ability, then select an enemy effect
+in the stack panel. Its two-energy negation is planned until you submit your turn.
+
+Inspect pending effects to highlight their area. Verify newest-first order, the earliest
+resolution turn including blockers above each entry, and disappearance after resolution
+or negation. Read the opponent's latest actions above the board and expand turn history
+to inspect exact targets and outcomes. Old turns from before this upgrade have no records.
+
+During submission, the preview should remain visible while the status progresses through
+sending, confirming and updating. Try a slow connection: controls must stay locked after
+a transaction is sent, without silently submitting again. Compare mobile portrait and a
+wide desktop window; the board, stack, hand and fixed mobile submit button should remain
+usable. Use **Info** to inspect a hand piece without deploying it.
