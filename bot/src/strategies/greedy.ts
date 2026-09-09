@@ -1,5 +1,5 @@
 import { resolveReadyStack, resolveImpact, canTargetPending } from '@caps/game-core/stack';
-import { pathDistances, pathDistance } from '@caps/game-core/board';
+import { isEnergySpace, pathDistances, pathDistance } from '@caps/game-core/board';
 import { passiveBonus } from '@caps/game-core/passives';
 import { previewTurn } from '@caps/game-core/preview';
 import type { ChainCap, TurnAction } from '@caps/game-core/types';
@@ -90,7 +90,7 @@ function score(p: PositionV5, state: Preview, slot: number, distances: Map<strin
       const distance = distances.get(`${cap.x},${cap.y}`) ?? 20;
       closest = Math.min(closest, distance);
       value += (8 - distance) * 3;
-      if (cap.y === 2 && (cap.x === 0 || cap.x === 4)) value += 5;
+      if (isEnergySpace(p.layout, cap.x!, cap.y!)) value += 5;
       value += 2 * passiveBonus('EnergyGeneration', cap, state.caps, p.definitions, p.layout);
     } else if (!goalDefended && pathDistance(p.layout, [cap.x!, cap.y!], ownGoal) <= 1) {
       value -= 1000;

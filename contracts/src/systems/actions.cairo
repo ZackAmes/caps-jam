@@ -656,7 +656,8 @@ pub mod actions {
             ref self: ContractState, p1: ContractAddress, p2: ContractAddress, layout: u8,
         ) -> u64 {
             let mut world = self.world_default();
-            assert!(layout <= 3, "Unknown layout");
+            let (width, _) = caps::logic::track::get_board_dimensions(layout);
+            assert!(width > 0, "Unknown layout");
             assert!(p1.is_non_zero() && p2.is_non_zero(), "Invalid player");
             let mut global: Global = world.read_model(0);
 
@@ -791,7 +792,7 @@ pub mod actions {
             let mut world = self.world_default();
             let caps = alive_caps(@world, @game);
             for c in caps.span() {
-                if is_goal(*c) {
+                if is_goal(*c, game.layout) {
                     game.over = true;
                     game.winner = *c.owner;
                     game.winner_slot = *c.player_slot;
@@ -841,7 +842,8 @@ pub mod actions {
             let slot: u8 = (game.turn_count % 2).try_into().unwrap();
             let mut caps = alive_caps(@world, @game);
             let definitions = self._definitions(game.set_id, @caps);
-            let mut income: u16 = BASE_INCOME.into() + objective_income(@caps, slot).into();
+            let mut income: u16 = BASE_INCOME.into()
+                + objective_income(@caps, slot, game.layout).into();
             for c in caps.span() {
                 if *c.player_slot == slot && is_on_board(c) {
                     income = income

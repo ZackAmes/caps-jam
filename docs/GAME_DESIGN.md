@@ -4,7 +4,7 @@ See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive/path semantic
 
 ## Objective and board
 
-Reach the center of the opponent's back row with any piece. Player 1 starts at `(2,0)` and wins at `(2,4)`; Player 2 starts at `(2,4)` and wins at `(2,0)`. All four 5×5 track layouts share these bases. Reaching a goal ends the match immediately, including movement caused by an ability. There are no towers or elimination-based win checks.
+Reach the center of the opponent's back row with any piece. The original four 5×5 layouts use bases `(2,0)` and `(2,4)`. The new default 7×9 Duel Paths map uses `(3,0)` and `(3,8)`. Each player wins by reaching the other base; deployment is still at your own base. Reaching a goal ends the match immediately, including movement caused by an ability. There are no towers or elimination-based win checks.
 
 Deployment uses your own base square, which must be empty. Movement is one edge along an explicitly connected path. Grid proximity alone does not connect tiles. Moving into an enemy attacks: shields absorb damage first, and the attacker takes the square only if the enemy dies. Friendly pieces block movement. Death removes a piece permanently; capture is different.
 
@@ -74,3 +74,16 @@ The client manifest and bot target the September 8, 2026 **v4** Sepolia world (`
 The client previews the reference set's actions and abilities. The onchain contract is authoritative; arbitrary future sets will need corresponding preview support.
 
 Rules v5 adds stack-target abilities and an RPC-readable turn journal in the same world. New games have seven pieces per side; existing rosters are preserved. See [Frontend state and history](FRONTEND_STATE.md).
+
+## Map definitions and view
+
+`rules/boards.json` defines dimensions, bases, energy spaces and explicit paths. The
+contract geometry tables are generated from that file. Existing layouts 0–3 are
+unchanged; layout 4 adds a 7×9 Duel-inspired map with branching flanks and a central
+diamond. It is a prototype, not a reproduction of Pokémon Duel’s entry-point rules.
+Connected segments count one step even when their grid coordinates are far apart.
+
+The client rotates the board 180° for P1 so each player's own base is always at the
+bottom, beside their hand. P2 uses the canonical orientation. This is presentation
+only: stored coordinates, row targets and action history do not change. Solo mode
+follows the active side. Both 3D and the 2D fallback share this convention.

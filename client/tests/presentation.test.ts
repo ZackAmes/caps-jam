@@ -39,3 +39,16 @@ test('stack boundary accounts for a newer long delay and footprint follows graph
     const cells = impactFootprint(first,[],getLayout(0));
     assert.equal(cells.has('0,0'),true);assert.equal(cells.has('0,1'),false);
 });
+
+test('both players see their base at the bottom and orientation preserves canonical coordinates', async () => {
+ const {boardPosition} = await import('../src/lib/game/presentation');
+ const {LAYOUTS} = await import('@caps/game-core/board');
+ for (const layout of Object.values(LAYOUTS)) for (const slot of [0,1]) {
+  const own = slot === 0 ? layout.p1Deploy : layout.p2Deploy;
+  assert.equal(boardPosition(layout,...own,slot)[1],layout.height - 1);
+  for (let y=0;y<layout.height;y++) for (let x=0;x<layout.width;x++) {
+   const p=boardPosition(layout,x,y,slot);
+   assert.deepEqual(boardPosition(layout,...p,slot),[x,y]);
+  }
+ }
+});

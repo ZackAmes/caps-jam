@@ -344,3 +344,51 @@ fn stale_stack_target_reverts() {
             ],
         );
 }
+
+#[test]
+fn large_map_delayed_row_uses_map_height() {
+    let mut stack = AbilityStack { game_id: 1, next_id: 0, entries: array![] };
+    schedule(
+        ref stack,
+        1,
+        0,
+        0,
+        4,
+        Schedule {
+            delay: 1,
+            impact: DelayedImpact {
+                kind: ImpactKind::Damage,
+                selection: Selection::Row(8),
+                relation: Relation::Any,
+                amount: 4,
+            },
+        },
+    );
+    assert!(pop_ready(ref stack, 1).is_none(), "response turn remains");
+    match pop_ready(ref stack, 2).unwrap().impact.selection {
+        Selection::Row(row) => assert!(row == 8, "large row stored"),
+        _ => panic!("wrong selection"),
+    };
+}
+
+#[test]
+#[should_panic(expected: ("Invalid row",))]
+fn large_map_rejects_row_outside_board() {
+    let mut stack = AbilityStack { game_id: 1, next_id: 0, entries: array![] };
+    schedule(
+        ref stack,
+        1,
+        0,
+        0,
+        4,
+        Schedule {
+            delay: 1,
+            impact: DelayedImpact {
+                kind: ImpactKind::Damage,
+                selection: Selection::Row(9),
+                relation: Relation::Any,
+                amount: 4,
+            },
+        },
+    );
+}

@@ -2,19 +2,19 @@
     import LivePiece from './live-piece.svelte';
     import { T } from '@threlte/core';
     import { HTML, interactivity, type EventMap } from '@threlte/extras';
-    import { pathEdges } from '$lib/game/presentation';
-    import { pathDistance, type LayoutConfig } from '@caps/game-core/board';
+    import { pathEdges, boardPosition } from '$lib/game/presentation';
+    import { goalSlot, isEnergySpace, pathDistance, type LayoutConfig } from '@caps/game-core/board';
     import type { AbilityStack, ChainCap, CapTypeDef } from '@caps/game-core/types';
 
-    let { layout, caps, definitions, selectedId, targets, focusedCells, stack, oncell, onhover }: {
-        layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
+    let { layout, caps, viewer, definitions, selectedId, targets, focusedCells, stack, oncell, onhover }: {
+        viewer: number | null; layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
         selectedId: number | null; targets: Map<string, string>; focusedCells: Set<string>; stack: AbilityStack;
         oncell: (x: number, y: number) => void; onhover:(id:number|null)=>void;
     } = $props();
     interactivity();
     let tiles = $derived(Array.from({length: layout.width * layout.height}, (_, i) => ({x: i % layout.width, y: Math.floor(i / layout.width)})));
-    const wx = (x: number) => x - (layout.width - 1) / 2;
-    const wz = (y: number) => y - (layout.height - 1) / 2;
+    const wx = (x: number) => boardPosition(layout,x,0,viewer)[0] - (layout.width - 1) / 2;
+    const wz = (y: number) => boardPosition(layout,0,y,viewer)[1] - (layout.height - 1) / 2;
     function danger(x: number, y: number) {
         return stack.entries.some(entry => {
             if (entry.impact.kind !== 'Damage') return false;
@@ -32,6 +32,7 @@
 <T.AmbientLight intensity={1.4} />
 <T.DirectionalLight position={[-3, 8, 4]} intensity={2.2} />
 <T.DirectionalLight position={[5, 3, -4]} intensity={0.8} color="#8baaff" />
+<T.Group scale={5 / Math.max(layout.width, layout.height)}>
 <T.Mesh position={[0, -0.24, 0]}>
     <T.BoxGeometry args={[layout.width + 0.25, 0.32, layout.height + 0.25]} />
     <T.MeshStandardMaterial color="#101b2e" roughness={0.85} />
@@ -40,18 +41,18 @@
 {#each tiles as tile (`${tile.x},${tile.y}`)}
     {@const walkable = layout.isWalkable(tile.x, tile.y)}
     {@const target = targets.get(`${tile.x},${tile.y}`)}
-    {@const goal = tile.x === 2 && (tile.y === 0 || tile.y === 4)}
-    {@const energy = tile.y === 2 && (tile.x === 0 || tile.x === 4)}
+    {@const goal = goalSlot(layout,tile.x,tile.y)}
+    {@const energy = isEnergySpace(layout,tile.x,tile.y)}
     {@const threatened = walkable && danger(tile.x, tile.y)}
     <T.Mesh position={[wx(tile.x), walkable ? 0 : -0.09, wz(tile.y)]}
         onclick={(event: EventMap['onclick']) => { event.stopPropagation(); if (walkable) oncell(tile.x, tile.y); }}>
         <T.BoxGeometry args={[0.91, walkable ? 0.16 : 0.025, 0.91]} />
-        <T.MeshStandardMaterial color={target ? colors[target] : focusedCells.has(`${tile.x},${tile.y}`) ? '#7651ae' : goal ? tile.y === 0 ? '#244b83' : '#783446' : energy ? '#78612c' : walkable ? '#33455f' : '#172338'}
+        <T.MeshStandardMaterial color={target ? colors[target] : focusedCells.has(`${tile.x},${tile.y}`) ? '#7651ae' : goal !== null ? goal === 0 ? '#244b83' : '#783446' : energy ? '#78612c' : walkable ? '#33455f' : '#172338'}
             emissive={threatened ? '#e98a19' : target ? colors[target] : '#000000'} emissiveIntensity={threatened ? 0.35 : 0.12} roughness={0.7} />
     </T.Mesh>
-    {#if walkable && (goal || energy)}
+    {#if walkable && (goal !== null || energy)}
         <HTML position={[wx(tile.x), 0.12, wz(tile.y) + 0.32]} center pointerEvents="none" zIndexRange={[8, 1]}>
-            <span class="tile-label">{goal ? `P${tile.y === 0 ? 1 : 2} ◇` : '⚡'}</span>
+            <span class="tile-label">{goal !== null ? `P${goal + 1} ◇` : '⚡'}</span>
         </HTML>
     {/if}
     {#if threatened}
@@ -79,6 +80,8 @@
 {#each caps.filter(c => !c.dead && c.x !== null && c.y !== null) as cap (cap.id)}
     <LivePiece {cap} x={wx(cap.x!)} z={wz(cap.y!)} selected={cap.id === selectedId} {oncell} {onhover} />
 {/each}
+
+</T.Group>
 
 <style>
     .axis-label { color:#d1dcec; font:700 11px system-ui; }

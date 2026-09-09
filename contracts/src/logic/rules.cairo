@@ -1,4 +1,5 @@
-use caps::logic::track::get_walkable_neighbors;
+use caps::logic::board_data::energy_space;
+use caps::logic::track::{get_p1_deploy_spot, get_p2_deploy_spot, get_walkable_neighbors};
 use caps::models::cap::{Cap, Location};
 use caps::models::game::Vec2;
 
@@ -43,23 +44,23 @@ pub fn capture_ready_turn(turn: u64, slot: u8) -> u64 {
     })
 }
 
-pub fn is_goal(cap: Cap) -> bool {
+pub fn is_goal(cap: Cap, layout: u8) -> bool {
     match cap.location {
-        Location::Board(p) => p.x == 2 && p.y == (if cap.player_slot == 0 {
-            4
+        Location::Board(p) => p == (if cap.player_slot == 0 {
+            get_p2_deploy_spot(layout)
         } else {
-            0
+            get_p1_deploy_spot(layout)
         }),
         _ => false,
     }
 }
 
-pub fn objective_income(caps: @Array<Cap>, slot: u8) -> u8 {
+pub fn objective_income(caps: @Array<Cap>, slot: u8, layout: u8) -> u8 {
     let mut income = 0;
     for c in caps.span() {
         if *c.player_slot == slot {
             if let Location::Board(p) = c.location {
-                if *p.y == 2 && (*p.x == 0 || *p.x == 4) {
+                if energy_space(layout, *p) {
                     income += 1;
                 }
             }

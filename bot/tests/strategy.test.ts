@@ -58,3 +58,13 @@ test('negates a lethal enemy effect by stable ID while preserving a normal move'
   expect(result.stack.entries).toHaveLength(0);
   expect(actions.some(a => a.kind === 'Move')).toBe(true);
 });
+
+test('recognizes both goals on the larger map', () => {
+  for (const slot of [0,1]) {
+    const p = position([cap(1,slot,1,3,slot === 0 ? 6 : 2)],slot);
+    p.layout = getLayout(4); p.game.layout = 4;
+    const actions = greedyStrategy.chooseTurn(p);
+    expect(actions).toEqual([{capId:1,kind:'Move',x:3,y:slot === 0 ? 8 : 0}]);
+    expect(previewTurn(p.game,p.hand,p.definitions,p.layout,actions,p.stack).winnerSlot).toBe(slot);
+  }
+});

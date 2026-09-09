@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x6f466df359053acd6186676c69a10b13b360d35b78b5982c64506921946973",
-      "class_hash": "0x75203b4afc8a0f3b56434a029fe89bb83e858f36613a982e2ee22ca25f73efd",
+      "class_hash": "0x6b1eaf23ab4a98736511cf9ab61f6f4671244b38dcafc2b55bd3840391a7df8",
       "init_calldata": [],
       "tag": "caps-actions",
       "selector": "0x482dc9f44e8c68f3ef3ab58497e0d8e446ad2581a5544512fbaebef3af3ccbc",

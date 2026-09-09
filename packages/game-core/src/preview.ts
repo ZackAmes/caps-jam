@@ -1,4 +1,4 @@
-import { pathDistance, type LayoutConfig } from './board';
+import { goalSlot, pathDistance, type LayoutConfig } from './board';
 import { schedule, copyStack, counterPending, canTargetPending } from './stack';
 import type { AbilityStack } from './types';
 import { passiveBonus } from './passives';
@@ -87,7 +87,7 @@ export function previewTurn(game: ChainGame, hand: ChainHand | null, defs: Map<n
       else if (c.capType === 3 && target) target.health = Math.min(defs.get(target.capType)?.maxHealth ?? target.health, target.health + 3);
       else if (c.capType === 4) schedule(stack, c.id, c.playerSlot, game.turnCount, 1, {kind:'Damage',selection:{kind:'Row',index:a.y},relation:'Any',amount:4}, layout);
     }
-    const winner = caps.find(c => !c.dead && c.x === 2 && c.y === (c.playerSlot === 0 ? 4 : 0));
+    const winner = caps.find(c => !c.dead && c.x !== null && c.y !== null && goalSlot(layout, c.x, c.y) === 1 - c.playerSlot);
     if (winner) winnerSlot = winner.playerSlot;
     if (winnerSlot !== null) continue;
     // Determine all captures before removing any pieces.

@@ -50,3 +50,8 @@ export function resolutionBoundary(entry: StackEntry, stack: AbilityStack, turn:
 }
 
 export const pieceSymbol = (type: number) => ['⚡','◆','⬟','✚','✹','➤','⊘'][type] ?? '●';
+
+/** Rotate only presentation; transactions and history keep canonical map coordinates. */
+export function boardPosition(layout: LayoutConfig, x: number, y: number, slot: number | null): [number, number] {
+    return slot === 0 ? [layout.width - 1 - x, layout.height - 1 - y] : [x, y];
+}

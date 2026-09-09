@@ -17,11 +17,16 @@ pub fn schedule(
     assert!(request.delay >= 1 && request.delay <= 8, "Delay must be 1 to 8");
     assert!(stack.entries.len() < 32, "Ability stack is full");
     assert!(request.impact.amount > 0, "Empty delayed impact");
+    let (width, height) = caps::logic::track::get_board_dimensions(layout);
+    assert!(width > 0 && height > 0, "Unknown layout");
     match request.impact.selection {
-        Selection::Row(row) => { assert!(row < 5, "Invalid row"); },
-        Selection::Column(column) => { assert!(column < 5, "Invalid column"); },
+        Selection::Row(row) => { assert!(row < height, "Invalid row"); },
+        Selection::Column(column) => { assert!(column < width, "Invalid column"); },
         Selection::Within(zone) => {
-            assert!(is_walkable(layout, zone.center) && zone.radius <= 24, "Invalid zone");
+            assert!(
+                is_walkable(layout, zone.center) && zone.radius <= width * height - 1,
+                "Invalid zone",
+            );
         },
         Selection::Piece(id) => { assert!(id != 0, "Invalid piece target"); },
     }

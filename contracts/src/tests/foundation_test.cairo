@@ -1,5 +1,8 @@
 use caps::logic::passives::{bonus, condition_met, is_active};
-use caps::logic::track::{is_valid_step, path_distance};
+use caps::logic::rules::{is_goal, objective_income};
+use caps::logic::track::{
+    get_board_dimensions, get_walkable_neighbors, is_valid_step, path_distance,
+};
 use caps::models::cap::{Cap, Location};
 use caps::models::effect::{Condition, Passive, PassiveKind, PassiveTarget, Relation};
 use caps::models::game::{Action, ActionType, Game, Vec2};
@@ -215,4 +218,27 @@ fn passive_stacking_saturates_without_overflowing_energy_cap() {
     let defs = array![definition(1, array![p, p])];
     assert!(bonus(PassiveKind::AttackBonus, c, @array![c], @defs, 0) == 65535, "saturating bonus");
     assert!(caps::logic::rules::add_energy(5, 65535) == 5, "energy cap does not overflow");
+}
+
+#[test]
+fn large_map_geometry_income_and_enemy_half() {
+    assert!(get_board_dimensions(4) == (7, 9), "larger dimensions");
+    assert!(get_board_dimensions(0) == (5, 5), "old dimensions");
+    assert!(
+        path_distance(4, Vec2 { x: 3, y: 0 }, Vec2 { x: 3, y: 2 }) == Option::Some(1),
+        "explicit edge",
+    );
+    assert!(path_distance(4, Vec2 { x: 0, y: 0 }, Vec2 { x: 0, y: 0 }).is_none(), "void node");
+    assert!(get_walkable_neighbors(4, Vec2 { x: 7, y: 0 }).is_empty(), "outside board");
+    assert!(get_walkable_neighbors(99, Vec2 { x: 0, y: 0 }).is_empty(), "unknown board");
+    let energy_piece = piece(1, 0, 0, 4);
+    assert!(objective_income(@array![energy_piece], 0, 4) == 1, "map energy");
+    assert!(!is_goal(energy_piece, 4), "old goal not reused");
+    assert!(is_goal(piece(2, 1, 3, 0), 4), "p2 goal");
+    assert!(
+        !condition_met(Condition::OnEnemyHalf, piece(3, 0, 0, 3), 20, @array![], 4), "own half",
+    );
+    assert!(
+        condition_met(Condition::OnEnemyHalf, piece(3, 0, 0, 5), 20, @array![], 4), "enemy half",
+    );
 }

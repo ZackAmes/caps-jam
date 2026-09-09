@@ -10,7 +10,7 @@
     import { previewTurn } from '@caps/game-core/preview';
     import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer, getGameSnapshot, getTurnRecord, transactionState } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
-    import { getLayout, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
+    import { getLayout, goalSlot, isEnergySpace, LAYOUT_DUEL_7X9, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
     import { describeImpact } from '@caps/game-core/stack';
     import type { AbilityStack, TurnRecord } from '@caps/game-core/types';
     import { passiveActive, passiveBonus } from '@caps/game-core/passives';
@@ -84,7 +84,7 @@
     }
 
     let opponent = $state('');
-    let selectedLayout = $state<number>(LAYOUT_PERIMETER_5X5);
+    let selectedLayout = $state<number>(LAYOUT_DUEL_7X9);
     let gameIdInput = $state('1');
     let game = $state<ChainGame | null>(null);
 
@@ -771,13 +771,13 @@
                 {#if boardMode === '3d'}
                     <svelte:boundary onerror={fallbackBoard}>
                         {#if ThreeBoard}
-                            <ThreeBoard layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId} targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onhover={(id) => hoveredCapId = id} onfailure={fallbackBoard} />
+                            <ThreeBoard viewer={mySlot} layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId} targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onhover={(id) => hoveredCapId = id} onfailure={fallbackBoard} />
                         {:else}<p class="stage-notice" role="status">Loading board…</p>{/if}
                     </svelte:boundary>
                 {:else}
             <!-- Board: static tiles + gliding pieces layer -->
             <div
-                class="board"
+                class="board" class:flipped={mySlot === 0}
                 role="application"
                 aria-label="Game board"
                 style="--w:{activeLayout.width};--h:{activeLayout.height}"
@@ -806,8 +806,8 @@
                     <div
                         class="tile"
                         class:void-tile={!walkable}
-                        class:goal-tile={x === 2 && (y === 0 || y === 4)}
-                        class:energy-tile={y === 2 && (x === 0 || x === 4)}
+                        class:goal-tile={goalSlot(activeLayout,x,y) !== null}
+                        class:energy-tile={isEnergySpace(activeLayout,x,y)}
                         class:deploy-tile={isDeploy && !occ}
                         class:effect-focus={focusedCells.has(`${x},${y}`)}
                         class:pending-danger={walkable && !!preview?.stack.entries.some(e => e.impact.kind === 'Damage' && e.impact.selection.kind === 'Row' && e.impact.selection.index === y)}
@@ -821,9 +821,9 @@
                         data-cell="{x},{y}"
                     >
                         {#if walkable}<span class="coordinate">{square(x,y)}</span>{/if}
-                        {#if x === 2 && (y === 0 || y === 4)}
-                            <div class="goal-marker">{y === 0 ? 'P1' : 'P2'} base</div>
-                        {:else if y === 2 && (x === 0 || x === 4)}
+                        {#if goalSlot(activeLayout,x,y) !== null}
+                            <div class="goal-marker">P{goalSlot(activeLayout,x,y)! + 1} base</div>
+                        {:else if isEnergySpace(activeLayout,x,y)}
                             <div class="deploy-marker">⚡</div>
                         {:else if !walkable}
                             <div class="void-marker">·</div>
@@ -930,7 +930,7 @@
                         <TurnHistory records={historyRecords} definitions={capDefMap} viewer={mySlot} loading={historyLoading} error={historyError} hasOlder={historyCursor > 0} onolder={() => { void loadHistory(game?.id, game?.turnCount, true); }} />
                     {:else if overlay === 'menu'}
             <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
-            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Rows count from the top.</p>
+            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Row and column labels stay the same when the view rotates.</p>
             <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
             <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
             </details>
@@ -1151,6 +1151,8 @@
         -webkit-user-select: none;
         -webkit-touch-callout: none;
     }
+    .board.flipped { transform:rotate(180deg); }
+    .board.flipped .tile, .board.flipped .piece-body { transform:rotate(180deg); }
     .tile {
         border: 1px solid #334155;
         background: #0f172a;
@@ -1518,7 +1520,7 @@
     .turn-indicator { flex:1; font-size:13px; color:#c1ccdb; } .turn-indicator small { opacity:0.6; } .your-turn { color:#7dd3fc; } .hud-energy { color:#fde68a; font-size:14px; }
     .has-effects { color:#fbbf24; border-color:#b58b46; }
     .play-stage { position:relative; min-width:0; min-height:0; display:grid; place-items:center; container-type:size; }
-    .play-stage .board { width:min(96cqw,96cqh); height:min(96cqw,96cqh); }
+    .play-stage .board { width:min(96cqw,calc(96cqh * var(--w) / var(--h))); height:min(96cqh,calc(96cqw * var(--h) / var(--w))); }
     .stack-chip,.target-prompt { position:absolute; top:4px; left:50%; transform:translateX(-50%); max-width:90%; width:max-content; font-size:11px; z-index:12; background:#18243ae8; border-radius:20px; padding:6px 14px; color:#fcd34d; }
     .target-prompt { top:52px; color:#c4b5fd; }
     .play-dock { position:relative; width:100%; max-width:620px; justify-self:center; padding:4px 12px 0; z-index:15; }

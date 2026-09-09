@@ -334,3 +334,23 @@ fn guarded_turn_accepts_current_turn() {
     let (game, _) = api.get_game(id).unwrap();
     assert!(game.turn_count == 1, "guarded action applied");
 }
+
+#[test]
+fn large_map_deployment_steps_and_goal_preserve_old_games() {
+    let (mut world, api, old_id) = setup();
+    let id = api.create_solo_game_with_layout(4);
+    let (game, _) = api.get_game(id).unwrap();
+    let first = *game.caps_ids.at(0);
+    api.take_turn(id, array![act(first, ActionType::Play(Vec2 { x: 3, y: 0 }))]);
+    api.take_turn(id, array![]);
+    api.take_turn(id, array![act(first, ActionType::Move(Vec2 { x: 3, y: 2 }))]);
+    let cap: Cap = world.read_model(first);
+    assert!(cap.location == Location::Board(Vec2 { x: 3, y: 2 }), "long edge is one step");
+    api.take_turn(id, array![]);
+    put(ref world, first, 3, 6);
+    api.take_turn(id, array![act(first, ActionType::Move(Vec2 { x: 3, y: 8 }))]);
+    let game: Game = world.read_model(id);
+    assert!(game.over && game.winner_slot == 0, "large goal");
+    let old: Game = world.read_model(old_id);
+    assert!(old.layout == 0 && old.turn_count == 0 && !old.over, "old game preserved");
+}

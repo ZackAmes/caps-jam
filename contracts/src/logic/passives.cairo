@@ -21,6 +21,7 @@ pub fn condition_met(
         Option::Some(p) => p,
         _ => { return false; },
     };
+    let (_, height) = caps::logic::track::get_board_dimensions(layout);
     match condition {
         Condition::HealthBelowPercent(percent) => {
             let hp: u32 = source.health.into();
@@ -28,9 +29,9 @@ pub fn condition_met(
             hp * 100 < max * percent.into()
         },
         Condition::OnEnemyHalf => if source.player_slot == 0 {
-            pos.y > 2
+            pos.y > (height - 1) / 2
         } else {
-            pos.y < 2
+            pos.y < height / 2
         },
         Condition::AlliesOnBoard(minimum) => {
             let mut count: u16 = 0;

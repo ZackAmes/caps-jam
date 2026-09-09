@@ -24,7 +24,7 @@ Its background service needs this host to stay awake and online.
 
 ## Mechanics to exercise
 
-- Follow the visible connections on all four layouts. Each connection costs one step;
+- Follow the visible connections on all five layouts. Each connection costs one step;
   diagonal connections count once, and touching squares without a connection are not adjacent.
 - Reach the middle square of the opponent's back row to win.
 - Surround a piece on every connected neighbor to capture it automatically. Check its
@@ -83,3 +83,11 @@ sending, confirming and updating. Try a slow connection: controls must stay lock
 a transaction is sent, without silently submitting again. Compare mobile portrait and a
 wide desktop window; the board, stack, hand and fixed mobile submit button should remain
 usable. Use **Info** to inspect a hand piece without deploying it.
+
+### Duel Paths and orientation
+
+Start a new game with **7x9 Duel Paths** (the default). Both P1 and P2 should see their
+own base nearest the hand; in a bot game it must not rotate when the bot takes its turn.
+Select a hand piece, tap your highlighted base, and submit. On a later turn the edge
+between `(3,0)` and `(3,2)` counts as one step. Row effects can target row 8 (displayed
+as row 9). Try a bot game on this map and load an older 5×5 game to verify both work.

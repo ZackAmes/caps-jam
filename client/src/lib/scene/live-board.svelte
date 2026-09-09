@@ -5,8 +5,8 @@
     import type { LayoutConfig } from '@caps/game-core/board';
     import type { AbilityStack, ChainCap, CapTypeDef } from '@caps/game-core/types';
 
-    let { layout, caps, definitions, selectedId, targets, focusedCells, stack, oncell, onhover, onfailure }: {
-        layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
+    let { layout, caps, viewer, definitions, selectedId, targets, focusedCells, stack, oncell, onhover, onfailure }: {
+        viewer: number | null; layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
         selectedId: number | null; targets: Map<string, string>; focusedCells: Set<string>; stack: AbilityStack;
         oncell: (x: number, y: number) => void; onfailure: () => void; onhover:(id:number|null)=>void;
     } = $props();
@@ -21,7 +21,7 @@
 
 <div class="viewport" bind:this={viewport}>
     <Canvas dpr={1.5}>
-        <LiveScene {layout} {caps} {definitions} {selectedId} {targets} {focusedCells} {stack} {oncell} {onhover} />
+        <LiveScene {viewer} {layout} {caps} {definitions} {selectedId} {targets} {focusedCells} {stack} {oncell} {onhover} />
     </Canvas>
 </div>
 

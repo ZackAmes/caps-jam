@@ -25,10 +25,10 @@ test('an explicit edge counts once regardless of coordinates; disconnected tiles
  expect(pathDistance(custom,[0,0],[1,0])).toBe(Infinity);
 });
 test('every layout has symmetric distances, exactly one-step edges, and no unreachable path nodes', () => {
- for(const l of Object.values(LAYOUTS)) for(let x=0;x<5;x++) for(let y=0;y<5;y++) {
+ for(const l of Object.values(LAYOUTS)) for(let x=0;x<l.width;x++) for(let y=0;y<l.height;y++) {
   if(!l.isWalkable(x,y))continue;
   expect(pathDistance(l,[x,y],[x,y])).toBe(0);
-  for(let a=0;a<5;a++)for(let b=0;b<5;b++)if(l.isWalkable(a,b)) {
+  for(let a=0;a<l.width;a++)for(let b=0;b<l.height;b++)if(l.isWalkable(a,b)) {
    const d=pathDistance(l,[x,y],[a,b]);
    expect(Number.isFinite(d)).toBe(true);expect(d).toBe(pathDistance(l,[a,b],[x,y]));
    expect(d===1).toBe(l.neighbors([x,y]).some(p=>p[0]===a&&p[1]===b));
@@ -72,4 +72,14 @@ test('queued movement removes a conditional bonus before the next attack', () =>
  const game:ChainGame={id:1,player1:'0x1',player2:'0x2',layout:0,setId:0,turnCount:0,over:false,winner:'0x0',winnerSlot:2,energy:3,p1Energy:3,p2Energy:3,effectIds:[],caps:[runner,ally,enemy]};
  const result=previewTurn(game,null,defs,layout,[{capId:5,kind:'Ability',x:1,y:4},{capId:2,kind:'Move',x:0,y:3},{capId:5,kind:'Move',x:2,y:4}]);
  expect(result.caps.find(c=>c.id===3)!.health).toBe(9);
+});
+
+test('large board uses path steps, its own goal, and its own enemy half', () => {
+ const large=getLayout(4);
+ expect(pathDistance(large,[3,0],[3,2])).toBe(1);
+ const c=piece(1,0,3,6), defs=new Map([[1,def(1)]]);
+ const game:ChainGame={id:1,player1:'0x1',player2:'0x2',layout:4,setId:0,turnCount:0,over:false,winner:'0x0',winnerSlot:2,energy:1,p1Energy:1,p2Energy:1,caps:[c],effectIds:[]};
+ expect(previewTurn(game,null,defs,large,[{capId:1,kind:'Move',x:3,y:8}]).winnerSlot).toBe(0);
+ c.y=3; expect(conditionMet({kind:'OnEnemyHalf'},c,20,[c],large)).toBe(false);
+ c.y=6; expect(conditionMet({kind:'OnEnemyHalf'},c,20,[c],large)).toBe(true);
 });

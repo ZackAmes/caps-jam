@@ -14,7 +14,7 @@ export function schedule(stack: AbilityStack, sourceId: number, playerSlot: numb
   if (!Number.isInteger(impact.amount) || impact.amount < 1 || impact.amount > 65535) throw new Error('Invalid delayed amount');
   const target = impact.selection;
   if ((target.kind === 'Row' || target.kind === 'Column') && (!Number.isInteger(target.index) || target.index < 0 || target.index >= (target.kind === 'Row' ? layout.height : layout.width))) throw new Error('Invalid line');
-  if (target.kind === 'Within' && (!layout.isWalkable(target.x, target.y) || !Number.isInteger(target.radius) || target.radius < 0 || target.radius > 24)) throw new Error('Invalid zone');
+  if (target.kind === 'Within' && (!layout.isWalkable(target.x, target.y) || !Number.isInteger(target.radius) || target.radius < 0 || target.radius > layout.width * layout.height - 1)) throw new Error('Invalid zone');
   if (target.kind === 'Piece' && (!Number.isSafeInteger(target.id) || target.id < 1)) throw new Error('Invalid piece target');
   stack.entries.push({ id: ++stack.nextId, sourceId, playerSlot, announcedTurn: turn, readyTurn: turn + delay + 1, impact: copyImpact(impact) });
 }

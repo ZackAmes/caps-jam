@@ -38,7 +38,7 @@ export class CapsV5Adapter implements GameAdapter<ChainGame, PositionV5, TurnAct
   async prepare(info: GameInfo<ChainGame>): Promise<PositionV5> {
     const game = info.state;
     if (game.setId !== 0) throw new Error(`Reference strategy does not support set ${game.setId}`);
-    if (![0, 1, 2, 3].includes(game.layout)) throw new Error(`Unsupported layout ${game.layout}`);
+    getLayout(game.layout); // Reject unknown maps through the shared registry.
     const hand = decodeHand(await this.call('get_hand', [game.id, game.turnCount % 2]));
     if (!hand) throw new Error('Missing hand');
     const definitions = new Map<number, CapTypeDef>();

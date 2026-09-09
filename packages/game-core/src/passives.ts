@@ -9,7 +9,7 @@ export function conditionMet(condition: PassiveCondition, source: ChainCap, maxH
     case 'AlliesOnBoard': return caps.filter(c => onBoard(c) && c.playerSlot === source.playerSlot).length >= condition.value;
     case 'AllyWithin': case 'EnemyWithin': return caps.some(c => related(source, c, condition.kind === 'AllyWithin' ? 'Ally' : 'Enemy') && distance(layout, source, c) <= condition.value);
     case 'HealthBelowPercent': return source.health * 100 < maxHealth * condition.value;
-    case 'OnEnemyHalf': return source.playerSlot === 0 ? source.y! > 2 : source.y! < 2;
+    case 'OnEnemyHalf': return source.playerSlot === 0 ? source.y! > (layout.height - 1) / 2 : source.y! < (layout.height - 1) / 2;
     case 'PieceInRow': return caps.some(c => related(source, c, condition.relation) && c.y === source.y);
     case 'PieceInColumn': return caps.some(c => related(source, c, condition.relation) && c.x === source.x);
   }

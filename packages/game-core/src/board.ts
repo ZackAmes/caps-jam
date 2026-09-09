@@ -3,11 +3,13 @@ export const LAYOUT_PERIMETER_5X5 = 0;
 export const LAYOUT_CROSS_5X5 = 1;
 export const LAYOUT_DIAGONAL_X_5X5 = 2;
 export const LAYOUT_DIAMOND_5X5 = 3;
+export const LAYOUT_DUEL_7X9 = 4;
 export type Position = [number, number];
 export interface LayoutConfig {
   id: number; name: string; description: string;
   width: number; height: number;
   p1Deploy: Position; p2Deploy: Position;
+  energySpaces?: Position[];
   isWalkable(x: number, y: number): boolean;
   neighbors(position: Position): Position[];
 }
@@ -37,7 +39,7 @@ const pathsFor = (id: number): Position[][] => {
   if (!board) throw new Error(`Unknown layout ${id}`);
   return [...(board.extends !== undefined ? pathsFor(board.extends) : []), ...board.paths as Position[][]];
 };
-export const LAYOUTS: Record<number, LayoutConfig> = Object.fromEntries(boards.map(b => [b.id, createLayout({ id: b.id, name: b.name, description: b.description, width: 5, height: 5, p1Deploy: [2,0], p2Deploy: [2,4] }, pathsFor(b.id))]));
+export const LAYOUTS: Record<number, LayoutConfig> = Object.fromEntries(boards.map(b => [b.id, createLayout({ id: b.id, name: b.name, description: b.description, width: b.width, height: b.height, p1Deploy: b.p1Deploy as Position, p2Deploy: b.p2Deploy as Position, energySpaces: b.energySpaces as Position[] }, pathsFor(b.id))]));
 export function getLayout(id: number): LayoutConfig {
   const layout = LAYOUTS[id];
   if (!layout) throw new Error(`Unknown layout ${id}`);
@@ -61,4 +63,11 @@ export function pathDistance(layout: LayoutConfig, from: Position, to: Position)
 }
 export function isValidStep(layoutId: number, from: Position, to: Position): boolean {
   return getLayout(layoutId).neighbors(from).some(n => n[0] === to[0] && n[1] === to[1]);
+}
+
+export function goalSlot(layout: LayoutConfig, x: number, y: number): number | null {
+  return layout.p1Deploy[0] === x && layout.p1Deploy[1] === y ? 0 : layout.p2Deploy[0] === x && layout.p2Deploy[1] === y ? 1 : null;
+}
+export function isEnergySpace(layout: LayoutConfig, x: number, y: number): boolean {
+  return (layout.energySpaces ?? []).some(p => p[0] === x && p[1] === y);
 }
