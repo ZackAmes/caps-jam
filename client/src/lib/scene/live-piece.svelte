@@ -5,11 +5,10 @@
     import { cubicOut } from 'svelte/easing';
     import { pieceSymbol } from '$lib/game/presentation';
     import type { ChainCap } from '@caps/game-core/types';
-    let { cap, x, z, selected, oncell, onhover }: {cap:ChainCap; x:number; z:number; selected:boolean; oncell:(x:number,y:number)=>void; onhover:(id:number|null)=>void} = $props();
+    let { cap, x, z, selected, onhover }: {cap:ChainCap; x:number; z:number; selected:boolean; onhover:(id:number|null)=>void} = $props();
     const position = Tween.of(() => [x, z], {duration:() => prefersReducedMotion.current ? 0 : 180, easing:cubicOut});
 </script>
 <T.Group position={[position.current[0],0.27,position.current[1]]}
-    onclick={(event:EventMap['onclick']) => { event.stopPropagation(); oncell(cap.x!,cap.y!); }}
     onpointerenter={(event:EventMap['onpointerenter']) => { if (event.nativeEvent.pointerType === 'mouse') onhover(cap.id); }}
     onpointerleave={() => onhover(null)}>
     <T.Mesh>

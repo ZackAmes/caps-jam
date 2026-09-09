@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { PerspectiveCamera } from 'three';
     import LivePiece from './live-piece.svelte';
     import { T } from '@threlte/core';
     import { HTML, interactivity, type EventMap } from '@threlte/extras';
@@ -6,10 +7,10 @@
     import { goalSlot, isEnergySpace, pathDistance, type LayoutConfig } from '@caps/game-core/board';
     import type { AbilityStack, ChainCap, CapTypeDef } from '@caps/game-core/types';
 
-    let { layout, caps, viewer, definitions, selectedId, targets, focusedCells, stack, oncell, onhover }: {
+    let { layout, caps, viewer, definitions, selectedId, targets, focusedCells, stack, oncamera, onhover }: {
         viewer: number | null; layout: LayoutConfig; caps: ChainCap[]; definitions: Map<number, CapTypeDef>;
         selectedId: number | null; targets: Map<string, string>; focusedCells: Set<string>; stack: AbilityStack;
-        oncell: (x: number, y: number) => void; onhover:(id:number|null)=>void;
+        oncamera:(camera:PerspectiveCamera)=>void; onhover:(id:number|null)=>void;
     } = $props();
     interactivity();
     let tiles = $derived(Array.from({length: layout.width * layout.height}, (_, i) => ({x: i % layout.width, y: Math.floor(i / layout.width)})));
@@ -28,7 +29,7 @@
     const colors: Record<string, string> = {move: '#14b8a6', fight: '#e45b62', ability: '#a78bfa'};
 </script>
 
-<T.PerspectiveCamera makeDefault position={[0, 7.8, 5.5]} fov={43} oncreate={(camera) => camera.lookAt(0, 0, 0)} />
+<T.PerspectiveCamera makeDefault position={[0, 7.8, 5.5]} fov={43} oncreate={(camera) => { camera.lookAt(0, 0, 0); oncamera(camera); }} />
 <T.AmbientLight intensity={1.4} />
 <T.DirectionalLight position={[-3, 8, 4]} intensity={2.2} />
 <T.DirectionalLight position={[5, 3, -4]} intensity={0.8} color="#8baaff" />
@@ -44,8 +45,7 @@
     {@const goal = goalSlot(layout,tile.x,tile.y)}
     {@const energy = isEnergySpace(layout,tile.x,tile.y)}
     {@const threatened = walkable && danger(tile.x, tile.y)}
-    <T.Mesh position={[wx(tile.x), walkable ? 0 : -0.09, wz(tile.y)]}
-        onclick={(event: EventMap['onclick']) => { event.stopPropagation(); if (walkable) oncell(tile.x, tile.y); }}>
+    <T.Mesh position={[wx(tile.x), walkable ? 0 : -0.09, wz(tile.y)]}>
         <T.BoxGeometry args={[0.91, walkable ? 0.16 : 0.025, 0.91]} />
         <T.MeshStandardMaterial color={target ? colors[target] : focusedCells.has(`${tile.x},${tile.y}`) ? '#7651ae' : goal !== null ? goal === 0 ? '#244b83' : '#783446' : energy ? '#78612c' : walkable ? '#33455f' : '#172338'}
             emissive={threatened ? '#e98a19' : target ? colors[target] : '#000000'} emissiveIntensity={threatened ? 0.35 : 0.12} roughness={0.7} />
@@ -78,7 +78,7 @@
 {/each}
 
 {#each caps.filter(c => !c.dead && c.x !== null && c.y !== null) as cap (cap.id)}
-    <LivePiece {cap} x={wx(cap.x!)} z={wz(cap.y!)} selected={cap.id === selectedId} {oncell} {onhover} />
+    <LivePiece {cap} x={wx(cap.x!)} z={wz(cap.y!)} selected={cap.id === selectedId} {onhover} />
 {/each}
 
 </T.Group>

@@ -58,13 +58,16 @@
     let linkCopied = $state(false);
     let boardMode = $state<'3d' | '2d'>('3d');
     let ThreeBoard = $state<typeof import('$lib/scene/live-board.svelte').default | null>(null);
+    let boardPicker = $state<((x:number,y:number)=>{x:number;y:number}|null)|null>(null);
+    let activePointer: number | null = null;
+    let pointerElement: HTMLElement | null = null;
     let boardNotice = $state('');
     function fallbackBoard() {
         boardMode = '2d';
         boardNotice = '3D rendering is unavailable. You can continue playing in 2D.';
     }
     function setBoardMode(mode: '3d' | '2d') {
-        boardMode = mode; drag = null; downInfo = null;
+        onPointerCancel(); boardMode = mode;
         try { localStorage.setItem('caps:board-view', mode); } catch { /* Optional preference. */ }
     }
     onMount(() => {
@@ -162,7 +165,7 @@
     let focusedCells = $derived(impactFootprint(preview?.stack.entries.find(e => e.id === focusedEffectId), simCaps, activeLayout));
     let latestOpponent = $derived(historyRecords.find(r => isSolo || r.playerSlot !== mySlot));
     let sceneTargets = $derived.by(() => {
-        const cap = selectedCapId === null ? undefined : capById(selectedCapId);
+        const cap = capById(drag?.capId ?? selectedCapId ?? -1);
         if (!cap || !canAct()) return new Map<string, string>();
         if (cap.x === null && (preview?.actions ?? 0) > 0 && isMyCap(cap)) { const [x,y] = deploySpot(); return capAt(x,y) ? new Map<string,string>() : new Map([[`${x},${y}`, 'move']]); }
         return abilityTargetMode
@@ -171,6 +174,7 @@
     });
 
     function cellFromPoint(px: number, py: number): { x: number; y: number } | null {
+        if (boardMode === '3d') return boardPicker?.(px,py) ?? null;
         const el = document.elementFromPoint(px, py);
         const cell = el?.closest('[data-cell]') as HTMLElement | null;
         if (!cell) return null;
@@ -378,10 +382,8 @@
     }
 
     function onTapBench(capId: number) {
-        if (!canAct()) return;
-        if (tryDeploy(capId)) {
-            selectedCapId = null;
-        }
+        selectedCapId = selectedCapId === capId ? null : capId;
+        hoveredCapId = null; abilityTargetMode = false;
     }
 
     // Pointer engine: unified tap + drag for board & bench
@@ -407,7 +409,8 @@
         const d = downInfo!;
         if (d.capId === undefined) return;
         const cap = capById(d.capId);
-        if (!cap) { downInfo = null; return; }
+        if (!cap || !canAct() || !isMyCap(cap) || cap.stunnedTurns || abilityTargetMode) return;
+        hoveredCapId = null;
         // validate drop targets so ghost shows legal cells
         drag = {
             capId: d.capId,
@@ -450,7 +453,7 @@
         downInfo = null;
         if (!commit || !over || !valid) return;
         if (fromBench) {
-            tryDeploy(capId);
+            if (tryDeploy(capId)) selectedCapId = null;
         } else {
             tryMove(capId, over.x, over.y);
             selectedCapId = null;
@@ -458,14 +461,15 @@
     }
 
     function onPointerDown(e: PointerEvent) {
-        if (!game || committing || busy !== null) return;
+        if (!game || committing || busy !== null || overlay || !e.isPrimary || activePointer !== null) return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         const px = e.clientX, py = e.clientY;
 
         const benchId = benchCapFromPoint(px, py);
-        if (benchId !== null && canAct()) {
+        if (benchId !== null) {
             downInfo = { px, py, capId: benchId, fromBench: true };
-            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            activePointer = e.pointerId; pointerElement = e.currentTarget as HTMLElement;
+            pointerElement.setPointerCapture(e.pointerId);
             return;
         }
         const cell = cellFromPoint(px, py);
@@ -476,14 +480,13 @@
             } else {
                 downInfo = { px, py, cell };
             }
-            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            activePointer = e.pointerId; pointerElement = e.currentTarget as HTMLElement;
+            pointerElement.setPointerCapture(e.pointerId);
         }
     }
 
     function onPointerMove(e: PointerEvent) {
-        if (!downInfo) return;
-        // Touch uses tap-to-select; let swipes scroll the page. Mouse keeps drag-and-drop.
-        if (e.pointerType === 'touch') return;
+        if (!downInfo || e.pointerId !== activePointer) return;
         const dist = Math.hypot(e.clientX - downInfo.px, e.clientY - downInfo.py);
         if (!drag && dist > 8 && downInfo.capId !== undefined) {
             beginDragIfCap(e.clientX, e.clientY);
@@ -492,6 +495,8 @@
     }
 
     function onPointerUp(e: PointerEvent) {
+        if (e.pointerId !== activePointer) return;
+        try {
         if (drag) {
             evaluateDragTarget(e.clientX, e.clientY);
             finishDrag(true);
@@ -502,7 +507,7 @@
         const upCell = cellFromPoint(e.clientX, e.clientY);
         const upBench = benchCapFromPoint(e.clientX, e.clientY);
         if (dist <= 8 && downInfo.capId !== undefined && downInfo.fromBench) {
-            // tap on bench piece → instant deploy
+            // A tap inspects; only a valid drag drop deploys.
             onTapBench(downInfo.capId);
         } else if (dist <= 8 && downInfo.cell && upCell &&
                    upCell.x === downInfo.cell.x && upCell.y === downInfo.cell.y) {
@@ -511,9 +516,12 @@
             onTapBench(upBench);
         }
         downInfo = null;
+        } finally { onPointerCancel(); }
     }
 
     function onPointerCancel() {
+        const id = activePointer, element = pointerElement; activePointer = null; pointerElement = null;
+        if (id !== null && element?.hasPointerCapture(id)) element.releasePointerCapture(id);
         drag = null;
         downInfo = null;
     }
@@ -583,13 +591,14 @@
                 syncStage = pendingForGame.confirmed ? 'syncing' : 'confirming';
                 return false;
             }
+            onPointerCancel();
             queuedActions = []; selectedCapId = null; hoveredCapId = null; abilityTargetMode = false; stackTargetMode = false;
             capDefMap = snapshot.definitions; pendingStack = snapshot.stack;
             hand = snapshot.hand; opponentHand = snapshot.otherHand; game = nextGame;
             if (submissionHasLanded(pendingForGame, game.turnCount)) {
                 pendingSubmission = null; syncStage = 'idle'; submissionEpoch++;
             }
-            selectedLayout = game.layout; resumeId = id; gameIdInput = String(id); linkCopied = false;
+            /* Loading an old match must not replace the new-game map preference. */ resumeId = id; gameIdInput = String(id); linkCopied = false;
             lastSynced = new Date().toLocaleTimeString(); syncError = null; errorMsg = null;
             if (!pendingStack.entries.some(e => e.id === focusedEffectId)) focusedEffectId = null;
             try {
@@ -673,6 +682,8 @@
 
 </script>
 
+<svelte:window onblur={onPointerCancel} />
+
 <svelte:head>
     <title>CAPS — Onchain Strategy Game</title>
     <meta name="description" content="Play CAPS, a tactical onchain board game on Starknet." />
@@ -725,7 +736,7 @@
                 <button class="primary big" onclick={() => createAndLoad(botAccount.address)} disabled={busy !== null}>
                     Play against Bot
                 </button>
-                <p class="hint">A basic AI opponent. It checks for turns about every 15 seconds.</p>
+                <p class="hint">{getLayout(selectedLayout).name} · The bot checks for turns about every 15 seconds.</p>
 
                 <button class="big" onclick={handleCreateSolo} disabled={busy !== null}>
                     🎮 Play Solo (Both Sides)
@@ -771,7 +782,7 @@
                 {#if boardMode === '3d'}
                     <svelte:boundary onerror={fallbackBoard}>
                         {#if ThreeBoard}
-                            <ThreeBoard viewer={mySlot} layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={selectedCapId} targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} oncell={onTapCell} onhover={(id) => hoveredCapId = id} onfailure={fallbackBoard} />
+                            <ThreeBoard viewer={mySlot} layout={activeLayout} caps={simCaps} definitions={capDefMap} selectedId={drag?.capId ?? selectedCapId} targets={sceneTargets} {focusedCells} stack={preview?.stack ?? pendingStack} onpickready={(pick) => boardPicker = pick} onpointerdown={onPointerDown} onpointermove={onPointerMove} onpointerup={onPointerUp} onpointercancel={onPointerCancel} onhover={(id) => { if (!drag) hoveredCapId = id; }} onfailure={fallbackBoard} />
                         {:else}<p class="stage-notice" role="status">Loading board…</p>{/if}
                     </svelte:boundary>
                 {:else}
@@ -785,6 +796,7 @@
                 onpointermove={onPointerMove}
                 onpointerup={onPointerUp}
                 onpointercancel={onPointerCancel}
+                onlostpointercapture={onPointerCancel}
             >
                 {#each Array.from({ length: activeLayout.height * activeLayout.width }, (_, idx) => idx) as idx}
                     {@const x = idx % activeLayout.width}
@@ -792,7 +804,7 @@
                     {@const walkable = activeLayout.isWalkable(x, y)}
                     {@const isDeploy = isDeploySpot(x, y)}
                     {@const occ = capAt(x, y)}
-                    {@const selCap = selectedCapId != null ? capById(selectedCapId) : null}
+                    {@const selCap = capById(drag?.capId ?? selectedCapId ?? -1)}
                     {@const selTargets = selCap && selCap.x !== null && selCap.y !== null ? moveTargets(selCap) : null}
                     {@const targetInfo = selTargets?.get(`${x},${y}`)}
 
@@ -880,6 +892,7 @@
                 {/if}
 
             </div>
+            {#if drag}<div class="drag-preview" class:legal={drag.valid} style:left={`${drag.px}px`} style:top={`${drag.py}px`}><b>{pieceSymbol(drag.capType)}</b><span>{drag.valid ? drag.fromBench ? 'Deploy' : drag.label ? 'Attack' : 'Move' : 'Release to cancel'}</span></div>{/if}
             <footer class="play-dock">
                 {#if inspectedActor && !abilityTargetMode && !overlay}
                     {@const selectedActor = inspectedActor}
@@ -900,7 +913,7 @@
                 {/if}
                 <div class="hand-strip" aria-label="Your hand">
                     {#each myBenchCaps() as c (c.id)}
-                        <button class:selected={selectedCapId === c.id} aria-pressed={selectedCapId === c.id} onpointerenter={(event) => { if (event.pointerType === 'mouse') hoveredCapId = c.id; }} onpointerleave={() => hoveredCapId = null} aria-label={`Select ${capDefFor(c)?.name ?? 'piece'}, ${c.health} health`} onclick={() => { selectedCapId = selectedCapId === c.id ? null : c.id; abilityTargetMode = false; }}><b>{pieceSymbol(c.capType)}</b><span>{capDefFor(c)?.name ?? c.capType}</span></button>
+                        <button class:selected={selectedCapId === c.id} aria-pressed={selectedCapId === c.id} data-bench={c.id} onpointerdown={onPointerDown} onpointermove={onPointerMove} onpointerup={onPointerUp} onpointercancel={onPointerCancel} onlostpointercapture={onPointerCancel} onpointerenter={(event) => { if (event.pointerType === 'mouse') hoveredCapId = c.id; }} onpointerleave={() => hoveredCapId = null} aria-label={`Select ${capDefFor(c)?.name ?? 'piece'}, ${c.health} health`} onclick={(event) => { if (event.detail === 0) onTapBench(c.id); }}><b>{pieceSymbol(c.capType)}</b><span>{capDefFor(c)?.name ?? c.capType}</span></button>
                     {/each}
                     {#if !myBenchCaps().length}<span class="empty-hand">No pieces in hand</span>{/if}
                 </div>
@@ -1146,7 +1159,7 @@
         border-radius: 10px;
         aspect-ratio: var(--w) / var(--h);
         max-width: 100%;
-        touch-action: pan-y pinch-zoom;
+        touch-action: none;
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
@@ -1525,7 +1538,7 @@
     .target-prompt { top:52px; color:#c4b5fd; }
     .play-dock { position:relative; width:100%; max-width:620px; justify-self:center; padding:4px 12px 0; z-index:15; }
     .hand-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; height:62px; }
-    .hand-strip button { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; border-radius:12px; background:#17273be8; }
+    .hand-strip button { touch-action:none; user-select:none; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; border-radius:12px; background:#17273be8; }
     .hand-strip b { font-size:24px; line-height:28px; color:#8ac5ff; } .hand-strip span { font-size:10px; } .hand-strip button.selected { border-color:#7dd3fc; background:#244b69; transform:translateY(-3px); }
     .empty-hand { grid-column:1/-1; align-self:center; text-align:center; color:#758ba5; }
     .turn-controls { display:flex; align-items:center; gap:10px; padding-top:6px; } .action-dots { color:#7dd3fc; font-size:18px; } .turn-controls .submit-turn { flex:1; background:#166654; border-color:#3aab89; }
@@ -1543,4 +1556,6 @@
     @media(max-height:500px) and (orientation:landscape) { .play-screen { grid-template-columns:minmax(0,1fr) 190px; grid-template-rows:50px minmax(0,1fr); } .play-hud { grid-column:1/-1; } .play-dock { align-self:end; padding:8px; } .hand-strip { grid-template-columns:repeat(2,minmax(0,1fr)); height:130px; } .selection-card { max-height:130px; } }
     @media(prefers-reduced-motion:reduce) { .piece { transition:none; } .tile { animation:none; } }
 
+    .drag-preview { position:fixed; transform:translate(-50%,-110%); z-index:50; pointer-events:none; display:flex; flex-direction:column; align-items:center; background:#17283bf2; border:2px solid #a8b4c5; border-radius:14px; padding:8px 12px; box-shadow:0 6px 20px #0007; }
+    .drag-preview b { font-size:28px; } .drag-preview span { font-size:11px; } .drag-preview.legal { border-color:#4ade80; color:#bbf7d0; }
 </style>

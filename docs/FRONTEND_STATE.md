@@ -60,8 +60,12 @@ still scrolls normally. Safe areas and a separate short landscape layout keep co
 within the viewport. The board uses the smaller available stage dimension so it stays
 fully framed as selected-piece details open above the hand.
 
-Tap a hand piece to inspect it, then Deploy or tap the highlighted base. Tap a board
-piece to select it, then a highlighted destination to move. Ability descriptions and
+Drag a hand piece onto your base to deploy, or drag a board piece to a highlighted
+destination to move or attack. Invalid drops cancel. Tap a hand piece to inspect it,
+then Deploy or tap the highlighted base; tap-to-select/move also remains available.
+Touch and mouse share pointer capture, with cancellation on capture loss, window blur,
+or a new game snapshot. Gestures only queue actions; End turn submits them.
+The 3D picker uses the active camera and converts the drop into canonical map coordinates. Ability descriptions and
 passive conditions appear only for hovered/selected pieces. Hover cards float without
 resizing the board. Piece symbols match the hand, and health remains visible. Three.js
 movement interpolates over 180 ms and respects reduced-motion preferences.
@@ -75,3 +79,7 @@ contains refresh, sharing, opponent hand, cooldowns, queued actions and the 2D f
 
 Validation: type checks, production build and the shared client/bot suite pass. Browser
 visual/touch verification is unavailable in the current environment and remains needed.
+
+New-game map selection starts at 7×9 Duel Paths and is independent of resumed games.
+Loading an old match no longer changes the default bot challenge map. The lobby map
+selector still allows an explicit alternative.
