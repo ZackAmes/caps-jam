@@ -1,4 +1,4 @@
-# CAPS — implemented rules (v5)
+# CAPS — implemented rules (v6)
 
 See [MECHANICS_FOUNDATION.md](MECHANICS_FOUNDATION.md) for passive/path semantics and [DELAYED_ABILITIES.md](DELAYED_ABILITIES.md) for the ability stack. This document is the source of truth for the September 2026 prototype. The former tower, paid movement and manual capture rules are retired.
 
@@ -87,3 +87,23 @@ The client rotates the board 180° for P1 so each player's own base is always at
 bottom, beside their hand. P2 uses the canonical orientation. This is presentation
 only: stored coordinates, row targets and action history do not change. Solo mode
 follows the active side. Both 3D and the 2D fallback share this convention.
+
+
+## Match clocks (v6)
+
+Each player starts with 120 seconds. Only the active player's time runs, beginning at
+match creation. Each completed, non-winning turn adds 10 seconds to that player's
+remaining time; abilities and extra moves within the turn do not add increments.
+The contract charges elapsed block time when the turn executes, including network
+confirmation delays. Invalid turns revert and do not reset or increment the clock.
+
+At zero seconds the active player loses. A late turn records the loss without executing
+its actions or resolving pending effects. The opponent can call `claim_timeout(game_id,
+expected_turn)` to end an expired game; the turn guard prevents a claim from crossing
+into a later turn. Timeout clears the stack, advances the terminal turn count, and records
+the losing slot in `GameClock`; it does not create a fabricated action journal entry.
+
+`GameClock` is separate from `Game`, so existing matches remain compatible. Matches
+created before v6 receive fresh clocks on their next successful turn. Missing clocks
+cannot be claimed as expired. Completed clocks remain frozen. There is no pause when
+leaving the page, and practice mode has separate clocks for its two sides.

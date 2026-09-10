@@ -1,20 +1,20 @@
-# Playtesting rules v5
+# Playtesting rules v6
 
-The client and independent bot use the same September 8, 2026 Sepolia deployment.
+The client and independent bot use the same September 9, 2026 upgrade of the same Sepolia world.
 Old-world game IDs are separate and cannot be resumed in this client.
 
 ## Play against the bot
 
-1. Open `/game`, choose **Use test account**, select a board, then **Play against Bot**.
-2. Tap a hand piece to deploy at your base. Tap your board piece and a highlighted
-   connected square to move or attack. The default 3D board uses tap/click controls.
-   Switch to **2D** above the board for the flat board and drag controls.
+1. Open `/game`, choose **Start playing**, select a board, then **Play the bot**.
+2. Drag a hand piece to your base to deploy, or drag a board piece to a highlighted
+   connected square to move or attack. Tap/click selection also works in both views.
+   Switch between **3D** and **2D** in the game menu.
 3. Inspect a piece to read its ability and passive conditions. Abilities spend energy;
    deploying or moving spends the normal action. A Runner can grant an extra move.
-4. **Submit Turn** commits your plan. **Pass turn** ends a turn with no actions.
+4. **End turn** commits your plan. **Pass** ends a turn with no actions.
    Undoing a planned action also removes actions after it.
 5. Wait for the bot. It polls every 15 seconds; transaction confirmation can take longer.
-   The page refreshes while waiting. **Copy link** shares the game; **Resume game**
+   The page refreshes while waiting. **Share game** in the menu shares the game; **Continue game**
    restores it after a refresh.
 
 Both players' hands are public. The current test client intentionally uses one shared
@@ -55,7 +55,7 @@ The tests cover passive conditions, graph distances, stack timing/order, preview
 hand rotation, capture cooldown, goal wins, and bot discovery/retry behavior.
 
 For a stuck bot on this host, inspect `journalctl --user -u caps-bot.service -n 30`.
-The active checkpoint is `bot/state/checkpoint-v5.json`; do not replace it with a checkpoint
+The active checkpoint is `bot/state/checkpoint-v6.json`; do not replace it with a checkpoint
 from the old world. Account keys and bot state remain local and ignored by Git.
 
 ## 3D board
@@ -75,14 +75,14 @@ in the stack panel. Its two-energy negation is planned until you submit your tur
 
 Inspect pending effects to highlight their area. Verify newest-first order, the earliest
 resolution turn including blockers above each entry, and disappearance after resolution
-or negation. Read the opponent's latest actions above the board and expand turn history
+or negation. Open ↶ to read the opponent's latest actions and turn history
 to inspect exact targets and outcomes. Old turns from before this upgrade have no records.
 
 During submission, the preview should remain visible while the status progresses through
 sending, confirming and updating. Try a slow connection: controls must stay locked after
 a transaction is sent, without silently submitting again. Compare mobile portrait and a
 wide desktop window; the board, stack, hand and fixed mobile submit button should remain
-usable. Use **Info** to inspect a hand piece without deploying it.
+usable. Tap a hand piece to inspect it without deploying it.
 
 ### Duel Paths and orientation
 
@@ -91,3 +91,17 @@ own base nearest the hand; in a bot game it must not rotate when the bot takes i
 Select a hand piece, tap your highlighted base, and submit. On a later turn the edge
 between `(3,0)` and `(3,2)` counts as one step. Row effects can target row 8 (displayed
 as row 9). Try a bot game on this map and load an older 5×5 game to verify both work.
+
+
+### Timers and menus
+
+New games start with **2:00** each. End a turn and verify only your bank is charged,
+then increased by ten seconds. Let your clock expire in a bot game: the bot should
+claim the win. A late action instead finalizes your loss without moving the piece.
+When the opponent expires, the turn button becomes **Claim timeout win**. Check the
+result panel and history both explain that the game ended on time.
+
+Clocks stay visible above the board. The game menu contains sharing, refresh, view
+settings, match state, and rules. Leaving for the lobby does not pause time. Verify
+portrait mobile, short landscape, and desktop layouts: clocks and the hand should
+stay visible without scrolling the game page. The lobby and menu panels can scroll.

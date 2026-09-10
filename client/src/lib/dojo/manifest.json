@@ -34,11 +34,12 @@
   "contracts": [
     {
       "address": "0x6f466df359053acd6186676c69a10b13b360d35b78b5982c64506921946973",
-      "class_hash": "0x6b1eaf23ab4a98736511cf9ab61f6f4671244b38dcafc2b55bd3840391a7df8",
+      "class_hash": "0x33a52f8305a89a80570da3e16b8a1b96c12573fa9ea511600c61f3df0f11ec7",
       "init_calldata": [],
       "tag": "caps-actions",
       "selector": "0x482dc9f44e8c68f3ef3ab58497e0d8e446ad2581a5544512fbaebef3af3ccbc",
       "systems": [
+        "claim_timeout",
         "take_turn_if_current",
         "register_set",
         "create_game",
@@ -259,6 +260,43 @@
       "class_hash": "0x382e9ad801fcbc6e777be1b8dc0584678cb7a4c3c2b39015ed85422c3e21377",
       "tag": "caps-Game",
       "selector": "0xe9697c6c427792aaa8a422a17897c4b838d7d6c76261f43cce21228c294477"
+    },
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "enabled",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "p1_seconds",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "p2_seconds",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "running_since",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "timed_out_slot",
+          "type": "core::integer::u8",
+          "key": false
+        }
+      ],
+      "class_hash": "0x5a0a68d7eaa5251e305ba88add090f1da934031aab2a1de33722d21cbb835ef",
+      "tag": "caps-GameClock",
+      "selector": "0x74129a5c127e8cef6601b67b121330c1dcd3e8b0d6787000af59aeebdd97395"
     },
     {
       "members": [
@@ -1058,6 +1096,68 @@
     {
       "type": "event",
       "name": "caps::models::game::m_Hand::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::game_clock::GameClock",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "enabled",
+          "type": "core::bool"
+        },
+        {
+          "name": "p1_seconds",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "p2_seconds",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "running_since",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "timed_out_slot",
+          "type": "core::integer::u8"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "caps::models::game_clock::GameClockValue",
+      "members": [
+        {
+          "name": "enabled",
+          "type": "core::bool"
+        },
+        {
+          "name": "p1_seconds",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "p2_seconds",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "running_since",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "timed_out_slot",
+          "type": "core::integer::u8"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "caps::models::game_clock::m_GameClock::Event",
       "kind": "enum",
       "variants": []
     },
@@ -2076,6 +2176,38 @@
             }
           ],
           "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_clock",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "(caps::models::game_clock::GameClock, core::integer::u64)"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "claim_timeout",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "expected_turn",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
         },
         {
           "type": "function",

@@ -6,6 +6,7 @@ pub mod models {
     pub mod cap;
     pub mod effect;
     pub mod game;
+    pub mod game_clock;
     pub mod set;
     pub mod set_data;
     pub mod stack;
@@ -28,6 +29,7 @@ pub mod logic {
 
 #[cfg(test)]
 mod tests {
+    mod clock_test;
     mod foundation_test;
     mod rules_test;
     mod stack_test;

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { clockRemaining, clockLabel, type GameClock } from '@caps/game-core/clock';
     import { submissionHasLanded } from '$lib/game/sync';
     import StackPanel from '$lib/game/StackPanel.svelte';
     import TurnHistory from '$lib/game/TurnHistory.svelte';
@@ -8,7 +9,7 @@
     import { viewerSlot, pathEdges, effectTiming, impactFootprint, pieceSymbol } from '$lib/game/presentation';
     import botAccount from '../../../../bot/account.public.json';
     import { previewTurn } from '@caps/game-core/preview';
-    import { createGame, createSoloGame, takeTurn, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer, getGameSnapshot, getTurnRecord, transactionState } from '$lib/dojo/client';
+    import { createGame, createSoloGame, takeTurn, claimTimeout, type TransactionProgress, getGame, getHand, getStack, getCapTypeCached, findLatestGameForPlayer, getGameSnapshot, getClock, getTurnRecord, transactionState } from '$lib/dojo/client';
     import { connect, isDevMode } from '$lib/dojo/account';
     import { getLayout, goalSlot, isEnergySpace, LAYOUT_DUEL_7X9, pathDistance, LAYOUTS, LAYOUT_PERIMETER_5X5, type LayoutConfig } from '@caps/game-core/board';
     import { describeImpact } from '@caps/game-core/stack';
@@ -73,11 +74,13 @@
     onMount(() => {
         try { if (localStorage.getItem('caps:board-view') === '2d') boardMode = '2d'; } catch { /* Optional preference. */ }
         import('$lib/scene/live-board.svelte').then(module => { ThreeBoard = module.default; }).catch(fallbackBoard);
+        const tick = setInterval(() => clockTick = performance.now(), 250);
         const linked = Number(new URL(location.href).searchParams.get('game'));
         let saved = 0;
         try { saved = Number(localStorage.getItem(savedGameKey)); } catch { /* Storage may be unavailable. */ }
         const id = linked || saved;
         if (Number.isSafeInteger(id) && id > 0) { resumeId = id; gameIdInput = String(id); }
+        return () => clearInterval(tick);
     });
     async function copyGameLink() {
         if (!game) return;
@@ -90,6 +93,12 @@
     let selectedLayout = $state<number>(LAYOUT_DUEL_7X9);
     let gameIdInput = $state('1');
     let game = $state<ChainGame | null>(null);
+
+    let clockSample = $state<{clock:GameClock; receivedAt:number} | null>(null);
+    let clockTick = $state(0);
+    let clockTimes = $derived(clockSample && game ? clockRemaining(clockSample.clock, game.turnCount, game.over,
+        clockSample.clock.chainTime + Math.max(0, clockTick - clockSample.receivedAt) / 1000) : null);
+    let timedOut = $derived(!!game?.over && !!clockSample?.clock.enabled && clockSample.clock.timedOutSlot < 2);
 
     let hand = $state<ChainHand | null>(null);
     let opponentHand = $state<ChainHand | null>(null);
@@ -153,6 +162,9 @@
     }
 
     let mySlot = $derived(game ? viewerSlot(game, account) : null);
+    let canClaimTimeout = $derived(!!game && !game.over && mySlot !== null && !isMyTurn() &&
+        clockTimes !== null && clockTimes[game.turnCount % 2] <= 0 && !committing && !pendingForGame && busy === null);
+
     let otherHand = $derived(game && mySlot === game.turnCount % 2 ? opponentHand : hand);
     let activeLayout = $derived<LayoutConfig>(getLayout(game ? game.layout : selectedLayout));
     let isSolo = $derived<boolean>(!!game && game.player1 === game.player2);
@@ -594,7 +606,7 @@
             onPointerCancel();
             queuedActions = []; selectedCapId = null; hoveredCapId = null; abilityTargetMode = false; stackTargetMode = false;
             capDefMap = snapshot.definitions; pendingStack = snapshot.stack;
-            hand = snapshot.hand; opponentHand = snapshot.otherHand; game = nextGame;
+            hand = snapshot.hand; opponentHand = snapshot.otherHand; clockSample = snapshot.clock; game = nextGame;
             if (submissionHasLanded(pendingForGame, game.turnCount)) {
                 pendingSubmission = null; syncStage = 'idle'; submissionEpoch++;
             }
@@ -640,10 +652,15 @@
                         await loadGame(id!, current, pending.turn + 1);
                     }
                 } else {
-                    const next = await deadline(getGame(id!));
+                    const [next, sample] = await deadline(Promise.all([getGame(id!), getClock(id!)]));
                     if (!current()) return;
-                    if (next && (next.turnCount !== game?.turnCount || next.over !== game?.over)) await loadGame(id!, current);
-                    else { lastSynced = new Date().toLocaleTimeString(); syncError = null; }
+                    // A clock read can cross a turn boundary too. Reload all state if its
+                    // stored banks differ; otherwise only refresh the chain-time anchor.
+                    const oldClock = clockSample?.clock;
+                    const clockChanged = !oldClock || (['enabled', 'p1Seconds', 'p2Seconds', 'runningSince', 'timedOutSlot'] as const)
+                        .some(key => oldClock[key] !== sample.clock[key]);
+                    if (next && (next.turnCount !== game?.turnCount || next.over !== game?.over || clockChanged)) await loadGame(id!, current);
+                    else { clockSample = sample; lastSynced = new Date().toLocaleTimeString(); syncError = null; }
                 }
             } catch (error) { if (current()) syncError = error instanceof Error ? error.message : String(error); }
             finally { checking = false; }
@@ -654,16 +671,17 @@
         return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
     });
 
-    async function commitTurn() {
-        if (!game || !canAct()) return;
+    async function commitTurn(claim = false) {
+        if (!game || (claim ? !canClaimTimeout : !canAct())) return;
         const id = game.id, turn = game.turnCount, attempt = ++submissionEpoch;
         errorMsg = null; syncError = null; committing = true; syncStage = 'submitting';
         try {
-            await deadline(takeTurn(id, turn, queuedActions, (stage, hash) => {
+            const progress: TransactionProgress = (stage, hash) => {
                 if (attempt !== submissionEpoch) return;
                 pendingSubmission = {gameId:id,turn,hash,confirmed:stage === 'syncing'};
                 syncStage = stage;
-            }), 45000);
+            };
+            await deadline(claim ? claimTimeout(id, turn, progress) : takeTurn(id, turn, queuedActions, progress), 45000);
             await loadGame(id, () => game?.id === id, turn + 1);
         } catch (error) {
             syncError = error instanceof Error ? error.message : String(error);
@@ -703,81 +721,43 @@
     </header>{/if}
 
     {#if !game}
-        <!-- Lobby -->
-        <section class="lobby">
-            {#if errorMsg}
-                <div class="error" role="alert">{errorMsg}</div>
-            {/if}
+        <section class="lobby" aria-label="Play CAPS">
+            <div class="lobby-intro"><span class="eyebrow">TACTICAL BOARD GAME</span><h2>Find your path.<br />Reach their goal.</h2><p>Build your position, time your abilities, and break through.</p><span class="format-chip">◷ 2 min + 10 sec / turn</span></div>
+            {#if errorMsg}<div class="error" role="alert">{errorMsg}</div>{/if}
+            {#if busy}<div class="busy" role="status"><span class="spinner"></span>{busy}</div>{/if}
             {#if !account}
-                <button class="primary big" onclick={handleConnect} disabled={busy !== null}>
-                    {devMode ? 'Use test account' : 'Connect Controller'}
-                </button>
-                {#if busy}
-                    <div class="busy"><span class="spinner"></span>{busy}</div>
-                {/if}
+                <button class="primary big" onclick={handleConnect} disabled={busy !== null}>{devMode ? 'Start playing' : 'Connect Controller'}</button>
+                {#if devMode}<p class="hint">Sepolia playtest · shared test account</p>{/if}
             {:else}
-                {#if resumeId}
-                    <button class="big" onclick={handleLoad} disabled={busy !== null}>Resume game #{resumeId}</button>
-                {/if}
-                <div class="field">
-                    <label for="layout-select">Board Layout</label>
-                    <select id="layout-select" bind:value={selectedLayout}>
-                        {#each Object.values(LAYOUTS) as l}
-                            <option value={l.id}>{l.name}</option>
-                        {/each}
-                    </select>
-                    <p class="hint">{getLayout(selectedLayout).description}</p>
-                </div>
-
-                {#if busy}
-                    <div class="busy"><span class="spinner"></span>{busy}</div>
-                {/if}
-
-                <button class="primary big" onclick={() => createAndLoad(botAccount.address)} disabled={busy !== null}>
-                    Play against Bot
-                </button>
-                <p class="hint">{getLayout(selectedLayout).name} · The bot checks for turns about every 15 seconds.</p>
-
-                <button class="big" onclick={handleCreateSolo} disabled={busy !== null}>
-                    🎮 Play Solo (Both Sides)
-                </button>
-
-                <details class="fund-help">
-                    <summary>⛽ Fund account (for gas when paymaster fails)</summary>
-                    <div class="fund-body">
-                        <p class="hint">1. Tap the address above to copy it.</p>
-                        <p class="hint">2. Get free Sepolia STRK from a faucet:</p>
-                        <a class="faucet-link" href="https://starknet-faucet.vercel.app/" target="_blank" rel="noopener noreferrer">starknet-faucet.vercel.app ↗</a>
-                        <a class="faucet-link" href="https://sepolia.starkscan.co/faucet" target="_blank" rel="noopener noreferrer">sepolia.starkscan.co/faucet ↗</a>
-                        <p class="hint">3. Paste your address there, receive STRK, then retry your turn.</p>
-                    </div>
-                </details>
-                <div class="divider"><span>or play vs opponent</span></div>
-
-                <div class="field">
-                    <label for="opp">Opponent Address</label>
-                    <input id="opp" bind:value={opponent} placeholder="0x…" />
-                </div>
-                <button class="big" onclick={handleCreate} disabled={!opponent.trim() || busy !== null}>Create Game</button>
-
-                <div class="divider"><span>load existing</span></div>
-
-                <div class="field row">
-                    <label class="sr-only" for="game-id">Game id</label>
-                    <input id="game-id" bind:value={gameIdInput} type="number" min="1" inputmode="numeric" placeholder="Game id" />
-                    <button onclick={handleLoad}>Load</button>
-                </div>
+                {#if resumeId}<button class="resume-game" onclick={() => { gameIdInput = String(resumeId); void handleLoad(); }} disabled={busy !== null}><span>Continue game <b>#{resumeId}</b></span><span>↗</span></button>{/if}
+                <section class="menu-card new-match" aria-label="New match">
+                    <div class="field"><label for="layout-select">Your battlefield</label><select id="layout-select" bind:value={selectedLayout} disabled={busy !== null}>{#each Object.values(LAYOUTS) as l}<option value={l.id}>{l.name}</option>{/each}</select><p class="hint">{getLayout(selectedLayout).description}</p></div>
+                    <button class="primary big play-bot" onclick={() => createAndLoad(botAccount.address)} disabled={busy !== null}><span>Play the bot<small>A quick tactical challenge</small></span><span aria-hidden="true">→</span></button>
+                    <button class="solo-button" onclick={handleCreateSolo} disabled={busy !== null}>Practice · control both sides</button>
+                    <p class="hint">The clock starts when the match is created. The bot checks for turns about every 15 seconds.</p>
+                </section>
+                <details class="menu-card"><summary>Challenge a friend <span>＋</span></summary><div class="menu-content"><p class="hint">Enter their account address, then share the game link.</p><div class="field"><label for="opp">Opponent address</label><input id="opp" bind:value={opponent} placeholder="0x…" autocomplete="off" spellcheck="false" /></div><button onclick={handleCreate} disabled={!opponent.trim() || busy !== null}>Create challenge →</button></div></details>
+                <details class="menu-card"><summary>Open a game <span>↗</span></summary><div class="menu-content"><div class="field"><label for="game-id">Game number</label><div class="field row"><input id="game-id" bind:value={gameIdInput} type="number" min="1" inputmode="numeric" placeholder="Game number" /><button onclick={handleLoad} disabled={busy !== null}>Open</button></div></div></div></details>
+                <details class="menu-card"><summary>Account & connection <span>⌁</span></summary><div class="menu-content"><p class="hint">{status} · Sepolia{devMode ? ' · shared test account' : ''}</p><button onclick={copyAddress}>{addrCopied ? 'Address copied' : 'Copy account address'}</button><p class="hint">If a transaction needs gas, add free Sepolia STRK to this address and retry.</p><a class="faucet-link" href="https://starknet-faucet.vercel.app/" target="_blank" rel="noopener noreferrer">Get test STRK ↗</a></div></details>
             {/if}
         </section>
     {:else}
         <section class="play-screen" aria-label="CAPS game">
-            <header class="play-hud">
+            <div class="play-top"><header class="play-hud">
                 <button aria-label="Game menu" onclick={() => overlay = 'menu'}>☰</button>
                 <span class="turn-indicator" class:your-turn={isMyTurn()}>{isSolo ? `P${game.turnCount % 2 + 1}` : isMyTurn() ? 'Your turn' : 'Opponent'} <small>· {game.turnCount + 1}</small></span>
                 <span class="hud-energy" title="Your energy">⚡ {isMyTurn() ? remainingEnergy : mySlot === 0 ? game.p1Energy : game.p2Energy}</span>
                 <button class:has-effects={!!preview?.stack.entries.length} aria-label={`Ability stack: ${preview?.stack.entries.length ?? 0} effects`} onclick={() => overlay = 'stack'}>◷ {preview?.stack.entries.length ?? 0}</button>
                 <button aria-label="Opponent moves and turn history" onclick={() => overlay = 'history'}>↶</button>
             </header>
+            <div class="clock-strip" aria-label="Game clocks: two minutes plus ten seconds per turn">
+                {#each [mySlot ?? 0, 1 - (mySlot ?? 0)] as slot}
+                    <span class:running={!game.over && game.turnCount % 2 === slot} class:low={clockTimes !== null && clockTimes[slot] < 20}>
+                        <small>{isSolo || mySlot === null ? `P${slot + 1}` : slot === mySlot ? 'You' : 'Opponent'}</small>
+                        <b aria-label={`${isSolo ? `Player ${slot + 1}` : slot === mySlot ? 'Your' : 'Opponent'} time ${clockLabel(clockTimes?.[slot])}`}>{clockLabel(clockTimes?.[slot])}</b>
+                    </span>
+                {/each}
+            </div></div>
             <div class="play-stage">
                 {#if boardMode === '3d'}
                     <svelte:boundary onerror={fallbackBoard}>
@@ -888,7 +868,7 @@
                 {#if abilityTargetMode}<button class="target-prompt" onclick={() => abilityTargetMode = false}>Choose a glowing target · Cancel ✕</button>{/if}
                 {#if focusedEffectId !== null}<button class="target-prompt" onclick={() => focusedEffectId = null}>Effect #{focusedEffectId} highlighted · Clear ✕</button>{/if}
                 {#if game.over}
-                    <div class="end-card"><h2>{isSolo ? `P${game.winnerSlot + 1} wins` : game.winnerSlot === mySlot ? 'You win' : 'Opponent wins'}</h2><button onclick={() => createAndLoad(isSolo ? undefined : mySlot === 0 ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button></div>
+                    <div class="end-card"><h2>{isSolo ? `P${game.winnerSlot + 1} wins` : game.winnerSlot === mySlot ? 'You win' : 'Opponent wins'}</h2><p>{timedOut ? 'Won on time' : 'Goal reached'}</p><button onclick={() => createAndLoad(isSolo ? undefined : mySlot === 0 ? game!.player2 : game!.player1)} disabled={busy !== null}>Play again</button></div>
                 {/if}
 
             </div>
@@ -920,7 +900,7 @@
                 <div class="turn-controls">
                     <button aria-label="Undo last planned action" disabled={!canAct() || !queuedActions.length} onclick={() => removeQueuedAction(queuedActions.length - 1)}>↶</button>
                     <span class="action-dots" aria-label={`${preview?.actions ?? 1} normal actions and ${preview?.moves ?? 0} bonus moves remaining`}>{(preview?.actions ?? 1) ? '●' : '○'}{(preview?.moves ?? 0) > 0 ? ` +${preview?.moves}` : ''}</span>
-                    <button class="submit-turn" onclick={commitTurn} disabled={!canAct()}>{syncStage === 'submitting' ? 'Sending…' : syncStage === 'confirming' ? 'Confirming…' : syncStage === 'syncing' ? 'Updating…' : game.over ? 'Game over' : !isMyTurn() ? 'Opponent’s turn' : queuedActions.length ? 'End turn →' : 'Pass →'}</button>
+                    <button class="submit-turn" onclick={() => commitTurn(canClaimTimeout)} disabled={!canAct() && !canClaimTimeout}>{syncStage === 'submitting' ? 'Sending…' : syncStage === 'confirming' ? 'Confirming…' : syncStage === 'syncing' ? 'Updating…' : game.over ? 'Game over' : canClaimTimeout ? 'Claim timeout win →' : !isMyTurn() ? 'Opponent’s turn' : queuedActions.length ? 'End turn →' : 'Pass →'}</button>
                 </div>
                 <div class="connection-line" role="status" aria-live="polite">{errorMsg ?? syncError ?? (busy || (syncStage === 'idle' ? queuedActions.length ? 'Plan ready' : ' ' : 'Waiting for the network…'))}</div>
             </footer>
@@ -930,6 +910,7 @@
                     {#if overlay === 'stack'}
                         <StackPanel stack={preview?.stack ?? pendingStack} confirmedId={pendingStack.nextId} turn={game.turnCount} viewer={mySlot} caps={simCaps} definitions={capDefMap} layout={activeLayout} actor={selectedActor} targeting={stackTargetMode} canActivate={canActivateSelected} focusedId={focusedEffectId} onfocus={(id) => { focusedEffectId = id; closeOverlay(); }} ontarget={targetPending} oncancel={closeOverlay} />
                     {:else if overlay === 'history'}
+                        {#if timedOut}<p class="timeout-result">P{clockSample!.clock.timedOutSlot + 1} ran out of time. P{game.winnerSlot + 1} wins.</p>{/if}
             {#if latestOpponent}
                 <section class="opponent-last" aria-label="Opponent’s last turn">
                     <strong>{isSolo ? `P${latestOpponent.playerSlot + 1}` : 'Opponent'} · turn {latestOpponent.turn + 1}</strong>
@@ -942,22 +923,34 @@
 
                         <TurnHistory records={historyRecords} definitions={capDefMap} viewer={mySlot} loading={historyLoading} error={historyError} hasOlder={historyCursor > 0} onolder={() => { void loadHistory(game?.id, game?.turnCount, true); }} />
                     {:else if overlay === 'menu'}
-            <details class="rules-help"><summary>How to play · paths, goals and energy</summary>
-            <p class="hint">Follow the connecting lines: each line is one step, including diagonals. Touching squares without a line are not connected. Row and column labels stay the same when the view rotates.</p>
-            <p class="hint">Reach the center of the opponent’s back row. One deploy or move/attack per turn; abilities use energy. Surround captures are automatic.</p>
-            <p class="hint">Income: 1 per turn + 1 per occupied ⚡ square + on-board generators. Energy carries over, up to 5.</p>
-            </details>
+                        <div class="match-summary"><span class="eyebrow">{isSolo ? 'PRACTICE' : 'HEAD TO HEAD'}</span><h2>{activeLayout.name}</h2><p>Turn {game.turnCount + 1} · 2 min + 10 sec / turn</p></div>
+                        <button class="primary" onclick={closeOverlay}>Back to board →</button>
+                        <div class="menu-actions"><button onclick={copyGameLink}>{linkCopied ? 'Link copied ✓' : 'Share game ↗'}</button><button onclick={handleLoad} disabled={committing || busy !== null}>Refresh ↻</button></div>
                         {#if errorMsg || syncError}<p role="alert">{errorMsg ?? syncError}</p>{/if}
-                        <button onclick={handleLoad} disabled={committing || busy !== null}>Refresh state</button>
-                        <button onclick={copyGameLink}>{linkCopied ? 'Copied' : 'Copy game link'}</button>
-                        <button onclick={() => setBoardMode(boardMode === '3d' ? '2d' : '3d')}>Switch to {boardMode === '3d' ? '2D' : '3D'}</button>
+                        <section class="menu-card display-settings" aria-label="Board display"><span>Board view</span><div class="segmented"><button aria-pressed={boardMode === '3d'} onclick={() => setBoardMode('3d')}>3D</button><button aria-pressed={boardMode === '2d'} onclick={() => setBoardMode('2d')}>2D</button></div></section>
                         {#if boardNotice}<p>{boardNotice}</p>{/if}
-                        <p>P1 ⚡ {game.p1Energy} · P2 ⚡ {game.p2Energy}</p>
-                        {#if otherHand}<p>Opponent’s hand: {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name : ''; }).join(', ')}</p>{/if}
-                        <p>{lockedBenchCount()} pieces in queue or cooling down.</p>
-                        {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}<p>{capDefFor(c)?.name}: available turn {c.availableTurn + 1}</p>{/each}
-                        {#each queuedActions as action}<p>{actionLabel(action, simCaps, capDefMap)}</p>{/each}
-                        <button disabled={committing || !!pendingForGame} onclick={() => { closeOverlay(); game = null; queuedActions = []; selectedCapId = null; hand = null; }}>Return to lobby</button>
+                        <details class="menu-card"><summary>Clocks & match state <span>◷</span></summary><div class="menu-content">
+                            <div class="match-stats"><span>P1<b>{clockLabel(clockTimes?.[0])}</b><small>⚡ {game.p1Energy}</small></span><span>P2<b>{clockLabel(clockTimes?.[1])}</b><small>⚡ {game.p2Energy}</small></span></div>
+                            <p class="hint">Only the active player’s clock runs. A completed turn adds 10 seconds. Time is checked when the transaction executes; network confirmation time counts.</p>
+                            {#if !clockSample?.clock.enabled}<p class="hint">This older match starts with fresh clocks on its next successful turn.</p>{/if}
+                            {#if timedOut}<p>P{clockSample!.clock.timedOutSlot + 1} ran out of time.</p>{/if}
+                            {#if canClaimTimeout}<button onclick={() => { closeOverlay(); void commitTurn(true); }}>Claim timeout win</button>{/if}
+                        </div></details>
+                        <details class="menu-card"><summary>Pieces & planned actions <span>◇</span></summary><div class="menu-content">
+                            {#if otherHand}<p>Opponent’s hand: {otherHand.window.map(id => { const c = game!.caps.find(c => c.id === id); return c ? capDefFor(c)?.name : ''; }).join(', ')}</p>{/if}
+                            <p>{lockedBenchCount()} of your pieces in queue or cooling down.</p>
+                            {#each benchCaps().filter(c => c.playerSlot === mySlot && c.availableTurn > game!.turnCount) as c}<p>{capDefFor(c)?.name}: available turn {c.availableTurn + 1}</p>{/each}
+                            {#if !queuedActions.length}<p class="hint">No actions planned.</p>{/if}
+                            {#each queuedActions as action}<p>{actionLabel(action, simCaps, capDefMap)}</p>{/each}
+                        </div></details>
+                        <details class="menu-card"><summary>How to play <span>?</span></summary><div class="menu-content">
+                            <p>Reach the center of the opponent’s back row. Drag a piece from your hand to deploy, or drag a board piece along a path to move. Tap a piece to inspect its ability.</p>
+                            <p>Each connecting line is one step, including diagonals. One deploy or move/attack per turn; abilities use energy. Surround captures happen automatically.</p>
+                            <p>Gain 1 energy per turn, plus occupied ⚡ squares and on-board generators. Energy carries over, up to 5.</p>
+                            <p>Delayed abilities wait on the stack. Newer effects resolve first when ready; open ◷ to see the timing and choose targets for negation.</p>
+                        </div></details>
+                        <button class="leave-game" disabled={committing || !!pendingForGame} onclick={() => { closeOverlay(); game = null; queuedActions = []; selectedCapId = null; hand = null; clockSample = null; }}>Return to lobby</button>
+                        {#if !game.over}<p class="hint">Leaving the board does not pause the clock.</p>{/if}
                     {/if}
                 </div>
             </dialog>
@@ -1010,8 +1003,6 @@
     .opponent-last { padding:12px; background:#17263b; border-left:3px solid #fb7185; border-radius:8px; margin-bottom:12px; font-size:0.83rem; max-height:180px; overflow:auto; }
     .opponent-last p { margin:6px 0; line-height:1.5; }
     .tile.effect-focus { outline:3px solid #c4b5fd; outline-offset:-3px; }
-    .rules-help { margin-bottom:12px; color:#aebed3; font-size:0.85rem; }
-    .rules-help summary { cursor:pointer; min-height:40px; display:flex; align-items:center; }
     .stack-summary { display:block; padding:10px 12px; margin:8px 0; color:#fcd34d; border:1px solid #99713c; border-radius:8px; font-size:0.82rem; text-decoration:none; }
     @media(max-width:850px) {
         .match-layout { grid-template-columns:1fr; gap:14px; }
@@ -1430,13 +1421,6 @@
         border-radius: 8px;
         background: #0b1220;
     }
-    .fund-help summary {
-        cursor: pointer;
-        padding: 0.5rem 0.7rem;
-        color: #94a3b8;
-        font-size: 0.85rem;
-        user-select: none;
-    }
     .fund-body {
         padding: 0.25rem 0.7rem 0.7rem;
         display: flex;
@@ -1553,9 +1537,35 @@
     .game-sheet > header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; background:#101e30; padding:10px 14px; z-index:1; }
     .sheet-body { display:flex; flex-direction:column; gap:10px; padding:0 14px 18px; } .sheet-body p { font-size:13px; line-height:1.5; } .stage-notice { color:#91abc5; }
 
-    @media(max-height:500px) and (orientation:landscape) { .play-screen { grid-template-columns:minmax(0,1fr) 190px; grid-template-rows:50px minmax(0,1fr); } .play-hud { grid-column:1/-1; } .play-dock { align-self:end; padding:8px; } .hand-strip { grid-template-columns:repeat(2,minmax(0,1fr)); height:130px; } .selection-card { max-height:130px; } }
+    @media(max-height:500px) and (orientation:landscape) { .play-screen { grid-template-columns:minmax(0,1fr) 190px; grid-template-rows:auto minmax(0,1fr); } .play-top { grid-column:1/-1; } .play-dock { align-self:end; padding:8px; } .hand-strip { grid-template-columns:repeat(2,minmax(0,1fr)); height:130px; } .selection-card { max-height:130px; } }
     @media(prefers-reduced-motion:reduce) { .piece { transition:none; } .tile { animation:none; } }
 
     .drag-preview { position:fixed; transform:translate(-50%,-110%); z-index:50; pointer-events:none; display:flex; flex-direction:column; align-items:center; background:#17283bf2; border:2px solid #a8b4c5; border-radius:14px; padding:8px 12px; box-shadow:0 6px 20px #0007; }
     .drag-preview b { font-size:28px; } .drag-preview span { font-size:11px; } .drag-preview.legal { border-color:#4ade80; color:#bbf7d0; }
+    .play-top { z-index:12; }
+    .clock-strip { display:flex; justify-content:center; gap:6px; padding:0 10px 4px; }
+    .clock-strip > span { display:flex; align-items:center; gap:10px; min-width:104px; padding:3px 10px; border:1px solid #34455b; border-radius:8px; color:#94a8bf; background:#101e30; }
+    .clock-strip small { font-size:10px; } .clock-strip b { font-size:15px; font-variant-numeric:tabular-nums; margin-left:auto; }
+    .clock-strip > .running { color:#b6edff; border-color:#519bbb; background:#19394b; } .clock-strip > .low { color:#fda4af; border-color:#a74659; }
+    .lobby-intro { padding:18px 0 12px; } .eyebrow { color:#74bfd8; font-size:10px; font-weight:700; letter-spacing:0.16em; }
+    .lobby-intro h2 { font-size:clamp(30px,7vw,42px); line-height:1.12; letter-spacing:-0.04em; margin:12px 0; }
+    .lobby-intro p { color:#a8b8cc; font-size:14px; line-height:1.5; max-width:340px; }
+    .format-chip { display:inline-block; padding:6px 10px; border:1px solid #39516a; border-radius:20px; font-size:12px; color:#c0d5e9; }
+    .menu-card { background:#142338; border:1px solid #30455d; border-radius:16px; overflow:hidden; }
+    .menu-card summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:54px; padding:12px 16px; cursor:pointer; font-size:14px; font-weight:600; list-style:none; }
+    .menu-card summary::-webkit-details-marker { display:none; } .menu-card summary span { color:#91b5d0; }
+    .menu-card[open] summary { border-bottom:1px solid #30455d; } .menu-content { display:flex; flex-direction:column; gap:12px; padding:16px; }
+    .menu-content p { margin:0; line-height:1.5; } .new-match { display:flex; flex-direction:column; padding:18px; gap:14px; }
+    .new-match .hint,.menu-content .hint,.lobby > .hint,.sheet-body > .hint { color:#a4b5c9; line-height:1.5; }
+    .play-bot { display:flex; align-items:center; justify-content:space-between; text-align:left; border-radius:12px; background:linear-gradient(115deg,#23799b,#2859ae); }
+    button.primary.play-bot { background:linear-gradient(115deg,#23799b,#2859ae); } .play-bot small { display:block; font-size:11px; margin-top:4px; font-weight:400; color:#d0e7fb; }
+    .solo-button { background:#20334b; font-size:13px; border-radius:12px; } .resume-game { display:flex; justify-content:space-between; background:#163c3d; border:1px solid #367672; border-radius:12px; font-size:13px; }
+    .match-summary { padding:4px 2px 10px; } .match-summary h2 { font-size:24px; margin:8px 0 4px; } .match-summary p { margin:0; color:#a5b8ce; }
+    .menu-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; } .menu-actions button { font-size:13px; }
+    .display-settings { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; font-size:13px; }
+    .segmented { display:flex; padding:3px; gap:3px; background:#0b1727; border-radius:10px; } .segmented button { background:transparent; font-size:12px; min-width:48px; } .segmented button[aria-pressed="true"] { background:#285675; color:#e0f4ff; }
+    .match-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .match-stats > span { display:flex; flex-direction:column; gap:6px; align-items:center; font-size:12px; color:#b5c9dd; } .match-stats b { font-size:26px; font-variant-numeric:tabular-nums; color:#edf6ff; }
+    .leave-game { margin-top:8px; background:transparent; border:1px solid #4a627c; }
+    .timeout-result { padding:12px; border-radius:12px; background:#19394b; }
+    @media(min-width:700px) { .lobby { padding-top:32px; padding-bottom:40px; } .topbar { width:100%; max-width:960px; align-self:center; } }
 </style>

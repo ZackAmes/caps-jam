@@ -3,6 +3,7 @@ use caps::logic::track::{
 };
 use caps::models::cap::{Cap, Location};
 use caps::models::game::{Action, Game, Hand, Vec2};
+use caps::models::game_clock::GameClock;
 use caps::models::set_data::CapType;
 use caps::models::stack::AbilityStack;
 use caps::models::turn_record::TurnRecord;
@@ -11,6 +12,8 @@ use starknet::ContractAddress;
 #[starknet::interface]
 pub trait IActions<T> {
     fn rules_version(self: @T) -> u8;
+    fn get_clock(self: @T, game_id: u64) -> (GameClock, u64);
+    fn claim_timeout(ref self: T, game_id: u64, expected_turn: u64);
     fn get_turn(self: @T, game_id: u64, turn: u64) -> Option<TurnRecord>;
     fn get_game_count(self: @T) -> u64;
     fn get_stack(self: @T, game_id: u64) -> AbilityStack;
@@ -104,6 +107,7 @@ pub mod actions {
     use caps::models::cap::{Cap, Location, get_position, is_on_board};
     use caps::models::effect::{Effect, EffectTarget, EffectTrait, EffectType, PassiveKind};
     use caps::models::game::{Action, ActionType, Game, Global, Hand};
+    use caps::models::game_clock::{GameClock, finish_turn, fresh, remaining};
     use caps::models::set::{ISetInterfaceDispatcher, ISetInterfaceDispatcherTrait, Set};
     use caps::models::set_data::{
         AbilityContext, ActorInfo, CapInfo, CapType, SetOp, SetOpDamage, SetOpHeal, TargetType,
@@ -135,7 +139,35 @@ pub mod actions {
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         fn rules_version(self: @ContractState) -> u8 {
-            5
+            6
+        }
+
+        fn get_clock(self: @ContractState, game_id: u64) -> (GameClock, u64) {
+            let world = self.world_default();
+            let mut clock: GameClock = world.read_model(game_id);
+            clock.game_id = game_id;
+            (clock, get_block_timestamp())
+        }
+
+        fn claim_timeout(ref self: ContractState, game_id: u64, expected_turn: u64) {
+            let world = self.world_default();
+            let mut game: Game = world.read_model(game_id);
+            assert!(game.player1 != 0 && !game.over, "Game unavailable");
+            assert!(game.turn_count == expected_turn, "Stale turn");
+            let slot: u8 = (game.turn_count % 2).try_into().unwrap();
+            let caller: felt252 = get_caller_address().into();
+            assert!(
+                caller == (if slot == 0 {
+                    game.player2
+                } else {
+                    game.player1
+                }),
+                "Only opponent may claim",
+            );
+            let mut clock: GameClock = world.read_model(game_id);
+            let now = get_block_timestamp();
+            assert!(clock.enabled && remaining(clock, slot, now) == 0, "Time remains");
+            self._lose_on_time(ref game, ref clock, slot, now);
         }
 
         fn get_turn(self: @ContractState, game_id: u64, turn: u64) -> Option<TurnRecord> {
@@ -197,7 +229,6 @@ pub mod actions {
             let mut game: Game = world.read_model(game_id);
             assert!(game.player1 != 0, "Game not found");
             assert!(!game.over, "Game is over");
-            assert!(turn.len() <= 32, "Too many actions");
             let slot: u8 = (game.turn_count % 2).try_into().unwrap();
             let caller: felt252 = get_caller_address().into();
             assert!(
@@ -207,6 +238,16 @@ pub mod actions {
                     game.player2
                 }), "Not your turn",
             );
+            let now = get_block_timestamp();
+            let mut clock: GameClock = world.read_model(game_id);
+            if !clock.enabled {
+                clock = fresh(game_id, now);
+            }
+            if remaining(clock, slot, now) == 0 {
+                self._lose_on_time(ref game, ref clock, slot, now);
+                return;
+            }
+            assert!(turn.len() <= 32, "Too many actions");
             let mut stack: AbilityStack = world.read_model(game_id);
             stack.game_id = game_id;
             let energy_before = game.energy;
@@ -567,6 +608,8 @@ pub mod actions {
                 stack_after.append(*entry);
             }
             world.write_model(@stack);
+            finish_turn(ref clock, slot, now, !game.over);
+            world.write_model(@clock);
             let completed_turn = game.turn_count;
             game.turn_count += 1;
             if !game.over {
@@ -652,6 +695,34 @@ pub mod actions {
 
     #[generate_trait]
     impl PrivateImpl of PrivateTrait {
+        fn _lose_on_time(
+            ref self: ContractState, ref game: Game, ref clock: GameClock, slot: u8, now: u64,
+        ) {
+            let mut world = self.world_default();
+            game.over = true;
+            game.winner_slot = 1 - slot;
+            game.winner = if slot == 0 {
+                game.player2
+            } else {
+                game.player1
+            };
+            game.turn_count += 1;
+            game.last_action_timestamp = now;
+            if slot == 0 {
+                clock.p1_seconds = 0;
+            } else {
+                clock.p2_seconds = 0;
+            }
+            clock.timed_out_slot = slot;
+            clock.running_since = now;
+            let mut stack: AbilityStack = world.read_model(game.id);
+            stack.game_id = game.id;
+            stack.entries = array![];
+            world.write_model(@stack);
+            world.write_model(@clock);
+            world.write_model(@game);
+        }
+
         fn _create_game(
             ref self: ContractState, p1: ContractAddress, p2: ContractAddress, layout: u8,
         ) -> u64 {
@@ -662,6 +733,7 @@ pub mod actions {
             let mut global: Global = world.read_model(0);
 
             let game_id = global.games_counter + 1;
+            world.write_model(@fresh(game_id, get_block_timestamp()));
             global.games_counter = game_id;
 
             let p1_felt: felt252 = p1.into();

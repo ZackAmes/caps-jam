@@ -17,8 +17,13 @@ The tests deploy a Dojo test world and exercise the actual actions contract and 
 
 ## Deploying this rules version
 
-This is a breaking model/ABI change. Deploy into a fresh world (use a new profile seed), deploy the updated standalone Set Zero contract, register it with the actions contract as set id 0, and copy the resulting world manifest to `client/src/lib/dojo/manifest.json`. The checked-in client manifest targets the v2 world deployed September 5, 2026. Never point the new client at old game state.
+Rules v6 upgrades the existing September 8 world in place. Preserve the Sepolia profile
+seed and world address. `GameClock` is a new, separate model; existing `Game` storage,
+rosters and board layouts remain compatible. Migrate the model and actions contract,
+then copy `manifest_sepolia.json` to `client/src/lib/dojo/manifest.json`.
 
-The existing `scripts/deploy.sh` migrates the selected profile and syncs its manifest; it does not choose a fresh seed or register Set Zero for you. Review the target profile before using it.
+The client and bot require rules version 6. Stop the bot during migration, preserve its
+checkpoint when changing the version suffix, and restart it after verifying the new ABI.
+Set Zero remains registered as set 0 and does not need replacing for this upgrade.
 
 The hardcoded Sepolia test account is intentionally retained for the current development workflow.

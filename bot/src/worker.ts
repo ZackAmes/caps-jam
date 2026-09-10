@@ -50,16 +50,24 @@ export class BotWorker<State, Position, Action> {
           this.store.save(this.state);
           continue;
         }
-        if (!sameAddress(game.players[game.turn % 2], this.address)) continue;
-        const position = await this.adapter.prepare(game);
-        const actions = this.strategy.chooseTurn(position);
-        // The contract checks expected_turn atomically, including after retries/restarts.
-        sending = true;
-        const hash = await this.adapter.sendTurn(game, actions);
+        const ownTurn = sameAddress(game.players[game.turn % 2], this.address);
+        let hash: string | null, actionCount = 0;
+        if (!ownTurn) {
+          if (!this.adapter.claimTimeout) continue;
+          sending = true;
+          hash = await this.adapter.claimTimeout(game);
+          if (!hash) { sending = false; continue; }
+        } else {
+          const position = await this.adapter.prepare(game);
+          const actions = this.strategy.chooseTurn(position);
+          actionCount = actions.length;
+          sending = true;
+          hash = await this.adapter.sendTurn(game, actions);
+        }
         this.state.pending = { gameId: id, turn: game.turn, hash };
         this.state.nextActive = (index + 1) % active.length;
         this.store.save(this.state);
-        this.log('turn_submitted', { gameId: id, turn: game.turn, actionCount: actions.length, hash });
+        this.log(ownTurn ? 'turn_submitted' : 'timeout_claim_submitted', { gameId: id, turn: game.turn, actionCount, hash });
         return;
       } catch (error) {
         this.log('game_retry', { gameId: id, error: message(error) });

@@ -8,6 +8,7 @@ export interface GameInfo<State> {
 }
 
 export interface GameAdapter<State, Position, Action> {
+  claimTimeout?(game: GameInfo<State>): Promise<string | null>;
   gameCount(): Promise<number>;
   readGame(id: number): Promise<GameInfo<State> | null>;
   prepare(game: GameInfo<State>): Promise<Position>;

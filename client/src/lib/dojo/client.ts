@@ -1,3 +1,4 @@
+import { decodeClock } from '@caps/game-core/clock';
 import { consistentSnapshot } from '../game/sync';
 import { encodeActions } from '@caps/game-core/encode';
 import { CallData, type Call } from 'starknet';
@@ -61,7 +62,7 @@ async function requireCurrentRules(): Promise<void> {
   rulesVerification ??= provider.callContract({
     contractAddress: ACTIONS, entrypoint: 'rules_version', calldata: [],
   }).then(version => {
-    if (Number(version[0]) !== 5) throw new Error('This deployment uses an unsupported CAPS rules version.');
+    if (Number(version[0]) !== 6) throw new Error('This deployment uses an unsupported CAPS rules version.');
   }).catch((error: unknown) => {
     rulesVerification = null;
     throw error;
@@ -160,12 +161,21 @@ export async function transactionState(hash: string): Promise<'pending'|'confirm
 export async function getGameSnapshot(id: number, minimumTurn = 0) {
   const {game,details} = await consistentSnapshot(() => getGame(id), async game => {
     const slot = game.turnCount % 2;
-    const [hand, otherHand, stack, definitions] = await Promise.all([
+    const [hand, otherHand, stack, definitions, clock] = await Promise.all([
       getHand(id,slot), getHand(id,1-slot), getStack(id),
       Promise.all([...new Set(game.caps.map(c=>c.capType))].map(type=>getCapTypeCached(id,type))),
+      getClock(id),
     ]);
     if (!hand || !otherHand || definitions.some(d=>!d)) throw new Error('Incomplete game snapshot; retrying is safe.');
-    return {hand,otherHand,stack,definitions:new Map(definitions.map(d=>[d!.id,d!]))};
+    return {hand,otherHand,stack,clock,definitions:new Map(definitions.map(d=>[d!.id,d!]))};
   }, minimumTurn);
   return {game,...details};
+}
+
+export async function getClock(gameId:number) {
+  const clock=decodeClock(await provider.callContract({contractAddress:ACTIONS,entrypoint:'get_clock',calldata:CallData.compile([gameId])}));
+  return {clock,receivedAt:performance.now()};
+}
+export async function claimTimeout(gameId:number,turn:number,progress?:TransactionProgress) {
+  await executeAndWait({contractAddress:ACTIONS,entrypoint:'claim_timeout',calldata:CallData.compile([gameId,turn])},progress);
 }

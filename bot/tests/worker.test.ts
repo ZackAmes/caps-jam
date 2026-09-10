@@ -21,7 +21,7 @@ function fixture(count = 1) {
   const store = { save: (s: Checkpoint) => { saved = structuredClone(s); } };
   const strategy = { name: 'test', chooseTurn: () => ['move'] };
   const makeWorker = (checkpoint = state) => new BotWorker(adapter, strategy, '0x02', checkpoint, store, () => {});
-  return { state, games, sent, makeWorker, saved: () => saved!, status: (s: typeof status) => status = s, failRead: (id: number) => failedRead = id, failBroadcast: () => broadcastFailure = true };
+  return { state, games, sent, adapter, makeWorker, saved: () => saved!, status: (s: typeof status) => status = s, failRead: (id: number) => failedRead = id, failBroadcast: () => broadcastFailure = true };
 }
 
 test('discovers beyond forty games without skipping failed reads', async () => {
@@ -59,4 +59,30 @@ test('reverted transaction is retried from freshly read state', async () => {
   const f = fixture(); const worker = f.makeWorker(); await worker.tick();
   f.status('reverted'); f.games.get(1)!.turn = 2; await worker.tick();
   expect(f.sent).toEqual([1]); expect(f.state.pending).toBeUndefined();
+});
+
+
+test('timeout claim is persisted and serialized across restart like a turn', async () => {
+  const f = fixture(2);
+  f.games.get(1)!.turn = 0;
+  const claims: number[] = [];
+  f.adapter.claimTimeout = async game => { claims.push(game.id); return '0xabc'; };
+  await f.makeWorker().tick();
+  expect(claims).toEqual([1]); expect(f.sent).toEqual([]);
+  expect(f.saved().pending).toEqual({gameId:1, turn:0, hash:'0xabc'});
+  const restarted = f.makeWorker(f.saved()); await restarted.tick();
+  expect(claims).toEqual([1]); expect(f.sent).toEqual([]);
+  f.status('succeeded'); f.games.get(1)!.over = true;
+  await restarted.tick(); expect(f.sent).toEqual([2]);
+});
+
+test('unexpired opponent clock does not block another game and stale claim can retry', async () => {
+  const f = fixture(2); f.games.get(1)!.turn = 0;
+  f.adapter.claimTimeout = async () => null;
+  await f.makeWorker().tick(); expect(f.sent).toEqual([2]);
+  const other = fixture(); other.games.get(1)!.turn = 0;
+  other.adapter.claimTimeout = async () => '0xabc';
+  const worker = other.makeWorker(); await worker.tick();
+  other.status('reverted'); other.games.get(1)!.turn = 1;
+  await worker.tick(); expect(other.sent).toEqual([1]);
 });

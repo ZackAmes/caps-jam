@@ -1,4 +1,4 @@
-# Frontend state and action history (rules v5)
+# Frontend state and action history (rules v6)
 
 This is an additive upgrade of the September 8 world. Existing games, piece IDs,
 boards, hands and pending abilities are preserved. New games have seven pieces per
@@ -83,3 +83,14 @@ visual/touch verification is unavailable in the current environment and remains 
 New-game map selection starts at 7×9 Duel Paths and is independent of resumed games.
 Loading an old match no longer changes the default bot challenge map. The lobby map
 selector still allows an explicit alternative.
+
+
+## Match clocks
+
+The coherent RPC snapshot includes `get_clock`, which returns both clock storage and
+the current chain timestamp. The client anchors it to `performance.now()` and ticks
+locally, avoiding dependence on the device wall-clock setting. The display is an
+estimate; the contract determines expiry at transaction execution. Timeout claims
+use the same pending/confirmation/state-refresh flow as turns and an expected-turn
+guard. A timeout advances `turn_count` and sets `GameClock.timed_out_slot`, so the
+result UI and history distinguish it from a goal win without inventing a turn record.

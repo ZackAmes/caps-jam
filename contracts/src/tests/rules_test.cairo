@@ -16,6 +16,7 @@ pub fn setup() -> (WorldStorage, IActionsDispatcher, u64) {
         namespace: "caps",
         resources: [
             TestResource::Model(m_Game::TEST_CLASS_HASH),
+            TestResource::Model(caps::models::game_clock::m_GameClock::TEST_CLASS_HASH),
             TestResource::Model(caps::models::turn_record::m_TurnRecord::TEST_CLASS_HASH),
             TestResource::Model(caps::models::stack::m_AbilityStack::TEST_CLASS_HASH),
             TestResource::Model(m_Hand::TEST_CLASS_HASH),

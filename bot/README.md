@@ -1,7 +1,7 @@
 # CAPS bot
 
-The checked-in manifest targets the September 8, 2026 rules v5 Sepolia deployment.
-The background bot runs from `~/caps` with a separate v5 checkpoint.
+The checked-in manifest targets the September 9, 2026 rules v6 Sepolia deployment.
+The background bot runs from `~/caps` with a separate v6 checkpoint.
 
 A standalone Sepolia player with its own account. Anyone can challenge the address in
 [account.public.json](account.public.json), or use **Play against Bot** in the game lobby.
@@ -46,7 +46,7 @@ Stop the old worker before starting the replacement.
 
 - `src/worker.ts` handles discovery, turn ownership, retrying, and checkpoints. It has no
   board logic. `src/ports.ts` defines its adapter and strategy interfaces.
-- `src/game/v5.ts` owns ABI reads, transaction encoding, and constructing a v4 position.
+- `src/game/v6.ts` owns ABI reads, transaction encoding, and constructing a v6 position.
   Unsupported rules versions, sets, and layouts are rejected rather than guessed.
 - `src/strategies/greedy.ts` is a pure function. Replace it and select the replacement in
   `src/main.ts` to change play style without touching accounts or polling.
@@ -70,4 +70,8 @@ using the same checkpoint; it does not coordinate multiple hosts.
 Tests: `bun test bot/tests client/tests` and `bun run check` from the repo root. Contract
 regressions run with Scarb 2.13.1 in `contracts/`.
 
-The v5 upgrade keeps the same world. The local service uses `state/checkpoint-v5.json`, migrated from v4 while stopped so active games and pending transaction tracking are retained. New games include a Negator and the strategy can select enemy pending effects.
+The v6 clock upgrade keeps the same world. The local service uses
+`state/checkpoint-v6.json`, migrated from v5 while stopped so active games and pending
+transactions are retained. On opponent turns the adapter reads the authoritative clock
+and claims expired games. Claims share the worker's transaction tracking and nonce
+serialization with ordinary turns. The strategy remains independent of clock/ABI code.
